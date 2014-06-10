@@ -99,9 +99,8 @@ data Lit     =  LInt Integer
              deriving (Eq, Ord)
 
 data Type    =  TVar String
-             |  TInt
-             |  TBool
              |  TFun Type Type
+             |  TCon String
              deriving (Eq, Ord)
 
 data Scheme  =  Scheme [String] Type
@@ -127,8 +126,7 @@ class Types a where
 \begin{code}
 instance Types Type where
     ftv (TVar n)      =  Set.singleton n
-    ftv TInt          =  Set.empty
-    ftv TBool         =  Set.empty
+    ftv (TCon _)      =  Set.empty
     ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
 
     apply s (TVar n)      =  case Map.lookup n s of
@@ -245,8 +243,8 @@ mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
                                     return (s1 `composeSubst` s2)
 mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
-mgu TInt TInt                =  return nullSubst
-mgu TBool TBool              =  return nullSubst
+mgu (TCon t) (TCon u)
+  | t == u                   =  return nullSubst
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++ 
                                 " vs. " ++ show t2
 
@@ -263,8 +261,8 @@ Types for literals are inferred by the function |tiLit|.
 %
 \begin{code}
 tiLit :: Lit -> TI (Subst, Type)
-tiLit (LInt _)   =  return (nullSubst, TInt)
-tiLit (LBool _)  =  return (nullSubst, TBool)
+tiLit (LInt _)   =  return (nullSubst, TCon "Int")
+tiLit (LBool _)  =  return (nullSubst, TCon "Bool")
 \end{code}
 %
 The function |ti| infers the types for expressions.  The type
@@ -399,8 +397,7 @@ instance Show Type where
 
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
-prType TInt        =   PP.text "Int"
-prType TBool       =   PP.text "Bool"
+prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t PP.<+> PP.text "->" PP.<+> prType s
 
 prParenType     ::  Type -> PP.Doc
@@ -482,9 +479,9 @@ bu :: Set.Set String -> Exp -> TI (Assum, CSet, Type)
 bu _m (EVar n) = do b <- newTyVar "b"
                     return ([(n, b)], [], b)
 bu _m (ELit (LInt _)) = do b <- newTyVar "b"
-                           return ([], [CEquivalent b TInt], b)
+                           return ([], [CEquivalent b (TCon "Int")], b)
 bu _m (ELit (LBool _)) = do b <- newTyVar "b"
-                            return ([], [CEquivalent b TBool], b)
+                            return ([], [CEquivalent b (TCon "Bool")], b)
 bu m (EApp e1 e2) =
     do (a1, c1, t1) <- bu m e1
        (a2, c2, t2) <- bu m e2

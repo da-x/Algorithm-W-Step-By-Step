@@ -101,6 +101,7 @@ data Lit     =  LInt Integer
 data Type    =  TVar String
              |  TFun Type Type
              |  TCon String
+             |  TApp Type Type
              deriving (Eq, Ord)
 
 data Scheme  =  Scheme [String] Type
@@ -128,12 +129,14 @@ instance Types Type where
     ftv (TVar n)      =  Set.singleton n
     ftv (TCon _)      =  Set.empty
     ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
+    ftv (TApp t1 t2)  =  ftv t1 `Set.union` ftv t2
 
     apply s (TVar n)      =  case Map.lookup n s of
                                Nothing  -> TVar n
                                Just t   -> t
     apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
-    apply _s t            =  t
+    apply s (TApp t1 t2)  = TApp (apply s t1) (apply s t2)
+    apply _s (TCon t)     = TCon t
 \end{code}
 
 \begin{code}
@@ -239,6 +242,9 @@ which is responsible for circularity type errors.
 \begin{code}
 mgu :: Type -> Type -> TI Subst
 mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
+                                    s2 <- mgu (apply s1 r) (apply s1 r')
+                                    return (s1 `composeSubst` s2)
+mgu (TApp l r) (TApp l' r')  =  do  s1 <- mgu l l'
                                     s2 <- mgu (apply s1 r) (apply s1 r')
                                     return (s1 `composeSubst` s2)
 mgu (TVar u) t               =  varBind u t
@@ -399,6 +405,7 @@ prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
 prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t PP.<+> PP.text "->" PP.<+> prType s
+prType (TApp t s)  =   prParenType t PP.<+> prType s
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of

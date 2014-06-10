@@ -58,6 +58,8 @@ module |Data.Map|.  Sets of type variables etc. will be represented as
 sets from module |Data.Set|.
 
 \begin{code}
+module AlgorithmW where
+
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 \end{code}
@@ -133,7 +135,7 @@ instance Types Type where
                                Nothing  -> TVar n
                                Just t   -> t
     apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
-    apply s t             =  t
+    apply _s t            =  t
 \end{code}
 
 \begin{code}
@@ -285,14 +287,14 @@ ti env (EAbs n e) =
             env'' = TypeEnv (env' `Map.union` (Map.singleton n (Scheme [] tv)))
         (s1, t1) <- ti env'' e
         return (s1, TFun (apply s1 tv) t1)
-ti env exp@(EApp e1 e2) =
+ti env expr@(EApp e1 e2) =
     do  tv <- newTyVar "a"
         (s1, t1) <- ti env e1
         (s2, t2) <- ti (apply s1 env) e2
         s3 <- mgu (apply s2 t1) (TFun t2 tv)
         return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
     `catchError`
-    \e -> throwError $ e ++ "\n in " ++ show exp
+    \e -> throwError $ e ++ "\n in " ++ show expr
 ti env (ELet x e1 e2) =
     do  (s1, t1) <- ti env e1
         let TypeEnv env' = remove env x
@@ -320,26 +322,33 @@ The following simple expressions (partly taken from
 inference function.
 %
 \begin{code}
-e0  =  ELet "id" (EAbs "x" (EVar "x"))
-        (EVar "id")
+exp0 :: Exp
+exp0  =  ELet "id" (EAbs "x" (EVar "x"))
+          (EVar "id")
 
-e1  =  ELet "id" (EAbs "x" (EVar "x"))
-        (EApp (EVar "id") (EVar "id"))
+exp1 :: Exp
+exp1  =  ELet "id" (EAbs "x" (EVar "x"))
+          (EApp (EVar "id") (EVar "id"))
 
-e2  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
-        (EApp (EVar "id") (EVar "id"))
+exp2 :: Exp
+exp2  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
+          (EApp (EVar "id") (EVar "id"))
 
-e3  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
-        (EApp (EApp (EVar "id") (EVar "id")) (ELit (LInt 2)))
+exp3 :: Exp
+exp3  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
+          (EApp (EApp (EVar "id") (EVar "id")) (ELit (LInt 2)))
 
-e4  =  ELet "id" (EAbs "x" (EApp (EVar "x") (EVar "x")))
-        (EVar "id")
+exp4 :: Exp
+exp4  =  ELet "id" (EAbs "x" (EApp (EVar "x") (EVar "x")))
+          (EVar "id")
 
-e5  =  EAbs "m" (ELet "y" (EVar "m")
-                 (ELet "x" (EApp (EVar "y") (ELit (LBool True)))
-                       (EVar "x")))
-       
-e6  =  EApp (ELit (LInt 2)) (ELit (LInt 2))
+exp5 :: Exp
+exp5  =  EAbs "m" (ELet "y" (EVar "m")
+                   (ELet "x" (EApp (EVar "y") (ELit (LBool True)))
+                         (EVar "x")))
+
+exp6 :: Exp
+exp6  =  EApp (ELit (LInt 2)) (ELit (LInt 2))
 
 \end{code}
 %
@@ -365,9 +374,9 @@ type inference fails.
 
 \begin{code}
 main :: IO ()
-main = mapM_ test [e0, e1, e2, e3, e4, e5, e6]
+main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6]
 -- |Collecting Constraints|
--- |main = mapM_ test' [e0, e1, e2, e3, e4, e5]|
+-- |main = mapM_ test' [exp0, exp1, exp2, exp3, exp4, exp5]|
 \end{code}
 %
 This completes the implementation of the type inference algorithm.
@@ -470,12 +479,12 @@ type Assum = [(String, Type)]
 type CSet = [Constraint]
 
 bu :: Set.Set String -> Exp -> TI (Assum, CSet, Type)
-bu m (EVar n) = do b <- newTyVar "b"
-                   return ([(n, b)], [], b)
-bu m (ELit (LInt _)) = do b <- newTyVar "b"
-                          return ([], [CEquivalent b TInt], b)
-bu m (ELit (LBool _)) = do b <- newTyVar "b"
-                           return ([], [CEquivalent b TBool], b)
+bu _m (EVar n) = do b <- newTyVar "b"
+                    return ([(n, b)], [], b)
+bu _m (ELit (LInt _)) = do b <- newTyVar "b"
+                           return ([], [CEquivalent b TInt], b)
+bu _m (ELit (LBool _)) = do b <- newTyVar "b"
+                            return ([], [CEquivalent b TBool], b)
 bu m (EApp e1 e2) =
     do (a1, c1, t1) <- bu m e1
        (a2, c2, t2) <- bu m e2
@@ -494,6 +503,7 @@ bu m (ELet x e1 e2) =
                c1 ++ c2 ++ [CImplicitInstance t' m t1 |
                             (x', t') <- a2, x' == x], t2)
 
+removeAssum :: Eq a => [(a, t)] -> a -> [(a, t)]
 removeAssum [] _ = []
 removeAssum ((n', _) : as) n | n == n' = removeAssum as n
 removeAssum (a:as) n = a : removeAssum as n

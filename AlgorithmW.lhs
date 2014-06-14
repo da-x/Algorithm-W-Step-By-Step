@@ -206,16 +206,16 @@ data TIEnv = TIEnv  {}
 
 data TIState = TIState { tiSupply :: Int }
 
-type TI a = ErrorT String (ReaderT TIEnv (StateT TIState IO)) a
+type TI m a = ErrorT String (ReaderT TIEnv (StateT TIState m)) a
 
-runTI :: TI a -> IO (Either String a, TIState)
+runTI :: TI IO a -> IO (Either String a, TIState)
 runTI t = 
     do (res, st) <- runStateT (runReaderT (runErrorT t) initTIEnv) initTIState
        return (res, st)
   where initTIEnv = TIEnv
         initTIState = TIState{tiSupply = 0}
 
-newTyVar :: String -> TI Type
+newTyVar :: Monad m => String -> TI m Type
 newTyVar prefix =
     do  s <- get
         put s{tiSupply = tiSupply s + 1}
@@ -226,7 +226,7 @@ The instantiation function replaces all bound type variables in a type
 scheme with fresh type variables.
 %
 \begin{code}
-instantiate :: Scheme -> TI Type
+instantiate :: Monad m => Scheme -> TI m Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
                                   let s = Map.fromList (zip vars nvars)
                                   return $ apply s t
@@ -240,7 +240,7 @@ avoids binding a variable to itself and performs the occurs check,
 which is responsible for circularity type errors.
 %
 \begin{code}
-mgu :: Type -> Type -> TI Subst
+mgu :: Monad m => Type -> Type -> TI m Subst
 mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
                                     s2 <- mgu (apply s1 r) (apply s1 r')
                                     return (s1 `composeSubst` s2)
@@ -254,7 +254,7 @@ mgu (TCon t) (TCon u)
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++ 
                                 " vs. " ++ show t2
 
-varBind :: String -> Type -> TI Subst
+varBind :: Monad m => String -> Type -> TI m Subst
 varBind u t  | t == TVar u           =  return nullSubst
              | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
@@ -266,7 +266,7 @@ varBind u t  | t == TVar u           =  return nullSubst
 Types for literals are inferred by the function |tiLit|.
 %
 \begin{code}
-tiLit :: Lit -> TI (Subst, Type)
+tiLit :: Monad m => Lit -> TI m (Subst, Type)
 tiLit (LInt _)   =  return (nullSubst, TCon "Int")
 tiLit (LChar _)  =  return (nullSubst, TCon "Char")
 \end{code}
@@ -278,7 +278,7 @@ imposed on type variables by the expression, and the returned type is
 the type of the expression.
 %
 \begin{code}
-ti        ::  TypeEnv -> Exp -> TI (Subst, Type)
+ti        ::  Monad m => TypeEnv -> Exp -> TI m (Subst, Type)
 ti (TypeEnv env) (EVar n) = 
     case Map.lookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
@@ -312,7 +312,7 @@ This is the main entry point to the type inferencer.  It simply calls
 |ti| and applies the returned substitution to the returned type.
 %
 \begin{code}
-typeInference :: Map.Map String Scheme -> Exp -> TI Type
+typeInference :: Monad m => Map.Map String Scheme -> Exp -> TI m Type
 typeInference env e =
     do  (s, t) <- ti (TypeEnv env) e
         return (apply s t)
@@ -482,7 +482,7 @@ prConstraint (CImplicitInstance t1 m t2) =
 type Assum = [(String, Type)]
 type CSet = [Constraint]
 
-bu :: Set.Set String -> Exp -> TI (Assum, CSet, Type)
+bu :: Monad m => Set.Set String -> Exp -> TI m (Assum, CSet, Type)
 bu _m (EVar n) = do b <- newTyVar "b"
                     return ([(n, b)], [], b)
 bu _m (ELit (LInt _)) = do b <- newTyVar "b"

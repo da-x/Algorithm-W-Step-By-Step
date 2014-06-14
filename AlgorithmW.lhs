@@ -274,42 +274,36 @@ imposed on type variables by the expression, and the returned type is
 the type of the expression.
 %
 \begin{code}
-ti :: Monad m => TypeEnv -> Exp -> TI m (Subst, Type)
-ti (TypeEnv env) (EVar n) =
-    case Map.lookup n env of
-       Nothing     ->  throwError $ "unbound variable: " ++ n
-       Just sigma  ->  do  t <- instantiate sigma
-                           return (nullSubst, t)
-ti _ (ELit l) = tiLit l
-ti (TypeEnv env) (EAbs n e) =
-    do  tv <- newTyVar "a"
-        let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
-        (s1, t1) <- ti env' e
-        return (s1, TFun (apply s1 tv) t1)
-ti (TypeEnv env) expr@(EApp e1 e2) =
-    do  tv <- newTyVar "a"
-        (s1, t1) <- ti (TypeEnv env) e1
-        (s2, t2) <- ti (apply s1 (TypeEnv env)) e2
-        s3 <- mgu (apply s2 t1) (TFun t2 tv)
-        return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
-    `catchError`
-    \e -> throwError $ e ++ "\n in " ++ show expr
-ti (TypeEnv env) (ELet x e1 e2) =
-    do  (s1, t1) <- ti (TypeEnv env) e1
-        let t' = generalize (apply s1 (TypeEnv env)) t1
-            env' = Map.insert x t' env
-        (s2, t2) <- ti (apply s1 (TypeEnv env')) e2
-        return (s1 `composeSubst` s2, t2)
-\end{code}
-%
-This is the main entry point to the type inferencer.  It simply calls
-|ti| and applies the returned substitution to the returned type.
-%
-\begin{code}
 typeInference :: Monad m => Map.Map String Scheme -> Exp -> TI m Type
-typeInference env e =
-    do  (s, t) <- ti (TypeEnv env) e
+typeInference rootEnv rootExpr =
+    do  (s, t) <- ti (TypeEnv rootEnv) rootExpr
         return (apply s t)
+  where
+    ti (TypeEnv env) (EVar n) =
+        case Map.lookup n env of
+           Nothing     ->  throwError $ "unbound variable: " ++ n
+           Just sigma  ->  do  t <- instantiate sigma
+                               return (nullSubst, t)
+    ti _ (ELit l) = tiLit l
+    ti (TypeEnv env) (EAbs n e) =
+        do  tv <- newTyVar "a"
+            let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
+            (s1, t1) <- ti env' e
+            return (s1, TFun (apply s1 tv) t1)
+    ti (TypeEnv env) expr@(EApp e1 e2) =
+        do  tv <- newTyVar "a"
+            (s1, t1) <- ti (TypeEnv env) e1
+            (s2, t2) <- ti (apply s1 (TypeEnv env)) e2
+            s3 <- mgu (apply s2 t1) (TFun t2 tv)
+            return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
+        `catchError`
+        \e -> throwError $ e ++ "\n in " ++ show expr
+    ti (TypeEnv env) (ELet x e1 e2) =
+        do  (s1, t1) <- ti (TypeEnv env) e1
+            let t' = generalize (apply s1 (TypeEnv env)) t1
+                env' = Map.insert x t' env
+            (s2, t2) <- ti (apply s1 (TypeEnv env')) e2
+            return (s1 `composeSubst` s2, t2)
 \end{code}
 
 \subsection{Tests}

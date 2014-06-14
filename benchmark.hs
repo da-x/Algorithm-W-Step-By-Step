@@ -176,7 +176,7 @@ solveDepressedQuarticExpr =
 
 infer :: Exp -> IO String
 infer e =
-    do  (res, _) <- runTI (typeInference env e)
+    do  res <- runTI (typeInference env e)
         case res of
           Left err  ->  fail $ "error: " ++ err
           Right t   ->  return $ show e ++ " :: " ++ show t

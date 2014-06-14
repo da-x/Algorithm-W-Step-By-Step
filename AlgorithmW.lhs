@@ -209,10 +209,8 @@ data TIState = TIState { tiSupply :: Int }
 
 type TI m a = EitherT String (ReaderT TIEnv (StateT TIState m)) a
 
-runTI :: TI IO a -> IO (Either String a, TIState)
-runTI t =
-    do (res, st) <- runStateT (runReaderT (runEitherT t) initTIEnv) initTIState
-       return (res, st)
+runTI :: TI IO a -> IO (Either String a)
+runTI t = evalStateT (runReaderT (runEitherT t) initTIEnv) initTIState
   where initTIEnv = TIEnv
         initTIState = TIState{tiSupply = 0}
 
@@ -364,7 +362,7 @@ type, otherwise, it prints the error message.
 \begin{code}
 test :: Exp -> IO ()
 test e =
-    do  (res, _) <- runTI (typeInference Map.empty e)
+    do  res <- runTI (typeInference Map.empty e)
         case res of
           Left err  ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
           Right t   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
@@ -458,7 +456,7 @@ prScheme (Scheme vars t)  =   PP.text "All" PP.<+>
 \begin{code}
 test' :: Exp -> IO ()
 test' e =
-    do (res, _) <- runTI (bu Set.empty e)
+    do res <- runTI (bu Set.empty e)
        case res of
          Left err -> putStrLn $ "error: " ++ err
          Right t  -> putStrLn $ show e ++ " :: " ++ show t

@@ -436,26 +436,32 @@ instance Show Lit where
 prLit            ::  Lit -> PP.Doc
 prLit (LInt i)   =   PP.integer i
 prLit (LChar c)  =   PP.text (show c)
+prLit (LRec fs)  =
+  PP.text "{" <+>
+  PP.hcat (PP.punctuate PP.comma (map prLitField fs)) <+>
+  PP.text "}"
+  where
+    prLitField (name, expr) = PP.text name <+> PP.text ":" <+> prExp expr
 
 instance Show Scheme where
     showsPrec _ x = shows (prScheme x)
 
 prScheme                  ::  Scheme -> PP.Doc
-prScheme (Scheme vars t)  =   PP.text "All" PP.<+>
+prScheme (Scheme vars t)  =   PP.text "All" <+>
                               PP.hcat
                                 (PP.punctuate PP.comma (map PP.text vars))
-                              PP.<> PP.text "." PP.<+> prType t
+                              <> PP.text "." <+> prType t
 \end{code}
 
 \end{document}
 
 \begin{code}
-test' :: Exp -> IO ()
-test' e =
-    do res <- runTI (bu Set.empty e)
-       case res of
-         Left err -> putStrLn $ "error: " ++ err
-         Right t  -> putStrLn $ show e ++ " :: " ++ show t
+-- test' :: Exp -> IO ()
+-- test' e =
+--     do res <- runTI (bu Set.empty e)
+--        case res of
+--          Left err -> putStrLn $ "error: " ++ err
+--          Right t  -> putStrLn $ show e ++ " :: " ++ show t
 
 data Constraint = CEquivalent Type Type
                 | CExplicitInstance Type Scheme
@@ -470,42 +476,42 @@ prConstraint (CExplicitInstance t s) =
     PP.hsep [prType t, PP.text "<~", prScheme s]
 prConstraint (CImplicitInstance t1 m t2) =
     PP.hsep [prType t1,
-             PP.text "<=" PP.<>
+             PP.text "<=" <>
                PP.parens (PP.hcat (PP.punctuate PP.comma (map PP.text (Set.toList m)))),
              prType t2]
 
 type Assum = [(String, Type)]
 type CSet = [Constraint]
 
-bu :: Monad m => Set.Set String -> Exp -> TI m (Assum, CSet, Type)
-bu _m (EVar n) = do b <- newTyVar "b"
-                    return ([(n, b)], [], b)
-bu _m (ELit (LInt _)) = do b <- newTyVar "b"
-                           return ([], [CEquivalent b (TCon "Int")], b)
-bu _m (ELit (LChar _)) = do b <- newTyVar "b"
-                            return ([], [CEquivalent b (TCon "Char")], b)
-bu m (EApp e1 e2) =
-    do (a1, c1, t1) <- bu m e1
-       (a2, c2, t2) <- bu m e2
-       b <- newTyVar "b"
-       return (a1 ++ a2, c1 ++ c2 ++ [CEquivalent t1 (TFun t2 b)],
-               b)
-bu m (EAbs x body) =
-    do b@(TVar vn) <- newTyVar "b"
-       (a, c, t) <- bu (vn `Set.insert` m) body
-       return (a `removeAssum` x, c ++ [CEquivalent t' b | (x', t') <- a,
-                                        x == x'], TFun b t)
-bu m (ELet x e1 e2) =
-    do (a1, c1, t1) <- bu m e1
-       (a2, c2, t2) <- bu (x `Set.delete` m) e2
-       return (a1 ++ removeAssum a2 x,
-               c1 ++ c2 ++ [CImplicitInstance t' m t1 |
-                            (x', t') <- a2, x' == x], t2)
+-- bu :: Monad m => Set.Set String -> Exp -> TI m (Assum, CSet, Type)
+-- bu _m (EVar n) = do b <- newTyVar "b"
+--                     return ([(n, b)], [], b)
+-- bu _m (ELit (LInt _)) = do b <- newTyVar "b"
+--                            return ([], [CEquivalent b (TCon "Int")], b)
+-- bu _m (ELit (LChar _)) = do b <- newTyVar "b"
+--                             return ([], [CEquivalent b (TCon "Char")], b)
+-- bu m (EApp e1 e2) =
+--     do (a1, c1, t1) <- bu m e1
+--        (a2, c2, t2) <- bu m e2
+--        b <- newTyVar "b"
+--        return (a1 ++ a2, c1 ++ c2 ++ [CEquivalent t1 (TFun t2 b)],
+--                b)
+-- bu m (EAbs x body) =
+--     do b@(TVar vn) <- newTyVar "b"
+--        (a, c, t) <- bu (vn `Set.insert` m) body
+--        return (a `removeAssum` x, c ++ [CEquivalent t' b | (x', t') <- a,
+--                                         x == x'], TFun b t)
+-- bu m (ELet x e1 e2) =
+--     do (a1, c1, t1) <- bu m e1
+--        (a2, c2, t2) <- bu (x `Set.delete` m) e2
+--        return (a1 ++ removeAssum a2 x,
+--                c1 ++ c2 ++ [CImplicitInstance t' m t1 |
+--                             (x', t') <- a2, x' == x], t2)
 
-removeAssum :: Eq a => [(a, t)] -> a -> [(a, t)]
-removeAssum [] _ = []
-removeAssum ((n', _) : as) n | n == n' = removeAssum as n
-removeAssum (a:as) n = a : removeAssum as n
+-- removeAssum :: Eq a => [(a, t)] -> a -> [(a, t)]
+-- removeAssum [] _ = []
+-- removeAssum ((n', _) : as) n | n == n' = removeAssum as n
+-- removeAssum (a:as) n = a : removeAssum as n
 \end{code}
 
 \bibliographystyle{plain}

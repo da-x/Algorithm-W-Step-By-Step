@@ -1,6 +1,9 @@
-all: AlgorithmW benchmark # AlgorithmW.pdf
+all: Test AlgorithmW benchmark # AlgorithmW.pdf
 
 GHC=ghc-7.6.3
+
+Test: Test.hs
+	${GHC} $@
 
 AlgorithmW: AlgorithmW.lhs
 	${GHC} $@

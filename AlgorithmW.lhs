@@ -67,17 +67,19 @@ import qualified Data.Set as Set
 Since we will also make use of various monad transformers, several
 modules from the monad template library are imported as well.
 \begin{code}
-import Control.Monad.Trans.Either
+import Control.Lens
 import Control.Monad.Error
 import Control.Monad.Reader
-import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Trans.Either
+import Control.Monad.Writer hiding ((<>))
 \end{code}
 
 The module |Text.PrettyPrint| provides data types and functions for
 nicely formatted and indented output.
 \begin{code}
 import qualified Text.PrettyPrint as PP
+import Text.PrettyPrint ((<+>), (<>))
 \end{code}
 
 
@@ -98,12 +100,14 @@ data Exp     =  EVar String
 
 data Lit     =  LInt Integer
              |  LChar Char
+             |  LRec [(String, Exp)]
              deriving (Eq, Ord)
 
 data Type    =  TVar String
              |  TFun Type Type
              |  TCon String
              |  TApp Type Type
+             |  TRec [(String, Type)]
              deriving (Eq, Ord)
 
 data Scheme  =  Scheme [String] Type
@@ -132,6 +136,7 @@ instance Types Type where
     ftv (TCon _)      =  Set.empty
     ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
     ftv (TApp t1 t2)  =  ftv t1 `Set.union` ftv t2
+    ftv (TRec fields) =  ftv (map snd fields)
 
     apply s (TVar n)      =  case Map.lookup n s of
                                Nothing  -> TVar n
@@ -139,6 +144,7 @@ instance Types Type where
     apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
     apply s (TApp t1 t2)  = TApp (apply s t1) (apply s t2)
     apply _s (TCon t)     = TCon t
+    apply s (TRec fields) = TRec (fields & traverse . _2 %~ apply s)
 \end{code}
 
 \begin{code}
@@ -205,7 +211,7 @@ data TIEnv = TIEnv  {}
 
 data TIState = TIState { tiSupply :: Int }
 
-type TI m a = EitherT String (ReaderT TIEnv (StateT TIState m)) a
+type TI m = EitherT String (ReaderT TIEnv (StateT TIState m))
 
 runTI :: TI IO a -> IO (Either String a)
 runTI t = evalStateT (runReaderT (runEitherT t) initTIEnv) initTIState
@@ -259,14 +265,6 @@ varBind u t  | t == TVar u           =  return nullSubst
 \end{code}
 
 \subsection{Main type inference function}
-
-Types for literals are inferred by the function |tiLit|.
-%
-\begin{code}
-tiLit :: Monad m => Lit -> TI m Type
-tiLit (LInt _)   =  return (TCon "Int")
-tiLit (LChar _)  =  return (TCon "Char")
-\end{code}
 %
 The function |ti| infers the types for expressions.  The type
 environment must contain bindings for all free variables of the
@@ -284,7 +282,7 @@ typeInference rootEnv rootExpr =
         case Map.lookup n env of
            Nothing     ->  throwError $ "unbound variable: " ++ n
            Just sigma  ->  lift $ instantiate sigma
-    ti _ (ELit l) = lift $ tiLit l
+    ti (TypeEnv env) (ELit l) = tiLit (TypeEnv env) l
     ti (TypeEnv env) (EAbs n e) =
         do  tv <- lift $ newTyVar "a"
             let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
@@ -304,6 +302,12 @@ typeInference rootEnv rootExpr =
             let t' = generalize (apply s1 (TypeEnv env)) t1
                 env' = Map.insert x t' env
             ti (apply s1 (TypeEnv env')) e2
+    tiLit _ (LInt _)   =  return (TCon "Int")
+    tiLit _ (LChar _)  =  return (TCon "Char")
+    tiLit env (LRec fields) =
+      fields
+      & traversed . _2 %%~ ti env
+      <&> TRec
 \end{code}
 
 \subsection{Tests}
@@ -392,8 +396,11 @@ instance Show Type where
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
 prType (TCon s)    =   PP.text s
-prType (TFun t s)  =   prParenType t PP.<+> PP.text "->" PP.<+> prType s
-prType (TApp t s)  =   prParenType t PP.<+> prType s
+prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
+prType (TApp t s)  =   prParenType t <+> prType s
+prType (TRec fs)   =   PP.text "{" <+> PP.hcat (PP.punctuate PP.comma (map prField fs)) <+> PP.text "}"
+  where
+    prField (name, typ) = PP.text name <+> PP.text ":" <+> prType typ
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of
@@ -406,13 +413,13 @@ instance Show Exp where
 prExp                  ::  Exp -> PP.Doc
 prExp (EVar name)      =   PP.text name
 prExp (ELit lit)       =   prLit lit
-prExp (ELet x b body)  =   PP.text "let" PP.<+>
-                           PP.text x PP.<+> PP.text "=" PP.<+>
-                           prExp b PP.<+> PP.text "in" PP.$$
+prExp (ELet x b body)  =   PP.text "let" <+>
+                           PP.text x <+> PP.text "=" <+>
+                           prExp b <+> PP.text "in" PP.$$
                            PP.nest 2 (prExp body)
-prExp (EApp e1 e2)     =   prExp e1 PP.<+> prParenExp e2
-prExp (EAbs n e)       =   PP.char '\\' PP.<> PP.text n PP.<+>
-                           PP.text "->" PP.<+>
+prExp (EApp e1 e2)     =   prExp e1 <+> prParenExp e2
+prExp (EAbs n e)       =   PP.char '\\' <> PP.text n <+>
+                           PP.text "->" <+>
                            prExp e
 
 

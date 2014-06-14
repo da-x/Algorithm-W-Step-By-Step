@@ -1,6 +1,6 @@
 all: Test AlgorithmW benchmark # AlgorithmW.pdf
 
-GHC=ghc-7.6.3
+GHC=ghc-7.6.3 -Wall
 
 Test: Test.hs
 	${GHC} $@

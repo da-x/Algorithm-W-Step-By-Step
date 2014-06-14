@@ -70,6 +70,7 @@ modules from the monad template library are imported as well.
 import Control.Monad.Trans.Either
 import Control.Monad.Error
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Monad.State
 \end{code}
 
@@ -262,9 +263,9 @@ varBind u t  | t == TVar u           =  return nullSubst
 Types for literals are inferred by the function |tiLit|.
 %
 \begin{code}
-tiLit :: Monad m => Lit -> TI m (Subst, Type)
-tiLit (LInt _)   =  return (nullSubst, TCon "Int")
-tiLit (LChar _)  =  return (nullSubst, TCon "Char")
+tiLit :: Monad m => Lit -> TI m Type
+tiLit (LInt _)   =  return (TCon "Int")
+tiLit (LChar _)  =  return (TCon "Char")
 \end{code}
 %
 The function |ti| infers the types for expressions.  The type
@@ -276,34 +277,33 @@ the type of the expression.
 \begin{code}
 typeInference :: Monad m => Map.Map String Scheme -> Exp -> TI m Type
 typeInference rootEnv rootExpr =
-    do  (s, t) <- ti (TypeEnv rootEnv) rootExpr
+    do  (t, s) <- runWriterT $ ti (TypeEnv rootEnv) rootExpr
         return (apply s t)
   where
     ti (TypeEnv env) (EVar n) =
         case Map.lookup n env of
            Nothing     ->  throwError $ "unbound variable: " ++ n
-           Just sigma  ->  do  t <- instantiate sigma
-                               return (nullSubst, t)
-    ti _ (ELit l) = tiLit l
+           Just sigma  ->  lift $ instantiate sigma
+    ti _ (ELit l) = lift $ tiLit l
     ti (TypeEnv env) (EAbs n e) =
-        do  tv <- newTyVar "a"
+        do  tv <- lift $ newTyVar "a"
             let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
-            (s1, t1) <- ti env' e
-            return (s1, TFun (apply s1 tv) t1)
+            (t1, s1) <- listen $ ti env' e
+            return (TFun (apply s1 tv) t1)
     ti (TypeEnv env) expr@(EApp e1 e2) =
-        do  tv <- newTyVar "a"
-            (s1, t1) <- ti (TypeEnv env) e1
-            (s2, t2) <- ti (apply s1 (TypeEnv env)) e2
-            s3 <- mgu (apply s2 t1) (TFun t2 tv)
-            return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
+        do  tv <- lift $ newTyVar "a"
+            (t1, s1) <- listen $ ti (TypeEnv env) e1
+            (t2, s2) <- listen $ ti (apply s1 (TypeEnv env)) e2
+            s3 <- lift (mgu (apply s2 t1) (TFun t2 tv))
+            tell s3
+            return (apply s3 tv)
         `catchError`
         \e -> throwError $ e ++ "\n in " ++ show expr
     ti (TypeEnv env) (ELet x e1 e2) =
-        do  (s1, t1) <- ti (TypeEnv env) e1
+        do  (t1, s1) <- listen $ ti (TypeEnv env) e1
             let t' = generalize (apply s1 (TypeEnv env)) t1
                 env' = Map.insert x t' env
-            (s2, t2) <- ti (apply s1 (TypeEnv env')) e2
-            return (s1 `composeSubst` s2, t2)
+            ti (apply s1 (TypeEnv env')) e2
 \end{code}
 
 \subsection{Tests}

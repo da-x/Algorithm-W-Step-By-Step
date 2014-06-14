@@ -39,9 +39,9 @@ proposed by Milner \cite{Milner1978Theory}.  For a very readable
 presentation of this algorithm and possible variations and extensions
 read also \cite{Heeren2002GeneralizingHM}.  Several aspects of this
 tutorial are also inspired by \cite{Jones1999THiH}.
-\footnote{Copied from 
+\footnote{Copied from
   \url{http://www.grabmueller.de/martin/www/pub/AlgorithmW.en.html} and edited by
-  Wei Hu.  Unfortunately the bibliography is missing. 
+  Wei Hu.  Unfortunately the bibliography is missing.
 }
 \footnote{The most helpful references are
   \url{http://www.cs.uu.nl/research/techreps/repo/CS-2002/2002-031.pdf}
@@ -84,7 +84,7 @@ import qualified Text.PrettyPrint as PP
 
 We start by defining the abstract syntax for both \emph{expressions}
 (of type |Exp|), \emph{types} (|Type|) and \emph{type schemes}
-(|Scheme|).  A type scheme $\forall a_1,...,a_n.t$ is a type in which a number of 
+(|Scheme|).  A type scheme $\forall a_1,...,a_n.t$ is a type in which a number of
 polymorphic type variables are bound to a universal quantifier.
 
 \begin{code}
@@ -250,7 +250,7 @@ mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
 mgu (TCon t) (TCon u)
   | t == u                   =  return nullSubst
-mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++ 
+mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
                                 " vs. " ++ show t2
 
 varBind :: Monad m => String -> Type -> TI m Subst
@@ -278,7 +278,7 @@ the type of the expression.
 %
 \begin{code}
 ti        ::  Monad m => TypeEnv -> Exp -> TI m (Subst, Type)
-ti (TypeEnv env) (EVar n) = 
+ti (TypeEnv env) (EVar n) =
     case Map.lookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
        Just sigma  ->  do  t <- instantiate sigma
@@ -417,7 +417,7 @@ instance Show Exp where
 prExp                  ::  Exp -> PP.Doc
 prExp (EVar name)      =   PP.text name
 prExp (ELit lit)       =   prLit lit
-prExp (ELet x b body)  =   PP.text "let" PP.<+> 
+prExp (ELet x b body)  =   PP.text "let" PP.<+>
                            PP.text x PP.<+> PP.text "=" PP.<+>
                            prExp b PP.<+> PP.text "in" PP.$$
                            PP.nest 2 (prExp body)
@@ -425,7 +425,7 @@ prExp (EApp e1 e2)     =   prExp e1 PP.<+> prParenExp e2
 prExp (EAbs n e)       =   PP.char '\\' PP.<> PP.text n PP.<+>
                            PP.text "->" PP.<+>
                            prExp e
-                                                                   
+
 
 prParenExp    ::  Exp -> PP.Doc
 prParenExp t  =   case t of
@@ -446,7 +446,7 @@ instance Show Scheme where
 
 prScheme                  ::  Scheme -> PP.Doc
 prScheme (Scheme vars t)  =   PP.text "All" PP.<+>
-                              PP.hcat 
+                              PP.hcat
                                 (PP.punctuate PP.comma (map PP.text vars))
                               PP.<> PP.text "." PP.<+> prType t
 \end{code}
@@ -473,9 +473,9 @@ prConstraint (CEquivalent t1 t2) = PP.hsep [prType t1, PP.text "=", prType t2]
 prConstraint (CExplicitInstance t s) =
     PP.hsep [prType t, PP.text "<~", prScheme s]
 prConstraint (CImplicitInstance t1 m t2) =
-    PP.hsep [prType t1, 
-             PP.text "<=" PP.<> 
-               PP.parens (PP.hcat (PP.punctuate PP.comma (map PP.text (Set.toList m)))), 
+    PP.hsep [prType t1,
+             PP.text "<=" PP.<>
+               PP.parens (PP.hcat (PP.punctuate PP.comma (map PP.text (Set.toList m)))),
              prType t2]
 
 type Assum = [(String, Type)]

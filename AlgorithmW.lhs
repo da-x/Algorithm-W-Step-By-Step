@@ -179,9 +179,6 @@ $\Gamma\backslash x$ removes the binding for $x$ from $\Gamma$ and is
 called |remove|.
 %
 \begin{code}
-remove                    ::  TypeEnv -> String -> TypeEnv
-remove (TypeEnv env) var  =  TypeEnv (Map.delete var env)
-
 instance Types TypeEnv where
     ftv (TypeEnv env)      =  ftv (Map.elems env)
     apply s (TypeEnv env)  =  TypeEnv (Map.map (apply s) env)
@@ -284,11 +281,10 @@ ti (TypeEnv env) (EVar n) =
        Just sigma  ->  do  t <- instantiate sigma
                            return (nullSubst, t)
 ti _ (ELit l) = tiLit l
-ti env (EAbs n e) =
+ti (TypeEnv env) (EAbs n e) =
     do  tv <- newTyVar "a"
-        let TypeEnv env' = remove env n
-            env'' = TypeEnv (env' `Map.union` (Map.singleton n (Scheme [] tv)))
-        (s1, t1) <- ti env'' e
+        let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
+        (s1, t1) <- ti env' e
         return (s1, TFun (apply s1 tv) t1)
 ti env expr@(EApp e1 e2) =
     do  tv <- newTyVar "a"
@@ -298,12 +294,11 @@ ti env expr@(EApp e1 e2) =
         return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show expr
-ti env (ELet x e1 e2) =
+ti env@(TypeEnv envMap) (ELet x e1 e2) =
     do  (s1, t1) <- ti env e1
-        let TypeEnv env' = remove env x
-            t' = generalize (apply s1 env) t1
-            env'' = TypeEnv (Map.insert x t' env')
-        (s2, t2) <- ti (apply s1 env'') e2
+        let t' = generalize (apply s1 env) t1
+            env' = TypeEnv (Map.insert x t' envMap)
+        (s2, t2) <- ti (apply s1 env') e2
         return (s1 `composeSubst` s2, t2)
 \end{code}
 %

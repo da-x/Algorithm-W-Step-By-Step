@@ -274,7 +274,7 @@ imposed on type variables by the expression, and the returned type is
 the type of the expression.
 %
 \begin{code}
-ti        ::  Monad m => TypeEnv -> Exp -> TI m (Subst, Type)
+ti :: Monad m => TypeEnv -> Exp -> TI m (Subst, Type)
 ti (TypeEnv env) (EVar n) =
     case Map.lookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
@@ -286,19 +286,19 @@ ti (TypeEnv env) (EAbs n e) =
         let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
         (s1, t1) <- ti env' e
         return (s1, TFun (apply s1 tv) t1)
-ti env expr@(EApp e1 e2) =
+ti (TypeEnv env) expr@(EApp e1 e2) =
     do  tv <- newTyVar "a"
-        (s1, t1) <- ti env e1
-        (s2, t2) <- ti (apply s1 env) e2
+        (s1, t1) <- ti (TypeEnv env) e1
+        (s2, t2) <- ti (apply s1 (TypeEnv env)) e2
         s3 <- mgu (apply s2 t1) (TFun t2 tv)
         return (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show expr
-ti env@(TypeEnv envMap) (ELet x e1 e2) =
-    do  (s1, t1) <- ti env e1
-        let t' = generalize (apply s1 env) t1
-            env' = TypeEnv (Map.insert x t' envMap)
-        (s2, t2) <- ti (apply s1 env') e2
+ti (TypeEnv env) (ELet x e1 e2) =
+    do  (s1, t1) <- ti (TypeEnv env) e1
+        let t' = generalize (apply s1 (TypeEnv env)) t1
+            env' = Map.insert x t' env
+        (s2, t2) <- ti (apply s1 (TypeEnv env')) e2
         return (s1 `composeSubst` s2, t2)
 \end{code}
 %

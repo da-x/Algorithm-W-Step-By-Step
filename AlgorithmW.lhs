@@ -95,7 +95,7 @@ data Exp     =  EVar String
              deriving (Eq, Ord)
 
 data Lit     =  LInt Integer
-             |  LBool Bool
+             |  LChar Char
              deriving (Eq, Ord)
 
 data Type    =  TVar String
@@ -268,7 +268,7 @@ Types for literals are inferred by the function |tiLit|.
 \begin{code}
 tiLit :: Lit -> TI (Subst, Type)
 tiLit (LInt _)   =  return (nullSubst, TCon "Int")
-tiLit (LBool _)  =  return (nullSubst, TCon "Bool")
+tiLit (LChar _)  =  return (nullSubst, TCon "Char")
 \end{code}
 %
 The function |ti| infers the types for expressions.  The type
@@ -348,7 +348,7 @@ exp4  =  ELet "id" (EAbs "x" (EApp (EVar "x") (EVar "x")))
 
 exp5 :: Exp
 exp5  =  EAbs "m" (ELet "y" (EVar "m")
-                   (ELet "x" (EApp (EVar "y") (ELit (LBool True)))
+                   (ELet "x" (EApp (EVar "y") (ELit (LChar 'x')))
                          (EVar "x")))
 
 exp6 :: Exp
@@ -440,7 +440,7 @@ instance Show Lit where
 
 prLit            ::  Lit -> PP.Doc
 prLit (LInt i)   =   PP.integer i
-prLit (LBool b)  =   if b then PP.text "True" else PP.text "False"
+prLit (LChar c)  =   PP.text (show c)
 
 instance Show Scheme where
     showsPrec _ x = shows (prScheme x)
@@ -487,8 +487,8 @@ bu _m (EVar n) = do b <- newTyVar "b"
                     return ([(n, b)], [], b)
 bu _m (ELit (LInt _)) = do b <- newTyVar "b"
                            return ([], [CEquivalent b (TCon "Int")], b)
-bu _m (ELit (LBool _)) = do b <- newTyVar "b"
-                            return ([], [CEquivalent b (TCon "Bool")], b)
+bu _m (ELit (LChar _)) = do b <- newTyVar "b"
+                            return ([], [CEquivalent b (TCon "Char")], b)
 bu m (EApp e1 e2) =
     do (a1, c1, t1) <- bu m e1
        (a2, c2, t2) <- bu m e2

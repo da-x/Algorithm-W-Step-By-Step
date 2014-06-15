@@ -58,6 +58,7 @@ module |Data.Map|.  Sets of type variables etc. will be represented as
 sets from module |Data.Set|.
 
 \begin{code}
+{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
 module AlgorithmW where
 
 import qualified Data.Map as Map
@@ -67,6 +68,7 @@ import qualified Data.Set as Set
 Since we will also make use of various monad transformers, several
 modules from the monad template library are imported as well.
 \begin{code}
+import Control.Applicative
 import Control.Lens
 import Control.Monad.Error
 import Control.Monad.Reader
@@ -96,18 +98,21 @@ data Exp     =  EVar String
              |  EApp Exp Exp
              |  EAbs String Exp
              |  ELet String Exp Exp
+             |  EGetField Exp String
+             |  ERecExtend String Exp Exp
+             |  ERecEmpty
              deriving (Eq, Ord)
 
 data Lit     =  LInt Integer
              |  LChar Char
-             |  LRec [(String, Exp)]
              deriving (Eq, Ord)
 
 data Type    =  TVar String
              |  TFun Type Type
              |  TCon String
              |  TApp Type Type
-             |  TRec [(String, Type)]
+             |  TRecExtend String Type Type
+             |  TRecEmpty
              deriving (Eq, Ord)
 
 data Scheme  =  Scheme [String] Type
@@ -136,7 +141,8 @@ instance Types Type where
     ftv (TCon _)      =  Set.empty
     ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
     ftv (TApp t1 t2)  =  ftv t1 `Set.union` ftv t2
-    ftv (TRec fields) =  ftv (map snd fields)
+    ftv TRecEmpty     =  Set.empty
+    ftv (TRecExtend _ t1 t2) = ftv t1 `Set.union` ftv t2
 
     apply s (TVar n)      =  case Map.lookup n s of
                                Nothing  -> TVar n
@@ -144,7 +150,9 @@ instance Types Type where
     apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
     apply s (TApp t1 t2)  = TApp (apply s t1) (apply s t2)
     apply _s (TCon t)     = TCon t
-    apply s (TRec fields) = TRec (fields & traverse . _2 %~ apply s)
+    apply _s TRecEmpty = TRecEmpty
+    apply s (TRecExtend name typ rest) =
+      TRecExtend name (apply s typ) $ apply s rest
 \end{code}
 
 \begin{code}
@@ -218,11 +226,14 @@ runTI t = evalStateT (runReaderT (runEitherT t) initTIEnv) initTIState
   where initTIEnv = TIEnv
         initTIState = TIState{tiSupply = 0}
 
-newTyVar :: Monad m => String -> TI m Type
-newTyVar prefix =
+newTyVarName :: Monad m => String -> TI m String
+newTyVarName prefix =
     do  s <- get
         put s{tiSupply = tiSupply s + 1}
-        return (TVar  (prefix ++ show (tiSupply s)))
+        return (prefix ++ show (tiSupply s))
+
+newTyVar :: Monad m => String -> TI m Type
+newTyVar prefix = TVar <$> newTyVarName prefix
 \end{code}
 %
 The instantiation function replaces all bound type variables in a type
@@ -243,6 +254,68 @@ avoids binding a variable to itself and performs the occurs check,
 which is responsible for circularity type errors.
 %
 \begin{code}
+varBind :: Monad m => String -> Type -> TI m Subst
+varBind u t  | t == TVar u           =  return nullSubst
+             | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
+                                         " vs. " ++ show t
+             | otherwise             =  return (Map.singleton u t)
+
+data FlatRecord = FlatRecord
+  { _frFields :: Map.Map String Type
+  , _frExtension :: Maybe String -- TyVar of more possible fields
+  }
+makeLenses ''FlatRecord
+
+-- From a record type to a sorted list of fields
+flattenRec :: Monad m => Type -> TI m FlatRecord
+flattenRec (TRecExtend name typ rest) =
+  flattenRec rest
+  <&> frFields %~ Map.insert name typ
+flattenRec TRecEmpty = return $ FlatRecord Map.empty Nothing
+flattenRec (TVar name) = return $ FlatRecord Map.empty (Just name)
+flattenRec t = throwError $ "TRecExtend on non-record: " ++ show t
+
+-- opposite of flatten
+recToType :: FlatRecord -> Type
+recToType (FlatRecord fields extension) =
+  Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields
+
+unifyRecToPartial :: Monad m => (Map.Map String Type, String) -> Map.Map String Type -> TI m Subst
+unifyRecToPartial (tfields, tname) ufields
+  | not (Map.null uniqueTFields) = throwError $ "Incompatible record types: " ++ show tfields ++ "... vs. " ++ show ufields
+  | otherwise = varBind tname $ recToType $ FlatRecord uniqueUFields Nothing
+  where
+    uniqueTFields = tfields `Map.difference` ufields
+    uniqueUFields = ufields `Map.difference` tfields
+
+unifyRecPartials :: Monad m => (Map.Map String Type, String) -> (Map.Map String Type, String) -> TI m Subst
+unifyRecPartials (tfields, tname) (ufields, uname) =
+  do  restTv <- newTyVar "r"
+      s1 <- varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
+      s2 <- varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
+      return $ s1 `composeSubst` s2
+  where
+    uniqueTFields = tfields `Map.difference` ufields
+    uniqueUFields = ufields `Map.difference` tfields
+
+unifyRecFulls :: Monad m => Map.Map String Type -> Map.Map String Type -> TI m Subst
+unifyRecFulls tfields ufields
+  | Map.keys tfields /= Map.keys ufields =
+    throwError $ "Incompatible record types: " ++ show tfields ++ " vs. " ++ show ufields
+  | otherwise = return nullSubst
+
+unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TI m Subst
+unifyRecs (FlatRecord tfields tvar)
+          (FlatRecord ufields uvar) =
+  do  s1 <- fmap mconcat . sequence . Map.elems $ Map.intersectionWith mgu tfields ufields
+      s2 <-
+          case (tvar, uvar) of
+          (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
+          (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
+          (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
+          (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
+      return $ s1 `composeSubst` s2
+
 mgu :: Monad m => Type -> Type -> TI m Subst
 mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
                                     s2 <- mgu (apply s1 r) (apply s1 r')
@@ -254,14 +327,11 @@ mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
 mgu (TCon t) (TCon u)
   | t == u                   =  return nullSubst
+mgu TRecEmpty TRecEmpty      =  return nullSubst
+mgu t@TRecExtend {}
+    u@TRecExtend {}          =  join $ unifyRecs <$> flattenRec t <*> flattenRec u
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
                                 " vs. " ++ show t2
-
-varBind :: Monad m => String -> Type -> TI m Subst
-varBind u t  | t == TVar u           =  return nullSubst
-             | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
-                                         " vs. " ++ show t
-             | otherwise             =  return (Map.singleton u t)
 \end{code}
 
 \subsection{Main type inference function}
@@ -290,7 +360,7 @@ ti env expr = case expr of
     case envLookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
        Just sigma  ->  lift $ instantiate sigma
-  ELit l -> tiLit env l
+  ELit l -> tiLit l
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
@@ -300,7 +370,7 @@ ti env expr = case expr of
     do  tv <- lift $ newTyVar "a"
         (t1, s1) <- listen $ ti env e1
         (t2, s2) <- listen $ ti (apply s1 env) e2
-        s3 <- lift (mgu (apply s2 t1) (TFun t2 tv))
+        s3 <- lift $ mgu (apply s2 t1) (TFun t2 tv)
         tell s3
         return (apply s3 tv)
     `catchError`
@@ -310,14 +380,22 @@ ti env expr = case expr of
         let t' = generalize (apply s1 env) t1
             env' = envInsert x t' env
         ti (apply s1 env') e2
+  EGetField e name ->
+    do  tv <- lift $ newTyVar "a"
+        tvRec <- lift $ newTyVar "r"
+        (t, s) <- listen $ ti env e
+        su <- lift $ mgu (apply s t) (TRecExtend name tv tvRec)
+        tell su
+        return (apply su tv)
+  ERecEmpty -> return TRecEmpty
+  ERecExtend name e1 e2 ->
+    do  (t1, s1) <- listen $ ti env e1
+        t2 <- ti (apply s1 env) e2
+        return (TRecExtend name t1 t2)
 
-tiLit :: Monad m => TypeEnv -> Lit -> WriterT Subst (TI m) Type
-tiLit _ (LInt _)   =  return (TCon "Int")
-tiLit _ (LChar _)  =  return (TCon "Char")
-tiLit env (LRec fields) =
-  fields
-  & traversed . _2 %%~ ti env
-  <&> TRec
+tiLit :: Monad m => Lit -> WriterT Subst (TI m) Type
+tiLit (LInt _)   =  return (TCon "Int")
+tiLit (LChar _)  =  return (TCon "Char")
 \end{code}
 
 \subsection{Tests}
@@ -356,6 +434,12 @@ exp5  =  EAbs "m" (ELet "y" (EVar "m")
 exp6 :: Exp
 exp6  =  EApp (ELit (LInt 2)) (ELit (LInt 2))
 
+exp7 :: Exp
+exp7  =  EAbs "vec" $
+         ERecExtend "newX" (EGetField (EVar "vec") "x") $
+         ERecExtend "newY" (EGetField (EVar "vec") "y") $
+         ERecEmpty
+
 \end{code}
 %
 This simple test function tries to infer the type for the given
@@ -380,7 +464,7 @@ type inference fails.
 
 \begin{code}
 main :: IO ()
-main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6]
+main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7]
 -- |Collecting Constraints|
 -- |main = mapM_ test' [exp0, exp1, exp2, exp3, exp4, exp5]|
 \end{code}
@@ -403,14 +487,16 @@ This appendix defines pretty-printing functions and instances for
 instance Show Type where
     showsPrec _ x = shows (prType x)
 
+deriving instance Show FlatRecord
+
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
 prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
 prType (TApp t s)  =   prParenType t <+> prType s
-prType (TRec fs)   =   PP.text "{" <+> PP.hcat (PP.punctuate PP.comma (map prField fs)) <+> PP.text "}"
-  where
-    prField (name, typ) = PP.text name <+> PP.text ":" <+> prType typ
+prType (TRecExtend name typ rest)
+                   =   PP.text "{" <+> PP.text name <+> PP.text ":" <+> prType typ <+> PP.text "**" <+> prType rest <+> PP.text "}"
+prType TRecEmpty   =   PP.text "{**}"
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of
@@ -431,6 +517,11 @@ prExp (EApp e1 e2)     =   prExp e1 <+> prParenExp e2
 prExp (EAbs n e)       =   PP.char '\\' <> PP.text n <+>
                            PP.text "->" <+>
                            prExp e
+prExp (EGetField e n)  =   prExp e <> PP.char '.' <> PP.text n
+prExp ERecEmpty        =   PP.text "{}"
+prExp (ERecExtend name val body)
+                       =   PP.text "{" <+> PP.text name <+> PP.text "=" <+> prExp val <+>
+                           PP.text "," <+> prExp body <+> PP.text "}"
 
 
 prParenExp    ::  Exp -> PP.Doc
@@ -446,12 +537,6 @@ instance Show Lit where
 prLit            ::  Lit -> PP.Doc
 prLit (LInt i)   =   PP.integer i
 prLit (LChar c)  =   PP.text (show c)
-prLit (LRec fs)  =
-  PP.text "{" <+>
-  PP.hcat (PP.punctuate PP.comma (map prLitField fs)) <+>
-  PP.text "}"
-  where
-    prLitField (name, expr) = PP.text name <+> PP.text ":" <+> prExp expr
 
 instance Show Scheme where
     showsPrec _ x = shows (prScheme x)

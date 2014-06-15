@@ -1,6 +1,6 @@
 all: Test AlgorithmW benchmark # AlgorithmW.pdf
 
-GHC=ghc-7.6.3 -Wall
+GHC=ghc-7.6.3 -Wall -O2
 
 Test: Test.hs
 	${GHC} $@
@@ -19,4 +19,4 @@ AlgorithmW.tex: AlgorithmW.lhs
 	lhs2TeX AlgorithmW.lhs > AlgorithmW.tex
 
 clean:
-	rm -f *tex *aux *log *out *ptb *~ *dvi *hi *o AlgorithmW
+	rm -f *tex *aux *log *out *ptb *~ *dvi *hi *o AlgorithmW benchmark Test

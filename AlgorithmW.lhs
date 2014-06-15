@@ -277,37 +277,47 @@ typeInference :: Monad m => Map.Map String Scheme -> Exp -> TI m Type
 typeInference rootEnv rootExpr =
     do  (t, s) <- runWriterT $ ti (TypeEnv rootEnv) rootExpr
         return (apply s t)
-  where
-    ti (TypeEnv env) (EVar n) =
-        case Map.lookup n env of
-           Nothing     ->  throwError $ "unbound variable: " ++ n
-           Just sigma  ->  lift $ instantiate sigma
-    ti (TypeEnv env) (ELit l) = tiLit (TypeEnv env) l
-    ti (TypeEnv env) (EAbs n e) =
-        do  tv <- lift $ newTyVar "a"
-            let env' = TypeEnv (Map.insert n (Scheme [] tv) env)
-            (t1, s1) <- listen $ ti env' e
-            return (TFun (apply s1 tv) t1)
-    ti (TypeEnv env) expr@(EApp e1 e2) =
-        do  tv <- lift $ newTyVar "a"
-            (t1, s1) <- listen $ ti (TypeEnv env) e1
-            (t2, s2) <- listen $ ti (apply s1 (TypeEnv env)) e2
-            s3 <- lift (mgu (apply s2 t1) (TFun t2 tv))
-            tell s3
-            return (apply s3 tv)
-        `catchError`
-        \e -> throwError $ e ++ "\n in " ++ show expr
-    ti (TypeEnv env) (ELet x e1 e2) =
-        do  (t1, s1) <- listen $ ti (TypeEnv env) e1
-            let t' = generalize (apply s1 (TypeEnv env)) t1
-                env' = Map.insert x t' env
-            ti (apply s1 (TypeEnv env')) e2
-    tiLit _ (LInt _)   =  return (TCon "Int")
-    tiLit _ (LChar _)  =  return (TCon "Char")
-    tiLit env (LRec fields) =
-      fields
-      & traversed . _2 %%~ ti env
-      <&> TRec
+
+envLookup :: String -> TypeEnv -> Maybe Scheme
+envLookup key (TypeEnv env) = Map.lookup key env
+
+envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
+envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
+
+ti :: Monad m => TypeEnv -> Exp -> WriterT Subst (TI m) Type
+ti env expr = case expr of
+  EVar n ->
+    case envLookup n env of
+       Nothing     ->  throwError $ "unbound variable: " ++ n
+       Just sigma  ->  lift $ instantiate sigma
+  ELit l -> tiLit env l
+  EAbs n e ->
+    do  tv <- lift $ newTyVar "a"
+        let env' = envInsert n (Scheme [] tv) env
+        (t1, s1) <- listen $ ti env' e
+        return (TFun (apply s1 tv) t1)
+  EApp e1 e2 ->
+    do  tv <- lift $ newTyVar "a"
+        (t1, s1) <- listen $ ti env e1
+        (t2, s2) <- listen $ ti (apply s1 env) e2
+        s3 <- lift (mgu (apply s2 t1) (TFun t2 tv))
+        tell s3
+        return (apply s3 tv)
+    `catchError`
+    \e -> throwError $ e ++ "\n in " ++ show expr
+  ELet x e1 e2 ->
+    do  (t1, s1) <- listen $ ti env e1
+        let t' = generalize (apply s1 env) t1
+            env' = envInsert x t' env
+        ti (apply s1 env') e2
+
+tiLit :: Monad m => TypeEnv -> Lit -> WriterT Subst (TI m) Type
+tiLit _ (LInt _)   =  return (TCon "Int")
+tiLit _ (LChar _)  =  return (TCon "Char")
+tiLit env (LRec fields) =
+  fields
+  & traversed . _2 %%~ ti env
+  <&> TRec
 \end{code}
 
 \subsection{Tests}

@@ -1,5 +1,4 @@
 import AlgorithmW hiding (main)
-import Control.Monad
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -10,6 +9,7 @@ import qualified Data.Map as Map
 lambda :: String -> dummy -> (Exp -> Exp) -> Exp
 lambda varName _ mkBody = EAbs varName (mkBody (EVar varName))
 
+lambdaRecord :: dummy -> [(String, b)] -> ([Exp] -> Exp) -> Exp
 lambdaRecord _ params mkBody =
   foldr EAbs body names
   where
@@ -54,6 +54,7 @@ boolType = TCon "Bool"
 forAll :: [String] -> ([Type] -> Type) -> Scheme
 forAll names mkType = Scheme names $ mkType $ map TVar names
 
+listOf :: Type -> Type
 listOf = TApp (TCon "List")
 
 env :: Map String Scheme
@@ -82,13 +83,14 @@ env = Map.fromList
 
 list :: [Exp] -> Exp
 list [] = getDef "[]" $$ typeVarArg
-list items@(x:_) =
+list items@(_x:_) =
   foldr cons nil items
   where
     typ = typeVarArg -- inferredTypeAsHole x
     cons h t = getDef ":" $$ typ $$: [h, t]
     nil = getDef "[]" $$ typ
 
+factorialExpr :: Exp
 factorialExpr =
   getDef "fix" $$ facType $$
   lambda "loop" facType
@@ -108,6 +110,7 @@ factorialExpr =
     facType = asHole (integerType ~> integerType)
     iInt = asHole integerType
 
+euler1Expr :: Exp
 euler1Expr =
   getDef "sum" $$ iInt $$
   ( getDef "filter" $$ iInt $$:

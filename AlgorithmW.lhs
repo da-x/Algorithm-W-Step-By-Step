@@ -313,7 +313,11 @@ unifyRecFulls tfields ufields
 unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TI m Subst
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
-  do  s1 <- fmap mconcat . sequence . Map.elems $ Map.intersectionWith mgu tfields ufields
+  do  let unifyField t u =
+              do  old <- get
+                  s <- lift $ mgu (apply old t) (apply old u)
+                  put (old `composeSubst` s)
+      s1 <- (`execStateT` nullSubst) . sequence . Map.elems $ Map.intersectionWith unifyField tfields ufields
       s2 <-
           case (tvar, uvar) of
           (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields

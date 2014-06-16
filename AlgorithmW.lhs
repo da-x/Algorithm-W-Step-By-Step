@@ -75,6 +75,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
+import Data.List
 \end{code}
 
 The module |Text.PrettyPrint| provides data types and functions for
@@ -267,13 +268,13 @@ data FlatRecord = FlatRecord
 makeLenses ''FlatRecord
 
 -- From a record type to a sorted list of fields
-flattenRec :: Monad m => Type -> TI m FlatRecord
+flattenRec :: Type -> Either String FlatRecord
 flattenRec (TRecExtend name typ rest) =
   flattenRec rest
   <&> frFields %~ Map.insert name typ
 flattenRec TRecEmpty = return $ FlatRecord Map.empty Nothing
 flattenRec (TVar name) = return $ FlatRecord Map.empty (Just name)
-flattenRec t = throwError $ "TRecExtend on non-record: " ++ show t
+flattenRec t = Left $ "TRecExtend on non-record: " ++ show t
 
 -- opposite of flatten
 recToType :: FlatRecord -> Type
@@ -282,7 +283,9 @@ recToType (FlatRecord fields extension) =
 
 unifyRecToPartial :: Monad m => (Map.Map String Type, String) -> Map.Map String Type -> TI m Subst
 unifyRecToPartial (tfields, tname) ufields
-  | not (Map.null uniqueTFields) = throwError $ "Incompatible record types: " ++ show tfields ++ "... vs. " ++ show ufields
+  | not (Map.null uniqueTFields) =
+    throwError $ "Incompatible record types: " ++
+    show (FlatRecord tfields (Just tname)) ++ " vs. " ++ show (FlatRecord ufields Nothing)
   | otherwise = varBind tname $ recToType $ FlatRecord uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -301,7 +304,10 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
 unifyRecFulls :: Monad m => Map.Map String Type -> Map.Map String Type -> TI m Subst
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
-    throwError $ "Incompatible record types: " ++ show tfields ++ " vs. " ++ show ufields
+    throwError $
+    "Incompatible record types: " ++
+    show (FlatRecord tfields Nothing) ++ " vs. " ++
+    show (FlatRecord ufields Nothing)
   | otherwise = return nullSubst
 
 unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TI m Subst
@@ -329,7 +335,7 @@ mgu (TCon t) (TCon u)
   | t == u                   =  return nullSubst
 mgu TRecEmpty TRecEmpty      =  return nullSubst
 mgu t@TRecExtend {}
-    u@TRecExtend {}          =  join $ unifyRecs <$> flattenRec t <*> flattenRec u
+    u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
                                 " vs. " ++ show t2
 \end{code}
@@ -501,16 +507,35 @@ This appendix defines pretty-printing functions and instances for
 instance Show Type where
     showsPrec _ x = shows (prType x)
 
-deriving instance Show FlatRecord
+instance Show FlatRecord where
+    showsPrec _ r = shows $ prFlatRecord r
+
+prFlatRecord :: FlatRecord -> PP.Doc
+prFlatRecord (FlatRecord fields varName) =
+    PP.text "T{" <+>
+      mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
+      moreFields <+>
+    PP.text "}"
+    where
+      prField (name, typ) = PP.text name <+> PP.text ":" <+> prType typ
+      moreFields =
+        case varName of
+        Nothing -> PP.empty
+        Just name -> PP.comma <+> PP.text name <> PP.text "..."
 
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
 prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
 prType (TApp t s)  =   prParenType t <+> prType s
-prType (TRecExtend name typ rest)
-                   =   PP.text "{" <+> PP.text name <+> PP.text ":" <+> prType typ <+> PP.text "**" <+> prType rest <+> PP.text "}"
-prType TRecEmpty   =   PP.text "{**}"
+prType r@(TRecExtend name typ rest) = case flattenRec r of
+  Left _ -> -- Fall back to nested record presentation:
+    PP.text "T{" <+>
+      PP.text name <+> PP.text ":" <+> prType typ <+>
+      PP.text "**" <+> prType rest <+>
+    PP.text "}"
+  Right flatRecord -> prFlatRecord flatRecord
+prType TRecEmpty   =   PP.text "T{}"
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of
@@ -519,6 +544,13 @@ prParenType  t  =   case t of
 
 instance Show Exp where
     showsPrec _ x = shows (prExp x)
+
+flattenERec :: Exp -> (Map.Map String Exp, Maybe Exp)
+flattenERec (ERecExtend name val body) =
+  flattenERec body
+  & _1 %~ Map.insert name val
+flattenERec ERecEmpty = (Map.empty, Nothing)
+flattenERec other = (Map.empty, Just other)
 
 prExp                  ::  Exp -> PP.Doc
 prExp (EVar name)      =   PP.text name
@@ -533,9 +565,18 @@ prExp (EAbs n e)       =   PP.char '\\' <> PP.text n <+>
                            prExp e
 prExp (EGetField e n)  =   prExp e <> PP.char '.' <> PP.text n
 prExp ERecEmpty        =   PP.text "{}"
-prExp (ERecExtend name val body)
-                       =   PP.text "{" <+> PP.text name <+> PP.text "=" <+> prExp val <+>
-                           PP.text "," <+> prExp body <+> PP.text "}"
+prExp x@ERecExtend {}  =
+    PP.text "V{" <+>
+      mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
+      moreFields <+>
+    PP.text "}"
+  where
+      prField (name, val) = PP.text name <+> PP.text "=" <+> prExp val
+      moreFields =
+        case mRest of
+        Nothing -> PP.empty
+        Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
+      (fields, mRest) = flattenERec x
 
 
 prParenExp    ::  Exp -> PP.Doc

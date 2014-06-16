@@ -440,6 +440,20 @@ exp7  =  EAbs "vec" $
          ERecExtend "newY" (EGetField (EVar "vec") "y") $
          ERecEmpty
 
+exp8 :: Exp
+exp8  =  ELet
+         "vec" ( ERecExtend "x" (ELit (LInt 5)) $
+                 ERecExtend "y" (ELit (LInt 7)) $
+                 ERecEmpty ) $
+         EGetField (EVar "vec") "x"
+
+exp9 :: Exp
+exp9  =  ELet
+         "vec" ( ERecExtend "x" (ELit (LInt 5)) $
+                 ERecExtend "y" (ELit (LInt 7)) $
+                 ERecEmpty ) $
+         EGetField (EVar "vec") "z"
+
 \end{code}
 %
 This simple test function tries to infer the type for the given
@@ -464,7 +478,7 @@ type inference fails.
 
 \begin{code}
 main :: IO ()
-main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7]
+main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7, exp8, exp9]
 -- |Collecting Constraints|
 -- |main = mapM_ test' [exp0, exp1, exp2, exp3, exp4, exp5]|
 \end{code}

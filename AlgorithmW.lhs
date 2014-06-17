@@ -178,7 +178,7 @@ newtype Subst = Subst (Map.Map String Type)
 
 instance Monoid Subst where
   mempty = Subst Map.empty
-  mappend (Subst s1) (Subst s2) = Subst ((Map.map (apply (Subst s1)) s2) `Map.union` s1)
+  mappend (Subst s1) (Subst s2) = Subst (s2 `Map.union` (Map.map (apply (Subst s2)) s1))
 
 substLookup :: String -> Subst -> Maybe Type
 substLookup name (Subst s) = Map.lookup name s

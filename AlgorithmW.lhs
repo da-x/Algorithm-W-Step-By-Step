@@ -58,7 +58,7 @@ module |Data.Map|.  Sets of type variables etc. will be represented as
 sets from module |Data.Set|.
 
 \begin{code}
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module AlgorithmW where
 
 import qualified Data.Map as Map
@@ -265,7 +265,8 @@ data FlatRecord = FlatRecord
   { _frFields :: Map.Map String Type
   , _frExtension :: Maybe String -- TyVar of more possible fields
   }
-makeLenses ''FlatRecord
+frFields :: Functor f => (Map.Map String Type -> f (Map.Map String Type)) -> (FlatRecord -> f FlatRecord)
+frFields f (FlatRecord fields ext) = (`FlatRecord` ext) <$> f fields
 
 -- From a record type to a sorted list of fields
 flattenRec :: Type -> Either String FlatRecord

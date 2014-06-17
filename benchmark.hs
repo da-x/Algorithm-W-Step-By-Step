@@ -6,26 +6,16 @@ import qualified Data.Map as Map
 -- TODO: $$ to be type-classed for TApp vs EApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: String -> dummy -> (Exp -> Exp) -> Exp
-lambda varName _ mkBody = EAbs varName (mkBody (EVar varName))
+lambda :: String -> (Exp -> Exp) -> Exp
+lambda varName mkBody = EAbs varName (mkBody (EVar varName))
 
-lambdaRecord :: dummy -> [(String, b)] -> ([Exp] -> Exp) -> Exp
-lambdaRecord _ params mkBody =
-  foldr EAbs body names
-  where
-    body = mkBody $ map EVar names
-    names = map fst params
+lambdaRecord :: [String] -> ([Exp] -> Exp) -> Exp
+lambdaRecord names mkBody =
+  lambda "paramsRecord" $ \paramsRec ->
+  mkBody $ map (EGetField paramsRec) names
 
 whereItem :: String -> Exp -> (Exp -> Exp) -> Exp
-whereItem name val mkBody = lambda name () mkBody $$ val
-
--- Just use literal int 0 as a hack instead of passing a type to the
--- type-var application
-typeVarArg :: Exp
-typeVarArg = ELit $ LInt 0
-
-asHole :: a -> Exp
-asHole = const typeVarArg
+whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(String, Type)] -> Type
 record = foldr (uncurry TRecExtend) TRecEmpty
@@ -71,113 +61,103 @@ infixArgs l r = eRecord [("l", l), ("r", r)]
 
 env :: Map String Scheme
 env = Map.fromList
-  [ ("fix",    forAll ["typ", "a"] $ \ [typ, a] -> typ ~> (a ~> a) ~> a)
-  , ("if",     forAll ["typ", "a"] $ \ [typ, a] -> typ ~> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
-  , ("==",     forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a boolType)
-  , ("%",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a a)
-  , ("*",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a a)
-  , ("-",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a a)
-  , ("+",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a a)
-  , ("/",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> infixType a a a)
-  , ("sum",    forAll ["typ", "a"] $ \ [typ, a] -> typ ~> listOf a ~> a)
-  , ("filter", forAll ["typ", "a"] $ \ [typ, a] -> typ ~> record [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
-  , (":",      forAll ["typ", "a"] $ \ [typ, a] -> typ ~> record [("head", a), ("tail", listOf a)] ~> listOf a)
-  , ("[]",     forAll ["typ", "a"] $ \ [typ, a] -> typ ~> listOf a)
-  , ("concat", forAll ["typ", "a"] $ \ [typ, a] -> typ ~> listOf (listOf a) ~> listOf a)
-  , ("map",    forAll ["typ", "a", "b"] $ \ [typ, a, b] -> typ ~> typ ~> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
+  [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
+  , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
+  , ("==",     forAll ["a"] $ \ [a] -> infixType a a boolType)
+  , ("%",      forAll ["a"] $ \ [a] -> infixType a a a)
+  , ("*",      forAll ["a"] $ \ [a] -> infixType a a a)
+  , ("-",      forAll ["a"] $ \ [a] -> infixType a a a)
+  , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
+  , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
+  , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
+  , ("filter", forAll ["a"] $ \ [a] -> record [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
+  , (":",      forAll ["a"] $ \ [a] -> record [("head", a), ("tail", listOf a)] ~> listOf a)
+  , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
+  , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
+  , ("map",    forAll ["a", "b"] $ \ [a, b] -> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
   , ("..",     forAll [] $ \ [] -> infixType integerType integerType (listOf integerType))
   , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
-  , ("head",   forAll ["typ", "a"] $ \ [typ, a] -> typ ~> listOf a ~> a)
-  , ("negate", forAll ["typ", "a"] $ \ [typ, a] -> typ ~> a ~> a)
-  , ("sqrt",   forAll ["typ", "a"] $ \ [typ, a] -> typ ~> a ~> a)
-  , ("id",     forAll ["typ", "a"] $ \ [typ, a] -> typ ~> a ~> a)
+  , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)
+  , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
+  , ("sqrt",   forAll ["a"] $ \ [a] -> a ~> a)
+  , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
   ]
 
 list :: [Exp] -> Exp
-list [] = getDef "[]" $$ typeVarArg
+list [] = getDef "[]"
 list items@(_x:_) =
   foldr cons nil items
   where
-    typ = typeVarArg -- inferredTypeAsHole x
-    cons h t = getDef ":" $$ typ $$: [("head", h), ("tail", t)]
-    nil = getDef "[]" $$ typ
+    cons h t = getDef ":" $$: [("head", h), ("tail", t)]
+    nil = getDef "[]"
 
 factorialExpr :: Exp
 factorialExpr =
-  getDef "fix" $$ facType $$
-  lambda "loop" facType
+  getDef "fix" $$
+  lambda "loop"
   ( \loop ->
-    lambda "x" iInt $ \x ->
-    getDef "if" $$ iInt $$:
-    [ ( "condition", getDef "==" $$ iInt $$
+    lambda "x" $ \x ->
+    getDef "if" $$:
+    [ ( "condition", getDef "==" $$
         infixArgs x (literalInteger 0) )
     , ( "then", literalInteger 1 )
-    , ( "else", getDef "*" $$ iInt $$
-        infixArgs x (loop $$ (getDef "-" $$ iInt $$ infixArgs x (literalInteger 1)))
+    , ( "else", getDef "*" $$
+        infixArgs x (loop $$ (getDef "-" $$ infixArgs x (literalInteger 1)))
       )
     ]
   )
-  where
-    facType = asHole (integerType ~> integerType)
-    iInt = asHole integerType
 
 euler1Expr :: Exp
 euler1Expr =
-  getDef "sum" $$ iInt $$
-  ( getDef "filter" $$ iInt $$:
+  getDef "sum" $$
+  ( getDef "filter" $$:
     [ ("from", getDef ".." $$ infixArgs (literalInteger 1) (literalInteger 1000))
     , ( "predicate",
-        lambda "x" iInt $ \x ->
+        lambda "x" $ \x ->
         getDef "||" $$ infixArgs
-        ( getDef "==" $$ iInt $$ infixArgs
-          (literalInteger 0) (getDef "%" $$ iInt $$ infixArgs x (literalInteger 3)) )
-        ( getDef "==" $$ iInt $$ infixArgs
-          (literalInteger 0) (getDef "%" $$ iInt $$ infixArgs x (literalInteger 5)) )
+        ( getDef "==" $$ infixArgs
+          (literalInteger 0) (getDef "%" $$ infixArgs x (literalInteger 3)) )
+        ( getDef "==" $$ infixArgs
+          (literalInteger 0) (getDef "%" $$ infixArgs x (literalInteger 5)) )
       )
     ]
   )
-  where
-    iInt = asHole integerType
 
 solveDepressedQuarticExpr :: Exp
 solveDepressedQuarticExpr =
-  lambdaRecord "params"
-  [ ("e", iInt)
-  , ("d", iInt)
-  , ("c", iInt)
-  ] $ \[e, d, c] ->
-  whereItem "solvePoly" ( getDef "id" $$ iListInt )
+  lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
+  whereItem "solvePoly" (getDef "id")
   $ \solvePoly ->
   whereItem "sqrts"
-  ( lambda "x" iInt $ \x ->
+  ( lambda "x" $ \x ->
     whereItem "r"
-    ( getDef "sqrt" $$ iInt $$ x
+    ( getDef "sqrt" $$ x
     ) $ \r ->
-    list [r, getDef "negate" $$ iInt $$ r]
+    list [r, getDef "negate" $$ r]
   )
   $ \sqrts ->
-  getDef "if" $$ iListInt $$:
-  [ ("condition", getDef "==" $$ iInt $$ infixArgs d (literalInteger 0))
+  getDef "if" $$:
+  [ ("condition", getDef "==" $$ infixArgs d (literalInteger 0))
   , ( "then",
-      getDef "concat" $$ iInt $$
-      ( getDef "map" $$ iInt $$ iListInt $$:
+      getDef "concat" $$
+      ( getDef "map" $$:
         [ ("list", solvePoly $$ list [e, c, literalInteger 1])
         , ("mapping", sqrts)
         ]
       )
     )
   , ( "else",
-      getDef "concat" $$ iInt $$
-      ( getDef "map" $$ iInt $$ iListInt $$:
-        [ ( "list", sqrts $$ (getDef "head" $$ iInt $$ (solvePoly $$ list
-            [ getDef "negate" $$ iInt $$ (d %* d)
+      getDef "concat" $$
+      ( getDef "map" $$:
+        [ ( "list", sqrts $$ (getDef "head" $$ (solvePoly $$ list
+            [ getDef "negate" $$ (d %* d)
             , (c %* c) %- (literalInteger 4 %* e)
             , literalInteger 2 %* c
             , literalInteger 1
             ]))
           )
         , ( "mapping",
-            lambda "x" iInt $ \x ->
+            lambda "x" $ \x ->
             solvePoly $$ list
             [ (c %+ (x %* x)) %- (d %/ x)
             , literalInteger 2 %* x
@@ -189,12 +169,10 @@ solveDepressedQuarticExpr =
     )
   ]
   where
-    iInt = asHole integerType
-    iListInt = asHole $ listOf integerType
-    x %+ y = getDef "+" $$ iInt $$ infixArgs x y
-    x %- y = getDef "-" $$ iInt $$ infixArgs x y
-    x %* y = getDef "*" $$ iInt $$ infixArgs x y
-    x %/ y = getDef "/" $$ iInt $$ infixArgs x y
+    x %+ y = getDef "+" $$ infixArgs x y
+    x %- y = getDef "-" $$ infixArgs x y
+    x %* y = getDef "*" $$ infixArgs x y
+    x %/ y = getDef "/" $$ infixArgs x y
 
 infer :: Exp -> IO String
 infer e =
@@ -212,7 +190,6 @@ benches =
 
 main :: IO ()
 main = do
-  -- putStrLn =<< infer solveDepressedQuarticExpr
   defaultMain $ map makeBench benches
   where
     makeBench (name, f) =

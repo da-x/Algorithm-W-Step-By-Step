@@ -145,7 +145,7 @@ instance Types Type where
     ftv TRecEmpty     =  Set.empty
     ftv (TRecExtend _ t1 t2) = ftv t1 `Set.union` ftv t2
 
-    apply s (TVar n)      =  case Map.lookup n s of
+    apply s (TVar n)      =  case substLookup n s of
                                Nothing  -> TVar n
                                Just t   -> t
     apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
@@ -160,7 +160,7 @@ instance Types Type where
 instance Types Scheme where
     ftv (Scheme vars t)      =  (ftv t) `Set.difference` (Set.fromList vars)
 
-    apply s (Scheme vars t)  =  Scheme vars (apply (foldr Map.delete s vars) t)
+    apply s (Scheme vars t)  =  Scheme vars (apply (foldr substDelete s vars) t)
 \end{code}
 
 It will occasionally be useful to extend the |Types| methods to lists.
@@ -174,13 +174,17 @@ Now we define substitutions, which are finite mappings from type
 variables to types.
 %
 \begin{code}
-type Subst = Map.Map String Type
+newtype Subst = Subst (Map.Map String Type)
 
-nullSubst  ::  Subst
-nullSubst  =   Map.empty
+instance Monoid Subst where
+  mempty = Subst Map.empty
+  mappend (Subst s1) (Subst s2) = Subst ((Map.map (apply (Subst s1)) s2) `Map.union` s1)
 
-composeSubst         :: Subst -> Subst -> Subst
-composeSubst s1 s2   = (Map.map (apply s1) s2) `Map.union` s1
+substLookup :: String -> Subst -> Maybe Type
+substLookup name (Subst s) = Map.lookup name s
+
+substDelete :: String -> Subst -> Subst
+substDelete name (Subst s) = Subst (Map.delete name s)
 \end{code}
 %
 Type environments, called $\Gamma$ in the text, are mappings from term
@@ -243,7 +247,7 @@ scheme with fresh type variables.
 \begin{code}
 instantiate :: Monad m => Scheme -> TI m Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
-                                  let s = Map.fromList (zip vars nvars)
+                                  let s = Subst (Map.fromList (zip vars nvars))
                                   return $ apply s t
 \end{code}
 %
@@ -256,10 +260,10 @@ which is responsible for circularity type errors.
 %
 \begin{code}
 varBind :: Monad m => String -> Type -> TI m Subst
-varBind u t  | t == TVar u           =  return nullSubst
+varBind u t  | t == TVar u           =  return mempty
              | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
-             | otherwise             =  return (Map.singleton u t)
+             | otherwise             =  return (Subst (Map.singleton u t))
 
 data FlatRecord = FlatRecord
   { _frFields :: Map.Map String Type
@@ -297,7 +301,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- newTyVar "r"
       s1 <- varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
       s2 <- varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
-      return $ s1 `composeSubst` s2
+      return $ s1 `mappend` s2
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -309,7 +313,7 @@ unifyRecFulls tfields ufields
     "Incompatible record types: " ++
     show (FlatRecord tfields Nothing) ++ " vs. " ++
     show (FlatRecord ufields Nothing)
-  | otherwise = return nullSubst
+  | otherwise = return mempty
 
 unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TI m Subst
 unifyRecs (FlatRecord tfields tvar)
@@ -317,28 +321,28 @@ unifyRecs (FlatRecord tfields tvar)
   do  let unifyField t u =
               do  old <- get
                   s <- lift $ mgu (apply old t) (apply old u)
-                  put (old `composeSubst` s)
-      s1 <- (`execStateT` nullSubst) . sequence . Map.elems $ Map.intersectionWith unifyField tfields ufields
+                  put (old `mappend` s)
+      s1 <- (`execStateT` mempty) . sequence . Map.elems $ Map.intersectionWith unifyField tfields ufields
       s2 <-
           case (tvar, uvar) of
           (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
           (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
-      return $ s1 `composeSubst` s2
+      return $ s1 `mappend` s2
 
 mgu :: Monad m => Type -> Type -> TI m Subst
 mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
                                     s2 <- mgu (apply s1 r) (apply s1 r')
-                                    return (s1 `composeSubst` s2)
+                                    return (s1 `mappend` s2)
 mgu (TApp l r) (TApp l' r')  =  do  s1 <- mgu l l'
                                     s2 <- mgu (apply s1 r) (apply s1 r')
-                                    return (s1 `composeSubst` s2)
+                                    return (s1 `mappend` s2)
 mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
 mgu (TCon t) (TCon u)
-  | t == u                   =  return nullSubst
-mgu TRecEmpty TRecEmpty      =  return nullSubst
+  | t == u                   =  return mempty
+mgu TRecEmpty TRecEmpty      =  return mempty
 mgu t@TRecExtend {}
     u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++

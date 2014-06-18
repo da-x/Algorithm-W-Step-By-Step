@@ -7,12 +7,12 @@ import qualified Data.Map as Map
 -- TODO: TCon "->" instead of TFun
 
 lambda :: String -> (Exp -> Exp) -> Exp
-lambda varName mkBody = EAbs varName (mkBody (EVar varName))
+lambda varName mkBody = eAbs varName (mkBody (eVar varName))
 
 lambdaRecord :: [String] -> ([Exp] -> Exp) -> Exp
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
-  mkBody $ map (EGetField paramsRec) names
+  mkBody $ map (eGetField paramsRec) names
 
 whereItem :: String -> Exp -> (Exp -> Exp) -> Exp
 whereItem name val mkBody = lambda name mkBody $$ val
@@ -21,11 +21,11 @@ record :: [(String, Type)] -> Type
 record = foldr (uncurry TRecExtend) TRecEmpty
 
 eRecord :: [(String, Exp)] -> Exp
-eRecord = foldr (uncurry ERecExtend) ERecEmpty
+eRecord = foldr (uncurry eRecExtend) eRecEmpty
 
 infixl 4 $$
 ($$) :: Exp -> Exp -> Exp
-($$) = EApp
+($$) = eApp
 
 infixl 4 $$:
 ($$:) :: Exp -> [(String, Exp)] -> Exp
@@ -36,10 +36,10 @@ infixr 4 ~>
 (~>) = TFun
 
 getDef :: String -> Exp
-getDef = EVar
+getDef = eVar
 
 literalInteger :: Integer -> Exp
-literalInteger = ELit . LInt
+literalInteger = eLit . LInt
 
 integerType :: Type
 integerType = TCon "Int"

@@ -94,19 +94,22 @@ We start by defining the abstract syntax for both \emph{expressions}
 polymorphic type variables are bound to a universal quantifier.
 
 \begin{code}
-data Exp     =  EVar String
-             |  ELit Lit
-             |  EApp Exp Exp
-             |  EAbs String Exp
-             |  ELet String Exp Exp
-             |  EGetField Exp String
-             |  ERecExtend String Exp Exp
-             |  ERecEmpty
-             deriving (Eq, Ord)
+data Body exp =  EVar String
+              |  ELit Lit
+              |  EApp exp exp
+              |  EAbs String exp
+              |  ELet String exp exp
+              |  EGetField exp String
+              |  ERecExtend String exp exp
+              |  ERecEmpty
+  deriving (Eq, Ord)
+
+newtype Exp = Exp { unExp :: Body Exp }
+  deriving (Eq, Ord)
 
 data Lit     =  LInt Integer
              |  LChar Char
-             deriving (Eq, Ord)
+  deriving (Eq, Ord)
 
 data Type    =  TVar String
              |  TFun Type Type
@@ -114,7 +117,7 @@ data Type    =  TVar String
              |  TApp Type Type
              |  TRecExtend String Type Type
              |  TRecEmpty
-             deriving (Eq, Ord)
+  deriving (Eq, Ord)
 
 data Scheme  =  Scheme [String] Type
 \end{code}
@@ -371,7 +374,7 @@ envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
 ti :: Monad m => TypeEnv -> Exp -> TIW m Type
-ti env expr = case expr of
+ti env expr = case unExp expr of
   EVar n ->
     case envLookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
@@ -420,53 +423,77 @@ The following simple expressions (partly taken from
 inference function.
 %
 \begin{code}
+eLet :: String -> Exp -> Exp -> Exp
+eLet name e1 e2 = Exp $ ELet name e1 e2
+
+eAbs :: String -> Exp -> Exp
+eAbs name body = Exp $ EAbs name body
+
+eVar :: String -> Exp
+eVar = Exp . EVar
+
+eApp :: Exp -> Exp -> Exp
+eApp f x = Exp $ EApp f x
+
+eLit :: Lit -> Exp
+eLit = Exp . ELit
+
+eRecExtend :: String -> Exp -> Exp -> Exp
+eRecExtend name typ rest = Exp $ ERecExtend name typ rest
+
+eRecEmpty :: Exp
+eRecEmpty = Exp ERecEmpty
+
+eGetField :: Exp -> String -> Exp
+eGetField r n = Exp $ EGetField r n
+
 exp0 :: Exp
-exp0  =  ELet "id" (EAbs "x" (EVar "x"))
-          (EVar "id")
+exp0  =  eLet "id" (eAbs "x" (eVar "x"))
+          (eVar "id")
 
 exp1 :: Exp
-exp1  =  ELet "id" (EAbs "x" (EVar "x"))
-          (EApp (EVar "id") (EVar "id"))
+exp1  =  eLet "id" (eAbs "x" (eVar "x"))
+          (eApp (eVar "id") (eVar "id"))
 
 exp2 :: Exp
-exp2  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
-          (EApp (EVar "id") (EVar "id"))
+exp2  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
+          (eApp (eVar "id") (eVar "id"))
 
 exp3 :: Exp
-exp3  =  ELet "id" (EAbs "x" (ELet "y" (EVar "x") (EVar "y")))
-          (EApp (EApp (EVar "id") (EVar "id")) (ELit (LInt 2)))
+exp3  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
+          (eApp (eApp (eVar "id") (eVar "id")) (eLit (LInt 2)))
 
 exp4 :: Exp
-exp4  =  ELet "id" (EAbs "x" (EApp (EVar "x") (EVar "x")))
-          (EVar "id")
+exp4  =  eLet "id" (eAbs "x" (eApp (eVar "x") (eVar "x")))
+          (eVar "id")
 
 exp5 :: Exp
-exp5  =  EAbs "m" (ELet "y" (EVar "m")
-                   (ELet "x" (EApp (EVar "y") (ELit (LChar 'x')))
-                         (EVar "x")))
+exp5  =  eAbs "m" (eLet "y" (eVar "m")
+                   (eLet "x" (eApp (eVar "y") (eLit (LChar 'x')))
+                         (eVar "x")))
 
 exp6 :: Exp
-exp6  =  EApp (ELit (LInt 2)) (ELit (LInt 2))
+exp6  =  eApp (eLit (LInt 2)) (eLit (LInt 2))
 
 exp7 :: Exp
-exp7  =  EAbs "vec" $
-         ERecExtend "newX" (EGetField (EVar "vec") "x") $
-         ERecExtend "newY" (EGetField (EVar "vec") "y") $
-         ERecEmpty
+exp7  =  eAbs "vec" $
+         eRecExtend "newX" (eGetField (eVar "vec") "x") $
+         eRecExtend "newY" (eGetField (eVar "vec") "y") $
+         eRecEmpty
 
 exp8 :: Exp
-exp8  =  ELet
-         "vec" ( ERecExtend "x" (ELit (LInt 5)) $
-                 ERecExtend "y" (ELit (LInt 7)) $
-                 ERecEmpty ) $
-         EGetField (EVar "vec") "x"
+exp8  =  eLet
+         "vec" ( eRecExtend "x" (eLit (LInt 5)) $
+                 eRecExtend "y" (eLit (LInt 7)) $
+                 eRecEmpty ) $
+         eGetField (eVar "vec") "x"
 
 exp9 :: Exp
-exp9  =  ELet
-         "vec" ( ERecExtend "x" (ELit (LInt 5)) $
-                 ERecExtend "y" (ELit (LInt 7)) $
-                 ERecEmpty ) $
-         EGetField (EVar "vec") "z"
+exp9  =  eLet
+         "vec" ( eRecExtend "x" (eLit (LInt 5)) $
+                 eRecExtend "y" (eLit (LInt 7)) $
+                 eRecEmpty ) $
+         eGetField (eVar "vec") "z"
 
 \end{code}
 %
@@ -554,41 +581,42 @@ instance Show Exp where
     showsPrec _ x = shows (prExp x)
 
 flattenERec :: Exp -> (Map.Map String Exp, Maybe Exp)
-flattenERec (ERecExtend name val body) =
+flattenERec (Exp (ERecExtend name val body)) =
   flattenERec body
   & _1 %~ Map.insert name val
-flattenERec ERecEmpty = (Map.empty, Nothing)
+flattenERec (Exp ERecEmpty) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)
 
 prExp                  ::  Exp -> PP.Doc
-prExp (EVar name)      =   PP.text name
-prExp (ELit lit)       =   prLit lit
-prExp (ELet x b body)  =   PP.text "let" <+>
-                           PP.text x <+> PP.text "=" <+>
-                           prExp b <+> PP.text "in" PP.$$
-                           PP.nest 2 (prExp body)
-prExp (EApp e1 e2)     =   prExp e1 <+> prParenExp e2
-prExp (EAbs n e)       =   PP.char '\\' <> PP.text n <+>
-                           PP.text "->" <+>
-                           prExp e
-prExp (EGetField e n)  =   prParenExp e <> PP.char '.' <> PP.text n
-prExp ERecEmpty        =   PP.text "{}"
-prExp x@ERecExtend {}  =
-    PP.text "V{" <+>
-      mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
-      moreFields <+>
-    PP.text "}"
-  where
-      prField (name, val) = PP.text name <+> PP.text "=" <+> prExp val
-      moreFields =
-        case mRest of
-        Nothing -> PP.empty
-        Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
-      (fields, mRest) = flattenERec x
-
+prExp expr =
+    case unExp expr of
+    EVar name       ->   PP.text name
+    ELit lit        ->   prLit lit
+    ELet x b body   ->   PP.text "let" <+>
+                         PP.text x <+> PP.text "=" <+>
+                         prExp b <+> PP.text "in" PP.$$
+                         PP.nest 2 (prExp body)
+    EApp e1 e2      ->   prExp e1 <+> prParenExp e2
+    EAbs n e        ->   PP.char '\\' <> PP.text n <+>
+                         PP.text "->" <+>
+                         prExp e
+    EGetField e n   ->   prParenExp e <> PP.char '.' <> PP.text n
+    ERecEmpty       ->   PP.text "{}"
+    x@ERecExtend {} ->
+        PP.text "V{" <+>
+            mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
+            moreFields <+>
+        PP.text "}"
+      where
+        prField (name, val) = PP.text name <+> PP.text "=" <+> prExp val
+        moreFields =
+          case mRest of
+          Nothing -> PP.empty
+          Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
+        (fields, mRest) = flattenERec (Exp x)
 
 prParenExp    ::  Exp -> PP.Doc
-prParenExp t  =   case t of
+prParenExp t  =   case unExp t of
                     ELet _ _ _  -> PP.parens (prExp t)
                     EApp _ _    -> PP.parens (prExp t)
                     EAbs _ _    -> PP.parens (prExp t)

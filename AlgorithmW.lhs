@@ -276,7 +276,7 @@ data FlatRecord = FlatRecord
   { _frFields :: Map.Map String Type
   , _frExtension :: Maybe String -- TyVar of more possible fields
   }
-frFields :: Functor f => (Map.Map String Type -> f (Map.Map String Type)) -> (FlatRecord -> f FlatRecord)
+frFields :: Lens' FlatRecord (Map.Map String Type)
 frFields f (FlatRecord fields ext) = (`FlatRecord` ext) <$> f fields
 
 -- From a record type to a sorted list of fields
@@ -365,10 +365,10 @@ imposed on type variables by the expression, and the returned type is
 the type of the expression.
 %
 \begin{code}
-typeInference :: Monad m => Map.Map String Scheme -> Exp a -> TI m Type
+typeInference :: Monad m => Map.Map String Scheme -> Exp a -> TI m (Exp (Type, a))
 typeInference rootEnv rootExpr =
-    do  (t, s) <- runWriterT $ ti (TypeEnv rootEnv) rootExpr
-        return (apply s t)
+    do  ((_, t), s) <- runWriterT $ ti (,) (TypeEnv rootEnv) rootExpr
+        return (t & mapped . _1 %~ apply s)
 
 envLookup :: String -> TypeEnv -> Maybe Scheme
 envLookup key (TypeEnv env) = Map.lookup key env
@@ -376,42 +376,46 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: Monad m => TypeEnv -> Exp a -> TIW m Type
-ti env expr = case expBody expr of
+ti :: Monad m => (Type -> a -> b) -> TypeEnv -> Exp a -> TIW m (Type, Exp b)
+ti f env expr@(Exp pl body) = case body of
   EVar n ->
     case envLookup n env of
-       Nothing     ->  throwError $ "unbound variable: " ++ n
-       Just sigma  ->  lift $ instantiate sigma
-  ELit l -> tiLit l
+       Nothing     -> throwError $ "unbound variable: " ++ n
+       Just sigma  -> mkResult (EVar n) <$> lift (instantiate sigma)
+  ELit l -> mkResult (ELit l) <$> tiLit l
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
-        (t1, s1) <- listen $ ti env' e
-        return (TFun (apply s1 tv) t1)
+        ((t1, e'), s1) <- listen $ ti f env' e
+        return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
-        (t1, s1) <- listen $ ti env e1
-        (t2, s2) <- listen $ ti (apply s1 env) e2
+        ((t1, e1'), s1) <- listen $ ti f env e1
+        ((t2, e2'), s2) <- listen $ ti f (apply s1 env) e2
         ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
-        return (apply s3 tv)
+        return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show expr
   ELet x e1 e2 ->
-    do  (t1, s1) <- listen $ ti env e1
+    do  ((t1, e1'), s1) <- listen $ ti f env e1
         let t' = generalize (apply s1 env) t1
             env' = envInsert x t' env
-        ti (apply s1 env') e2
+        (t2, e2') <- ti f (apply s1 env') e2
+        return $ mkResult (ELet x e1' e2') $ t2
   EGetField e name ->
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
-        (t, s) <- listen $ ti env e
+        ((t, e'), s) <- listen $ ti f env e
         ((), su) <- listen $ mgu (apply s t) (TRecExtend name tv tvRec)
-        return (apply su tv)
-  ERecEmpty -> return TRecEmpty
+        return $ mkResult (EGetField e' name) $ apply su tv
+  ERecEmpty -> return $ mkResult ERecEmpty TRecEmpty
   ERecExtend name e1 e2 ->
-    do  (t1, s1) <- listen $ ti env e1
-        t2 <- ti (apply s1 env) e2
-        return (TRecExtend name t1 t2)
+    do  ((t1, e1'), s1) <- listen $ ti f env e1
+        (t2, e2') <- ti f (apply s1 env) e2
+        return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
+  where
+    mkResult body' typ = (typ, Exp (f typ pl) body')
+
 
 tiLit :: Monad m => Lit -> TIW m Type
 tiLit (LInt _)   =  return (TCon "Int")
@@ -509,8 +513,8 @@ test :: Exp a -> IO ()
 test e =
     do  res <- runTI (typeInference Map.empty e)
         case res of
-          Left err  ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
-          Right t   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
+          Left err               ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
+          Right (Exp (t, _) _)   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
 \end{code}
 
 \subsection{Main Program}

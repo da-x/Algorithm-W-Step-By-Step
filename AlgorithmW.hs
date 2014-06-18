@@ -18,6 +18,11 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
 
+data Lit     =  LInt Integer
+             |  LChar Char
+  deriving (Eq, Ord, Generic)
+instance NFData Lit where rnf = genericRnf
+
 data Leaf  =  EVar String
            |  ELit Lit
            |  ERecEmpty
@@ -41,11 +46,6 @@ instance NFData a => NFData (Exp a) where rnf = genericRnf
 
 expPayload :: Lens' (Exp a) a
 expPayload f (Exp pl body) = (`Exp` body) <$> f pl
-
-data Lit     =  LInt Integer
-             |  LChar Char
-  deriving (Eq, Ord, Generic)
-instance NFData Lit where rnf = genericRnf
 
 data Type    =  TVar String
              |  TFun Type Type

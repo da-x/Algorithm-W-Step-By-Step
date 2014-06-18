@@ -48,7 +48,6 @@ expPayload :: Lens' (Exp a) a
 expPayload f (Exp pl body) = (`Exp` body) <$> f pl
 
 data Type    =  TVar String
-             |  TFun Type Type
              |  TCon String
              |  TApp Type Type
              |  TRecExtend String Type Type
@@ -65,7 +64,6 @@ class Types a where
 instance Types Type where
     ftv (TVar n)      =  Set.singleton n
     ftv (TCon _)      =  Set.empty
-    ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
     ftv (TApp t1 t2)  =  ftv t1 `Set.union` ftv t2
     ftv TRecEmpty     =  Set.empty
     ftv (TRecExtend _ t1 t2) = ftv t1 `Set.union` ftv t2
@@ -73,7 +71,6 @@ instance Types Type where
     apply s (TVar n)      =  case substLookup n s of
                                Nothing  -> TVar n
                                Just t   -> t
-    apply s (TFun t1 t2)  = TFun (apply s t1) (apply s t2)
     apply s (TApp t1 t2)  = TApp (apply s t1) (apply s t2)
     apply _s (TCon t)     = TCon t
     apply _s TRecEmpty = TRecEmpty
@@ -208,8 +205,6 @@ unifyRecs (FlatRecord tfields tvar)
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
 mgu :: Monad m => Type -> Type -> TIW m ()
-mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
-                                    mgu (apply s1 r) (apply s1 r')
 mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
 mgu (TVar u) t               =  varBind u t
@@ -232,6 +227,10 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
+infixr 4 ~>
+(~>) :: Type -> Type -> Type
+arg ~> res = TApp (TApp (TCon "->") arg) res
+
 ti :: Monad m => (Type -> a -> b) -> TypeEnv -> Exp a -> TIW m (Type, Exp b)
 ti f env expr@(Exp pl body) = case body of
   ELeaf leaf ->
@@ -247,12 +246,12 @@ ti f env expr@(Exp pl body) = case body of
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
         ((t1, e'), s1) <- listen $ ti f env' e
-        return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
+        return $ mkResult (EAbs n e') $ apply s1 tv ~> t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
         ((t1, e1'), s1) <- listen $ ti f env e1
         ((t2, e2'), s2) <- listen $ ti f (apply s1 env) e2
-        ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
+        ((), s3) <- listen $ mgu (apply s2 t1) (t2 ~> tv)
         return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show expr
@@ -384,8 +383,8 @@ prFlatRecord (FlatRecord fields varName) =
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   PP.text n
 prType (TCon s)    =   PP.text s
-prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
-prType (TApp t s)  =   prParenType t <+> prType s
+prType (TApp (TApp (TCon "->") t) s)  =   prParenType t <+> PP.text "->" <+> prType s
+prType (TApp t s)  =   prType t <+> prParenType s
 prType r@(TRecExtend name typ rest) = case flattenRec r of
   Left _ -> -- Fall back to nested record presentation:
     PP.text "T{" <+>
@@ -397,8 +396,8 @@ prType TRecEmpty   =   PP.text "T{}"
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of
-                      TFun _ _  -> PP.parens (prType t)
-                      _         -> prType t
+                      TApp {}  -> PP.parens (prType t)
+                      _        -> prType t
 
 instance Show (Exp a) where
     showsPrec _ x = shows (prExp x)

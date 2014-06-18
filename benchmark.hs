@@ -37,10 +37,6 @@ infixl 4 $$:
 ($$:) :: Exp () -> [(String, Exp ())] -> Exp ()
 func $$: fields = func $$ eRecord fields
 
-infixr 4 ~>
-(~>) :: Type -> Type -> Type
-(~>) = TFun
-
 getDef :: String -> Exp ()
 getDef = eVar
 

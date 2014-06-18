@@ -18,14 +18,18 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
 
-data Body exp =  EVar String
-              |  ELit Lit
-              |  EApp exp exp
-              |  EAbs String exp
-              |  ELet String exp exp
-              |  EGetField exp String
-              |  ERecExtend String exp exp
-              |  ERecEmpty
+data Leaf  =  EVar String
+           |  ELit Lit
+           |  ERecEmpty
+  deriving (Eq, Ord, Generic)
+instance NFData Leaf where rnf = genericRnf
+
+data Body exp  =  EApp exp exp
+               |  EAbs String exp
+               |  ELet String exp exp
+               |  EGetField exp String
+               |  ERecExtend String exp exp
+               |  ELeaf Leaf
   deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
 
@@ -230,11 +234,15 @@ envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
 ti :: Monad m => (Type -> a -> b) -> TypeEnv -> Exp a -> TIW m (Type, Exp b)
 ti f env expr@(Exp pl body) = case body of
-  EVar n ->
-    case envLookup n env of
-       Nothing     -> throwError $ "unbound variable: " ++ n
-       Just sigma  -> mkResult (EVar n) <$> lift (instantiate sigma)
-  ELit l -> mkResult (ELit l) <$> tiLit l
+  ELeaf leaf ->
+    mkResult (ELeaf leaf) <$>
+    case leaf of
+    EVar n ->
+        case envLookup n env of
+           Nothing     -> throwError $ "unbound variable: " ++ n
+           Just sigma  -> lift (instantiate sigma)
+    ELit l -> tiLit l
+    ERecEmpty -> return TRecEmpty
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
@@ -260,7 +268,6 @@ ti f env expr@(Exp pl body) = case body of
         ((t, e'), s) <- listen $ ti f env e
         ((), su) <- listen $ mgu (apply s t) (TRecExtend name tv tvRec)
         return $ mkResult (EGetField e' name) $ apply su tv
-  ERecEmpty -> return $ mkResult ERecEmpty TRecEmpty
   ERecExtend name e1 e2 ->
     do  ((t1, e1'), s1) <- listen $ ti f env e1
         (t2, e2') <- ti f (apply s1 env) e2
@@ -280,19 +287,19 @@ eAbs :: String -> Exp () -> Exp ()
 eAbs name body = Exp () $ EAbs name body
 
 eVar :: String -> Exp ()
-eVar = Exp () . EVar
+eVar = Exp () . ELeaf . EVar
+
+eLit :: Lit -> Exp ()
+eLit = Exp () . ELeaf . ELit
+
+eRecEmpty :: Exp ()
+eRecEmpty = Exp () $ ELeaf ERecEmpty
 
 eApp :: Exp () -> Exp () -> Exp ()
 eApp f x = Exp () $ EApp f x
 
-eLit :: Lit -> Exp ()
-eLit = Exp () . ELit
-
 eRecExtend :: String -> Exp () -> Exp () -> Exp ()
 eRecExtend name typ rest = Exp () $ ERecExtend name typ rest
-
-eRecEmpty :: Exp ()
-eRecEmpty = Exp () ERecEmpty
 
 eGetField :: Exp () -> String -> Exp ()
 eGetField r n = Exp () $ EGetField r n
@@ -400,25 +407,25 @@ flattenERec :: Exp a -> (Map.Map String (Exp a), Maybe (Exp a))
 flattenERec (Exp _ (ERecExtend name val body)) =
   flattenERec body
   & _1 %~ Map.insert name val
-flattenERec (Exp _ ERecEmpty) = (Map.empty, Nothing)
+flattenERec (Exp _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)
 
 prExp                  ::  Exp a -> PP.Doc
 prExp expr =
     case expBody expr of
-    EVar name       ->   PP.text name
-    ELit lit        ->   prLit lit
-    ELet x b body   ->   PP.text "let" <+>
-                         PP.text x <+> PP.text "=" <+>
-                         prExp b <+> PP.text "in" PP.$$
-                         PP.nest 2 (prExp body)
-    EApp e1 e2      ->   prExp e1 <+> prParenExp e2
-    EAbs n e        ->   PP.char '\\' <> PP.text n <+>
-                         PP.text "->" <+>
-                         prExp e
-    EGetField e n   ->   prParenExp e <> PP.char '.' <> PP.text n
-    ERecEmpty       ->   PP.text "{}"
-    ERecExtend {}   ->
+    ELeaf (EVar name) ->   PP.text name
+    ELeaf (ELit lit)  ->   prLit lit
+    ELet x b body     ->   PP.text "let" <+>
+                           PP.text x <+> PP.text "=" <+>
+                           prExp b <+> PP.text "in" PP.$$
+                           PP.nest 2 (prExp body)
+    EApp e1 e2        ->   prExp e1 <+> prParenExp e2
+    EAbs n e          ->   PP.char '\\' <> PP.text n <+>
+                           PP.text "->" <+>
+                           prExp e
+    EGetField e n     ->   prParenExp e <> PP.char '.' <> PP.text n
+    ELeaf ERecEmpty   ->   PP.text "{}"
+    ERecExtend {}     ->
         PP.text "V{" <+>
             mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
             moreFields <+>

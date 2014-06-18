@@ -69,15 +69,17 @@ Since we will also make use of various monad transformers, several
 modules from the monad template library are imported as well.
 \begin{code}
 import Control.Applicative
+import Control.DeepSeq
 import Control.Lens
 import Control.Monad.Error
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
-import Data.List
 import Data.Foldable (Foldable)
+import Data.List
 import GHC.Generics
+import Control.DeepSeq.Generics (genericRnf)
 \end{code}
 
 The module |Text.PrettyPrint| provides data types and functions for
@@ -105,11 +107,13 @@ data Body exp =  EVar String
               |  ERecExtend String exp exp
               |  ERecEmpty
   deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
+instance NFData exp => NFData (Body exp) where rnf = genericRnf
 
 data Exp a = Exp
   { _expPayload :: a
   , expBody :: !(Body (Exp a))
   } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
+instance NFData a => NFData (Exp a) where rnf = genericRnf
 
 expPayload :: Lens' (Exp a) a
 expPayload f (Exp pl body) = (`Exp` body) <$> f pl
@@ -117,6 +121,7 @@ expPayload f (Exp pl body) = (`Exp` body) <$> f pl
 data Lit     =  LInt Integer
              |  LChar Char
   deriving (Eq, Ord, Generic)
+instance NFData Lit where rnf = genericRnf
 
 data Type    =  TVar String
              |  TFun Type Type
@@ -125,6 +130,7 @@ data Type    =  TVar String
              |  TRecExtend String Type Type
              |  TRecEmpty
   deriving (Eq, Ord, Generic)
+instance NFData Type where rnf = genericRnf
 
 data Scheme  =  Scheme [String] Type
 \end{code}

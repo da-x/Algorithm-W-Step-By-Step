@@ -1,8 +1,9 @@
 import AlgorithmW hiding (main)
+import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
+import Control.Lens (folded)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Lens (folded)
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -184,7 +185,7 @@ infer e =
         case res of
           Left err ->  fail $ "error: " ++ err
           Right eTyped ->
-            do  _ <- evaluate $ length $ show $ eTyped ^.. folded . _1
+            do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
                 return $ show e ++ " :: " ++ show (eTyped ^. expPayload . _1)
 
 benches :: [(String, IO String)]

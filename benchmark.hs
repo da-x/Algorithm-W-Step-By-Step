@@ -6,39 +6,39 @@ import qualified Data.Map as Map
 -- TODO: $$ to be type-classed for TApp vs EApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: String -> (Exp -> Exp) -> Exp
+lambda :: String -> (Exp () -> Exp ()) -> Exp ()
 lambda varName mkBody = eAbs varName (mkBody (eVar varName))
 
-lambdaRecord :: [String] -> ([Exp] -> Exp) -> Exp
+lambdaRecord :: [String] -> ([Exp ()] -> Exp ()) -> Exp ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (eGetField paramsRec) names
 
-whereItem :: String -> Exp -> (Exp -> Exp) -> Exp
+whereItem :: String -> Exp () -> (Exp () -> Exp ()) -> Exp ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(String, Type)] -> Type
 record = foldr (uncurry TRecExtend) TRecEmpty
 
-eRecord :: [(String, Exp)] -> Exp
+eRecord :: [(String, Exp ())] -> Exp ()
 eRecord = foldr (uncurry eRecExtend) eRecEmpty
 
 infixl 4 $$
-($$) :: Exp -> Exp -> Exp
+($$) :: Exp () -> Exp () -> Exp ()
 ($$) = eApp
 
 infixl 4 $$:
-($$:) :: Exp -> [(String, Exp)] -> Exp
+($$:) :: Exp () -> [(String, Exp ())] -> Exp ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>
 (~>) :: Type -> Type -> Type
 (~>) = TFun
 
-getDef :: String -> Exp
+getDef :: String -> Exp ()
 getDef = eVar
 
-literalInteger :: Integer -> Exp
+literalInteger :: Integer -> Exp ()
 literalInteger = eLit . LInt
 
 integerType :: Type
@@ -56,7 +56,7 @@ listOf = TApp (TCon "List")
 infixType :: Type -> Type -> Type -> Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
-infixArgs :: Exp -> Exp -> Exp
+infixArgs :: Exp () -> Exp () -> Exp ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
 env :: Map String Scheme
@@ -83,7 +83,7 @@ env = Map.fromList
   , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
   ]
 
-list :: [Exp] -> Exp
+list :: [Exp ()] -> Exp ()
 list [] = getDef "[]"
 list items@(_x:_) =
   foldr cons nil items
@@ -91,7 +91,7 @@ list items@(_x:_) =
     cons h t = getDef ":" $$: [("head", h), ("tail", t)]
     nil = getDef "[]"
 
-factorialExpr :: Exp
+factorialExpr :: Exp ()
 factorialExpr =
   getDef "fix" $$
   lambda "loop"
@@ -107,7 +107,7 @@ factorialExpr =
     ]
   )
 
-euler1Expr :: Exp
+euler1Expr :: Exp ()
 euler1Expr =
   getDef "sum" $$
   ( getDef "filter" $$:
@@ -123,7 +123,7 @@ euler1Expr =
     ]
   )
 
-solveDepressedQuarticExpr :: Exp
+solveDepressedQuarticExpr :: Exp ()
 solveDepressedQuarticExpr =
   lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
   whereItem "solvePoly" (getDef "id")
@@ -174,7 +174,7 @@ solveDepressedQuarticExpr =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-infer :: Exp -> IO String
+infer :: Exp () -> IO String
 infer e =
     do  res <- runTI (typeInference env e)
         case res of

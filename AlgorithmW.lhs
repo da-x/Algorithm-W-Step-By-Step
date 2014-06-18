@@ -58,7 +58,7 @@ module |Data.Map|.  Sets of type variables etc. will be represented as
 sets from module |Data.Set|.
 
 \begin{code}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module AlgorithmW where
 
 import qualified Data.Map as Map
@@ -76,6 +76,7 @@ import Control.Monad.State
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
 import Data.List
+import Data.Foldable (Foldable)
 \end{code}
 
 The module |Text.PrettyPrint| provides data types and functions for
@@ -102,10 +103,12 @@ data Body exp =  EVar String
               |  EGetField exp String
               |  ERecExtend String exp exp
               |  ERecEmpty
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Functor, Foldable, Traversable)
 
-newtype Exp = Exp { unExp :: Body Exp }
-  deriving (Eq, Ord)
+data Exp a = Exp
+  { expPayload :: a
+  , expBody :: !(Body (Exp a))
+  } deriving (Eq, Ord, Functor, Foldable, Traversable)
 
 data Lit     =  LInt Integer
              |  LChar Char
@@ -362,7 +365,7 @@ imposed on type variables by the expression, and the returned type is
 the type of the expression.
 %
 \begin{code}
-typeInference :: Monad m => Map.Map String Scheme -> Exp -> TI m Type
+typeInference :: Monad m => Map.Map String Scheme -> Exp a -> TI m Type
 typeInference rootEnv rootExpr =
     do  (t, s) <- runWriterT $ ti (TypeEnv rootEnv) rootExpr
         return (apply s t)
@@ -373,8 +376,8 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: Monad m => TypeEnv -> Exp -> TIW m Type
-ti env expr = case unExp expr of
+ti :: Monad m => TypeEnv -> Exp a -> TIW m Type
+ti env expr = case expBody expr of
   EVar n ->
     case envLookup n env of
        Nothing     ->  throwError $ "unbound variable: " ++ n
@@ -423,72 +426,72 @@ The following simple expressions (partly taken from
 inference function.
 %
 \begin{code}
-eLet :: String -> Exp -> Exp -> Exp
-eLet name e1 e2 = Exp $ ELet name e1 e2
+eLet :: String -> Exp () -> Exp () -> Exp ()
+eLet name e1 e2 = Exp () $ ELet name e1 e2
 
-eAbs :: String -> Exp -> Exp
-eAbs name body = Exp $ EAbs name body
+eAbs :: String -> Exp () -> Exp ()
+eAbs name body = Exp () $ EAbs name body
 
-eVar :: String -> Exp
-eVar = Exp . EVar
+eVar :: String -> Exp ()
+eVar = Exp () . EVar
 
-eApp :: Exp -> Exp -> Exp
-eApp f x = Exp $ EApp f x
+eApp :: Exp () -> Exp () -> Exp ()
+eApp f x = Exp () $ EApp f x
 
-eLit :: Lit -> Exp
-eLit = Exp . ELit
+eLit :: Lit -> Exp ()
+eLit = Exp () . ELit
 
-eRecExtend :: String -> Exp -> Exp -> Exp
-eRecExtend name typ rest = Exp $ ERecExtend name typ rest
+eRecExtend :: String -> Exp () -> Exp () -> Exp ()
+eRecExtend name typ rest = Exp () $ ERecExtend name typ rest
 
-eRecEmpty :: Exp
-eRecEmpty = Exp ERecEmpty
+eRecEmpty :: Exp ()
+eRecEmpty = Exp () ERecEmpty
 
-eGetField :: Exp -> String -> Exp
-eGetField r n = Exp $ EGetField r n
+eGetField :: Exp () -> String -> Exp ()
+eGetField r n = Exp () $ EGetField r n
 
-exp0 :: Exp
+exp0 :: Exp ()
 exp0  =  eLet "id" (eAbs "x" (eVar "x"))
           (eVar "id")
 
-exp1 :: Exp
+exp1 :: Exp ()
 exp1  =  eLet "id" (eAbs "x" (eVar "x"))
           (eApp (eVar "id") (eVar "id"))
 
-exp2 :: Exp
+exp2 :: Exp ()
 exp2  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
           (eApp (eVar "id") (eVar "id"))
 
-exp3 :: Exp
+exp3 :: Exp ()
 exp3  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
           (eApp (eApp (eVar "id") (eVar "id")) (eLit (LInt 2)))
 
-exp4 :: Exp
+exp4 :: Exp ()
 exp4  =  eLet "id" (eAbs "x" (eApp (eVar "x") (eVar "x")))
           (eVar "id")
 
-exp5 :: Exp
+exp5 :: Exp ()
 exp5  =  eAbs "m" (eLet "y" (eVar "m")
                    (eLet "x" (eApp (eVar "y") (eLit (LChar 'x')))
                          (eVar "x")))
 
-exp6 :: Exp
+exp6 :: Exp ()
 exp6  =  eApp (eLit (LInt 2)) (eLit (LInt 2))
 
-exp7 :: Exp
+exp7 :: Exp ()
 exp7  =  eAbs "vec" $
          eRecExtend "newX" (eGetField (eVar "vec") "x") $
          eRecExtend "newY" (eGetField (eVar "vec") "y") $
          eRecEmpty
 
-exp8 :: Exp
+exp8 :: Exp ()
 exp8  =  eLet
          "vec" ( eRecExtend "x" (eLit (LInt 5)) $
                  eRecExtend "y" (eLit (LInt 7)) $
                  eRecEmpty ) $
          eGetField (eVar "vec") "x"
 
-exp9 :: Exp
+exp9 :: Exp ()
 exp9  =  eLet
          "vec" ( eRecExtend "x" (eLit (LInt 5)) $
                  eRecExtend "y" (eLit (LInt 7)) $
@@ -502,7 +505,7 @@ expression.  If successful, it prints the expression together with its
 type, otherwise, it prints the error message.
 %
 \begin{code}
-test :: Exp -> IO ()
+test :: Exp a -> IO ()
 test e =
     do  res <- runTI (typeInference Map.empty e)
         case res of
@@ -577,19 +580,19 @@ prParenType  t  =   case t of
                       TFun _ _  -> PP.parens (prType t)
                       _         -> prType t
 
-instance Show Exp where
+instance Show (Exp a) where
     showsPrec _ x = shows (prExp x)
 
-flattenERec :: Exp -> (Map.Map String Exp, Maybe Exp)
-flattenERec (Exp (ERecExtend name val body)) =
+flattenERec :: Exp a -> (Map.Map String (Exp a), Maybe (Exp a))
+flattenERec (Exp _ (ERecExtend name val body)) =
   flattenERec body
   & _1 %~ Map.insert name val
-flattenERec (Exp ERecEmpty) = (Map.empty, Nothing)
+flattenERec (Exp _ ERecEmpty) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)
 
-prExp                  ::  Exp -> PP.Doc
+prExp                  ::  Exp a -> PP.Doc
 prExp expr =
-    case unExp expr of
+    case expBody expr of
     EVar name       ->   PP.text name
     ELit lit        ->   prLit lit
     ELet x b body   ->   PP.text "let" <+>
@@ -602,7 +605,7 @@ prExp expr =
                          prExp e
     EGetField e n   ->   prParenExp e <> PP.char '.' <> PP.text n
     ERecEmpty       ->   PP.text "{}"
-    x@ERecExtend {} ->
+    ERecExtend {}   ->
         PP.text "V{" <+>
             mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
             moreFields <+>
@@ -613,10 +616,10 @@ prExp expr =
           case mRest of
           Nothing -> PP.empty
           Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
-        (fields, mRest) = flattenERec (Exp x)
+        (fields, mRest) = flattenERec expr
 
-prParenExp    ::  Exp -> PP.Doc
-prParenExp t  =   case unExp t of
+prParenExp    ::  Exp a -> PP.Doc
+prParenExp t  =   case expBody t of
                     ELet _ _ _  -> PP.parens (prExp t)
                     EApp _ _    -> PP.parens (prExp t)
                     EAbs _ _    -> PP.parens (prExp t)

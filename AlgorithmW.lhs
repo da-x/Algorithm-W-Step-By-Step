@@ -571,7 +571,7 @@ prExp (EApp e1 e2)     =   prExp e1 <+> prParenExp e2
 prExp (EAbs n e)       =   PP.char '\\' <> PP.text n <+>
                            PP.text "->" <+>
                            prExp e
-prExp (EGetField e n)  =   prExp e <> PP.char '.' <> PP.text n
+prExp (EGetField e n)  =   prParenExp e <> PP.char '.' <> PP.text n
 prExp ERecEmpty        =   PP.text "{}"
 prExp x@ERecExtend {}  =
     PP.text "V{" <+>

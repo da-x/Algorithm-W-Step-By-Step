@@ -53,7 +53,7 @@ data Type    =  TVar String
              |  TApp Type Type
              |  TRecExtend String Type Type
              |  TRecEmpty
-  deriving (Eq, Ord, Generic)
+  deriving (Generic)
 instance NFData Type where rnf = genericRnf
 
 data Scheme  =  Scheme [String] Type
@@ -133,8 +133,8 @@ instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
                                   let s = Subst (Map.fromList (zip vars nvars))
                                   return $ apply s t
 varBind :: Monad m => String -> Type -> TIW m ()
-varBind u t  | t == TVar u           =  return ()
-             | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
+varBind u (TVar t) | t == u          =  return ()
+varBind u t  | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
              | otherwise             =  tell $ Subst $ Map.singleton u t
 

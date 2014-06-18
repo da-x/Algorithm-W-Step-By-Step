@@ -4,6 +4,7 @@ import Control.Exception (evaluate)
 import Control.Lens (folded)
 import Control.Lens.Operators
 import Control.Lens.Tuple
+import Control.Monad
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -197,7 +198,7 @@ benches =
 
 main :: IO ()
 main = do
-  -- infer factorialExpr
+  mapM_ (putStrLn <=< snd) benches
   defaultMain $ map makeBench benches
   where
     makeBench (name, f) =

@@ -1,5 +1,8 @@
 import AlgorithmW hiding (main)
 import Control.Exception (evaluate)
+import Control.Lens.Operators
+import Control.Lens.Tuple
+import Control.Lens (folded)
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -179,10 +182,10 @@ infer :: Exp () -> IO String
 infer e =
     do  res <- runTI (typeInference env e)
         case res of
-          Left err  ->  fail $ "error: " ++ err
-          Right (Exp (_, t) _)   ->
-            do  _ <- evaluate (length (show t))
-                return $ show e ++ " :: " ++ show t
+          Left err ->  fail $ "error: " ++ err
+          Right eTyped ->
+            do  _ <- evaluate $ length $ show $ eTyped ^.. folded . _1
+                return $ show e ++ " :: " ++ show (eTyped ^. expPayload . _1)
 
 benches :: [(String, IO String)]
 benches =

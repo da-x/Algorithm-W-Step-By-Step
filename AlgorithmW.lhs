@@ -58,7 +58,7 @@ module |Data.Map|.  Sets of type variables etc. will be represented as
 sets from module |Data.Set|.
 
 \begin{code}
-{-# LANGUAGE StandaloneDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE StandaloneDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric #-}
 module AlgorithmW where
 
 import qualified Data.Map as Map
@@ -77,6 +77,7 @@ import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
 import Data.List
 import Data.Foldable (Foldable)
+import GHC.Generics
 \end{code}
 
 The module |Text.PrettyPrint| provides data types and functions for
@@ -103,16 +104,19 @@ data Body exp =  EVar String
               |  EGetField exp String
               |  ERecExtend String exp exp
               |  ERecEmpty
-  deriving (Eq, Ord, Functor, Foldable, Traversable)
+  deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
 
 data Exp a = Exp
-  { expPayload :: a
+  { _expPayload :: a
   , expBody :: !(Body (Exp a))
-  } deriving (Eq, Ord, Functor, Foldable, Traversable)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
+
+expPayload :: Lens' (Exp a) a
+expPayload f (Exp pl body) = (`Exp` body) <$> f pl
 
 data Lit     =  LInt Integer
              |  LChar Char
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
 
 data Type    =  TVar String
              |  TFun Type Type
@@ -120,7 +124,7 @@ data Type    =  TVar String
              |  TApp Type Type
              |  TRecExtend String Type Type
              |  TRecEmpty
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
 
 data Scheme  =  Scheme [String] Type
 \end{code}

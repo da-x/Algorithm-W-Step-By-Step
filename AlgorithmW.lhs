@@ -225,6 +225,7 @@ data TIEnv = TIEnv  {}
 data TIState = TIState { tiSupply :: Int }
 
 type TI m = EitherT String (ReaderT TIEnv (StateT TIState m))
+type TIW m = WriterT Subst (TI m)
 
 runTI :: TI IO a -> IO (Either String a)
 runTI t = evalStateT (runReaderT (runEitherT t) initTIEnv) initTIState
@@ -259,7 +260,7 @@ avoids binding a variable to itself and performs the occurs check,
 which is responsible for circularity type errors.
 %
 \begin{code}
-varBind :: Monad m => String -> Type -> WriterT Subst (TI m) ()
+varBind :: Monad m => String -> Type -> TIW m ()
 varBind u t  | t == TVar u           =  return ()
              | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
@@ -288,7 +289,7 @@ recToType (FlatRecord fields extension) =
 
 unifyRecToPartial ::
   Monad m => (Map.Map String Type, String) -> Map.Map String Type ->
-  WriterT Subst (TI m) ()
+  TIW m ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ "Incompatible record types: " ++
@@ -300,7 +301,7 @@ unifyRecToPartial (tfields, tname) ufields
 
 unifyRecPartials ::
   Monad m => (Map.Map String Type, String) -> (Map.Map String Type, String) ->
-  WriterT Subst (TI m) ()
+  TIW m ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ newTyVar "r"
       ((), s1) <- listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
@@ -310,7 +311,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Monad m => Map.Map String Type -> Map.Map String Type -> WriterT Subst (TI m) ()
+  Monad m => Map.Map String Type -> Map.Map String Type -> TIW m ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $
@@ -319,7 +320,7 @@ unifyRecFulls tfields ufields
     show (FlatRecord ufields Nothing)
   | otherwise = return mempty
 
-unifyRecs :: Monad m => FlatRecord -> FlatRecord -> WriterT Subst (TI m) ()
+unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TIW m ()
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
@@ -333,7 +334,7 @@ unifyRecs (FlatRecord tfields tvar)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
-mgu :: Monad m => Type -> Type -> WriterT Subst (TI m) ()
+mgu :: Monad m => Type -> Type -> TIW m ()
 mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
 mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
@@ -369,7 +370,7 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: Monad m => TypeEnv -> Exp -> WriterT Subst (TI m) Type
+ti :: Monad m => TypeEnv -> Exp -> TIW m Type
 ti env expr = case expr of
   EVar n ->
     case envLookup n env of
@@ -406,7 +407,7 @@ ti env expr = case expr of
         t2 <- ti (apply s1 env) e2
         return (TRecExtend name t1 t2)
 
-tiLit :: Monad m => Lit -> WriterT Subst (TI m) Type
+tiLit :: Monad m => Lit -> TIW m Type
 tiLit (LInt _)   =  return (TCon "Int")
 tiLit (LChar _)  =  return (TCon "Char")
 \end{code}

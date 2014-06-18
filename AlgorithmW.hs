@@ -35,13 +35,13 @@ data Body exp  =  EApp exp exp
                |  EGetField exp String
                |  ERecExtend String exp exp
                |  ELeaf Leaf
-  deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving (Functor, Foldable, Traversable, Generic)
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
 
 data Exp a = Exp
   { _expPayload :: a
   , expBody :: !(Body (Exp a))
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic)
+  } deriving (Functor, Foldable, Traversable, Generic)
 instance NFData a => NFData (Exp a) where rnf = genericRnf
 
 expPayload :: Lens' (Exp a) a

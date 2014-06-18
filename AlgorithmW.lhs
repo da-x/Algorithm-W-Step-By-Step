@@ -259,11 +259,11 @@ avoids binding a variable to itself and performs the occurs check,
 which is responsible for circularity type errors.
 %
 \begin{code}
-varBind :: Monad m => String -> Type -> TI m Subst
-varBind u t  | t == TVar u           =  return mempty
+varBind :: Monad m => String -> Type -> WriterT Subst (TI m) ()
+varBind u t  | t == TVar u           =  return ()
              | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
-             | otherwise             =  return (Subst (Map.singleton u t))
+             | otherwise             =  tell $ Subst $ Map.singleton u t
 
 data FlatRecord = FlatRecord
   { _frFields :: Map.Map String Type
@@ -286,7 +286,9 @@ recToType :: FlatRecord -> Type
 recToType (FlatRecord fields extension) =
   Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields
 
-unifyRecToPartial :: Monad m => (Map.Map String Type, String) -> Map.Map String Type -> TI m Subst
+unifyRecToPartial ::
+  Monad m => (Map.Map String Type, String) -> Map.Map String Type ->
+  WriterT Subst (TI m) ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ "Incompatible record types: " ++
@@ -296,17 +298,19 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
-unifyRecPartials :: Monad m => (Map.Map String Type, String) -> (Map.Map String Type, String) -> TI m Subst
+unifyRecPartials ::
+  Monad m => (Map.Map String Type, String) -> (Map.Map String Type, String) ->
+  WriterT Subst (TI m) ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
-  do  restTv <- newTyVar "r"
-      s1 <- varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
-      s2 <- varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
-      return $ s1 `mappend` s2
+  do  restTv <- lift $ newTyVar "r"
+      ((), s1) <- listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
+      varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
-unifyRecFulls :: Monad m => Map.Map String Type -> Map.Map String Type -> TI m Subst
+unifyRecFulls ::
+  Monad m => Map.Map String Type -> Map.Map String Type -> WriterT Subst (TI m) ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $
@@ -315,29 +319,25 @@ unifyRecFulls tfields ufields
     show (FlatRecord ufields Nothing)
   | otherwise = return mempty
 
-unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TI m Subst
+unifyRecs :: Monad m => FlatRecord -> FlatRecord -> WriterT Subst (TI m) ()
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
               do  old <- get
-                  s <- lift $ mgu (apply old t) (apply old u)
+                  ((), s) <- lift $ listen $ mgu (apply old t) (apply old u)
                   put (old `mappend` s)
-      s1 <- (`execStateT` mempty) . sequence . Map.elems $ Map.intersectionWith unifyField tfields ufields
-      s2 <-
-          case (tvar, uvar) of
+      (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
+      case (tvar, uvar) of
           (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
           (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
-      return $ s1 `mappend` s2
 
-mgu :: Monad m => Type -> Type -> TI m Subst
-mgu (TFun l r) (TFun l' r')  =  do  s1 <- mgu l l'
-                                    s2 <- mgu (apply s1 r) (apply s1 r')
-                                    return (s1 `mappend` s2)
-mgu (TApp l r) (TApp l' r')  =  do  s1 <- mgu l l'
-                                    s2 <- mgu (apply s1 r) (apply s1 r')
-                                    return (s1 `mappend` s2)
+mgu :: Monad m => Type -> Type -> WriterT Subst (TI m) ()
+mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
+                                    mgu (apply s1 r) (apply s1 r')
+mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
+                                    mgu (apply s1 r) (apply s1 r')
 mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
 mgu (TCon t) (TCon u)
@@ -385,8 +385,7 @@ ti env expr = case expr of
     do  tv <- lift $ newTyVar "a"
         (t1, s1) <- listen $ ti env e1
         (t2, s2) <- listen $ ti (apply s1 env) e2
-        s3 <- lift $ mgu (apply s2 t1) (TFun t2 tv)
-        tell s3
+        ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
         return (apply s3 tv)
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show expr
@@ -399,8 +398,7 @@ ti env expr = case expr of
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
         (t, s) <- listen $ ti env e
-        su <- lift $ mgu (apply s t) (TRecExtend name tv tvRec)
-        tell su
+        ((), su) <- listen $ mgu (apply s t) (TRecExtend name tv tvRec)
         return (apply su tv)
   ERecEmpty -> return TRecEmpty
   ERecExtend name e1 e2 ->

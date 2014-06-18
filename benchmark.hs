@@ -1,4 +1,5 @@
 import AlgorithmW hiding (main)
+import Control.Exception (evaluate)
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -179,7 +180,9 @@ infer e =
     do  res <- runTI (typeInference env e)
         case res of
           Left err  ->  fail $ "error: " ++ err
-          Right t   ->  return $ show e ++ " :: " ++ show t
+          Right (Exp (_, t) _)   ->
+            do  _ <- evaluate (length (show t))
+                return $ show e ++ " :: " ++ show t
 
 benches :: [(String, IO String)]
 benches =
@@ -190,6 +193,7 @@ benches =
 
 main :: IO ()
 main = do
+  -- infer factorialExpr
   defaultMain $ map makeBench benches
   where
     makeBench (name, f) =

@@ -111,28 +111,28 @@ data TIEnv = TIEnv  {}
 
 data TIState = TIState { tiSupply :: Int }
 
-type TI m = EitherT String (ReaderT TIEnv (StateT TIState m))
-type TIW m = WriterT Subst (TI m)
+type TI = EitherT String (ReaderT TIEnv (State TIState))
+type TIW = WriterT Subst TI
 
-runTI :: TI IO a -> IO (Either String a)
-runTI t = evalStateT (runReaderT (runEitherT t) initTIEnv) initTIState
+runTI :: TI a -> Either String a
+runTI t = evalState (runReaderT (runEitherT t) initTIEnv) initTIState
   where initTIEnv = TIEnv
         initTIState = TIState{tiSupply = 0}
 
-newTyVarName :: Monad m => String -> TI m String
+newTyVarName :: String -> TI String
 newTyVarName prefix =
     do  s <- get
         put s{tiSupply = tiSupply s + 1}
         return (prefix ++ show (tiSupply s))
 
-newTyVar :: Monad m => String -> TI m Type
+newTyVar :: String -> TI Type
 newTyVar prefix = TVar <$> newTyVarName prefix
 
-instantiate :: Monad m => Scheme -> TI m Type
+instantiate :: Scheme -> TI Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
                                   let s = Subst (Map.fromList (zip vars nvars))
                                   return $ apply s t
-varBind :: Monad m => String -> Type -> TIW m ()
+varBind :: String -> Type -> TIW ()
 varBind u (TVar t) | t == u          =  return ()
 varBind u t  | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
                                          " vs. " ++ show t
@@ -161,8 +161,8 @@ recToType (FlatRecord fields extension) =
   Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields
 
 unifyRecToPartial ::
-  Monad m => (Map.Map String Type, String) -> Map.Map String Type ->
-  TIW m ()
+  (Map.Map String Type, String) -> Map.Map String Type ->
+  TIW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ "Incompatible record types: " ++
@@ -173,8 +173,8 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  Monad m => (Map.Map String Type, String) -> (Map.Map String Type, String) ->
-  TIW m ()
+  (Map.Map String Type, String) -> (Map.Map String Type, String) ->
+  TIW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ newTyVar "r"
       ((), s1) <- listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
@@ -184,7 +184,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Monad m => Map.Map String Type -> Map.Map String Type -> TIW m ()
+  Map.Map String Type -> Map.Map String Type -> TIW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $
@@ -193,7 +193,7 @@ unifyRecFulls tfields ufields
     show (FlatRecord ufields Nothing)
   | otherwise = return mempty
 
-unifyRecs :: Monad m => FlatRecord -> FlatRecord -> TIW m ()
+unifyRecs :: FlatRecord -> FlatRecord -> TIW ()
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
@@ -207,7 +207,7 @@ unifyRecs (FlatRecord tfields tvar)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
-mgu :: Monad m => Type -> Type -> TIW m ()
+mgu :: Type -> Type -> TIW ()
 mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
 mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
@@ -221,7 +221,7 @@ mgu t@TRecExtend {}
     u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
                                 " vs. " ++ show t2
-typeInference :: Monad m => Map.Map String Scheme -> Exp a -> TI m (Exp (Type, a))
+typeInference :: Map.Map String Scheme -> Exp a -> TI (Exp (Type, a))
 typeInference rootEnv rootExpr =
     do  ((_, t), s) <- runWriterT $ ti (,) (TypeEnv rootEnv) rootExpr
         return (t & mapped . _1 %~ apply s)
@@ -232,7 +232,7 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: Monad m => (Type -> a -> b) -> TypeEnv -> Exp a -> TIW m (Type, Exp b)
+ti :: (Type -> a -> b) -> TypeEnv -> Exp a -> TIW (Type, Exp b)
 ti f env expr@(Exp pl body) = case body of
   ELeaf leaf ->
     mkResult (ELeaf leaf) <$>
@@ -276,7 +276,7 @@ ti f env expr@(Exp pl body) = case body of
     mkResult body' typ = (typ, Exp (f typ pl) body')
 
 
-tiLit :: Monad m => Lit -> TIW m Type
+tiLit :: Lit -> TIW Type
 tiLit (LInt _)   =  return (TCon "Int")
 tiLit (LChar _)  =  return (TCon "Char")
 
@@ -354,10 +354,9 @@ exp9  =  eLet
 
 test :: Exp a -> IO ()
 test e =
-    do  res <- runTI (typeInference Map.empty e)
-        case res of
-          Left err               ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
-          Right (Exp (t, _) _)   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
+    case runTI (typeInference Map.empty e) of
+        Left err               ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
+        Right (Exp (t, _) _)   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
 
 main :: IO ()
 main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7, exp8, exp9]

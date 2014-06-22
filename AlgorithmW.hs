@@ -221,8 +221,9 @@ mgu t@TRecExtend {}
     u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
 mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
                                 " vs. " ++ show t2
-typeInference :: Map.Map String Scheme -> Exp a -> TI (Exp (Type, a))
+typeInference :: Map.Map String Scheme -> Exp a -> Either String (Exp (Type, a))
 typeInference rootEnv rootExpr =
+    runTI $
     do  ((_, t), s) <- runWriterT $ ti (,) (TypeEnv rootEnv) rootExpr
         return (t & mapped . _1 %~ apply s)
 
@@ -354,7 +355,7 @@ exp9  =  eLet
 
 test :: Exp a -> IO ()
 test e =
-    case runTI (typeInference Map.empty e) of
+    case typeInference Map.empty e of
         Left err               ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
         Right (Exp (t, _) _)   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
 

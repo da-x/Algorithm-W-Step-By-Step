@@ -28,9 +28,9 @@ flattenRec TRecEmpty = return $ FlatRecord Map.empty Nothing
 flattenRec (TVar name) = return $ FlatRecord Map.empty (Just name)
 flattenRec t = Left $ "TRecExtend on non-record: " ++ show t
 
-flattenERec :: Exp a -> (Map.Map String (Exp a), Maybe (Exp a))
-flattenERec (Exp _ (ERecExtend name val body)) =
+flattenERec :: Expr a -> (Map.Map String (Expr a), Maybe (Expr a))
+flattenERec (Expr _ (ERecExtend name val body)) =
   flattenERec body
   & _1 %~ Map.insert name val
-flattenERec (Exp _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
+flattenERec (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)

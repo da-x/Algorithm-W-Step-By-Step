@@ -172,7 +172,7 @@ mgu t@TRecExtend {}
 mgu t1 t2                    =  throwError $ show $
                                 PP.text "types do not unify: " <+> prType t1 <+>
                                 PP.text "vs." <+> prType t2
-typeInference :: Map.Map String Scheme -> Exp a -> Either String (Exp (Type, a))
+typeInference :: Map.Map String Scheme -> Expr a -> Either String (Expr (Type, a))
 typeInference rootEnv rootExpr =
     runTI $
     do  ((_, t), s) <- runWriterT $ ti (,) (TypeEnv rootEnv) rootExpr
@@ -184,8 +184,8 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: (Type -> a -> b) -> TypeEnv -> Exp a -> TIW (Type, Exp b)
-ti f env expr@(Exp pl body) = case body of
+ti :: (Type -> a -> b) -> TypeEnv -> Expr a -> TIW (Type, Expr b)
+ti f env expr@(Expr pl body) = case body of
   ELeaf leaf ->
     mkResult (ELeaf leaf) <$>
     case leaf of
@@ -225,33 +225,33 @@ ti f env expr@(Exp pl body) = case body of
         (t2, e2') <- ti f (apply s1 env) e2
         return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
   where
-    mkResult body' typ = (typ, Exp (f typ pl) body')
+    mkResult body' typ = (typ, Expr (f typ pl) body')
 
 
 tiLit :: Lit -> TIW Type
 tiLit (LInt _)   =  return (TCon "Int")
 tiLit (LChar _)  =  return (TCon "Char")
 
-eLet :: String -> Exp () -> Exp () -> Exp ()
-eLet name e1 e2 = Exp () $ ELet name e1 e2
+eLet :: String -> Expr () -> Expr () -> Expr ()
+eLet name e1 e2 = Expr () $ ELet name e1 e2
 
-eAbs :: String -> Exp () -> Exp ()
-eAbs name body = Exp () $ EAbs name body
+eAbs :: String -> Expr () -> Expr ()
+eAbs name body = Expr () $ EAbs name body
 
-eVar :: String -> Exp ()
-eVar = Exp () . ELeaf . EVar
+eVar :: String -> Expr ()
+eVar = Expr () . ELeaf . EVar
 
-eLit :: Lit -> Exp ()
-eLit = Exp () . ELeaf . ELit
+eLit :: Lit -> Expr ()
+eLit = Expr () . ELeaf . ELit
 
-eRecEmpty :: Exp ()
-eRecEmpty = Exp () $ ELeaf ERecEmpty
+eRecEmpty :: Expr ()
+eRecEmpty = Expr () $ ELeaf ERecEmpty
 
-eApp :: Exp () -> Exp () -> Exp ()
-eApp f x = Exp () $ EApp f x
+eApp :: Expr () -> Expr () -> Expr ()
+eApp f x = Expr () $ EApp f x
 
-eRecExtend :: String -> Exp () -> Exp () -> Exp ()
-eRecExtend name typ rest = Exp () $ ERecExtend name typ rest
+eRecExtend :: String -> Expr () -> Expr () -> Expr ()
+eRecExtend name typ rest = Expr () $ ERecExtend name typ rest
 
-eGetField :: Exp () -> String -> Exp ()
-eGetField r n = Exp () $ EGetField r n
+eGetField :: Expr () -> String -> Expr ()
+eGetField r n = Expr () $ EGetField r n

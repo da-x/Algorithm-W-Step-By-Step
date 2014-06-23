@@ -19,7 +19,7 @@ prScheme (Scheme vars t)  =   PP.text "All" <+>
                                 (PP.punctuate PP.comma (map PP.text vars))
                               <> PP.text "." <+> prType t
 
-prParenExp    ::  Exp a -> PP.Doc
+prParenExp    ::  Expr a -> PP.Doc
 prParenExp t  =   case expBody t of
                     ELet _ _ _  -> PP.parens (prExp t)
                     EApp _ _    -> PP.parens (prExp t)
@@ -30,7 +30,7 @@ prLit            ::  Lit -> PP.Doc
 prLit (LInt i)   =   PP.integer i
 prLit (LChar c)  =   PP.text (show c)
 
-prExp                  ::  Exp a -> PP.Doc
+prExp                  ::  Expr a -> PP.Doc
 prExp expr =
     case expBody expr of
     ELeaf (EVar name) ->   PP.text name

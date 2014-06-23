@@ -3,7 +3,7 @@ module Expr
   ( Lit(..)
   , Leaf(..)
   , Body(..)
-  , Exp(..), expPayload
+  , Expr(..), expPayload
   , Scheme(..)
   , Type(..)
   ) where
@@ -36,14 +36,14 @@ data Body exp  =  EApp exp exp
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
 
-data Exp a = Exp
+data Expr a = Expr
   { _expPayload :: a
-  , expBody :: !(Body (Exp a))
+  , expBody :: !(Body (Expr a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
-instance NFData a => NFData (Exp a) where rnf = genericRnf
+instance NFData a => NFData (Expr a) where rnf = genericRnf
 
-expPayload :: Lens' (Exp a) a
-expPayload f (Exp pl body) = (`Exp` body) <$> f pl
+expPayload :: Lens' (Expr a) a
+expPayload f (Expr pl body) = (`Expr` body) <$> f pl
 
 data Type    =  TVar String
              |  TFun Type Type

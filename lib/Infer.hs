@@ -6,16 +6,20 @@ import Control.Applicative ((<$>), Applicative(..))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
+import Control.Monad (join)
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State (evalState, evalStateT, State)
-import Control.Monad.Trans.Either
-import Control.Monad.Writer hiding ((<>))
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Either (EitherT, runEitherT)
+import Control.Monad.Writer (WriterT, runWriterT)
+import Data.Monoid (Monoid(..))
 import Expr
 import Pretty
 import Record
 import TVs
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
+import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
@@ -56,7 +60,7 @@ varBind u (TVar t) | t == u          =  return ()
 varBind u t  | u `Set.member` ftv t  =  throwError $ show $
                                         PP.text "occurs check fails:" <+>
                                         PP.text u <+> PP.text "vs." <+> prType t
-             | otherwise             =  tell $ substFromList [(u, t)]
+             | otherwise             =  Writer.tell $ substFromList [(u, t)]
 
 unifyRecToPartial ::
   (Map.Map String Type, String) -> Map.Map String Type ->
@@ -78,7 +82,7 @@ unifyRecPartials ::
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ newTyVar "r"
-      ((), s1) <- listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
+      ((), s1) <- Writer.listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
       varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -100,7 +104,7 @@ unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
               do  old <- State.get
-                  ((), s) <- lift $ listen $ mgu (apply old t) (apply old u)
+                  ((), s) <- lift $ Writer.listen $ mgu (apply old t) (apply old u)
                   State.put (old `mappend` s)
       (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
       case (tvar, uvar) of
@@ -110,9 +114,9 @@ unifyRecs (FlatRecord tfields tvar)
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
 mgu :: Type -> Type -> InferW ()
-mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
+mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
-mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
+mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
 mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
@@ -154,18 +158,18 @@ infer f env expr@(Expr pl body) = case body of
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
-        ((t1, e'), s1) <- listen $ infer f env' e
+        ((t1, e'), s1) <- Writer.listen $ infer f env' e
         return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
-        ((t1, e1'), s1) <- listen $ infer f env e1
-        ((t2, e2'), s2) <- listen $ infer f (apply s1 env) e2
-        ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
+        ((t1, e1'), s1) <- Writer.listen $ infer f env e1
+        ((t2, e2'), s2) <- Writer.listen $ infer f (apply s1 env) e2
+        ((), s3) <- Writer.listen $ mgu (apply s2 t1) (TFun t2 tv)
         return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
-    do  ((t1, e1'), s1) <- listen $ infer f env e1
+    do  ((t1, e1'), s1) <- Writer.listen $ infer f env e1
         let t' = generalize (apply s1 env) t1
             env' = envInsert x t' env
         (t2, e2') <- infer f (apply s1 env') e2
@@ -173,11 +177,11 @@ infer f env expr@(Expr pl body) = case body of
   EGetField e name ->
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
-        ((t, e'), s) <- listen $ infer f env e
-        ((), su) <- listen $ mgu (apply s t) (TRecExtend name tv tvRec)
+        ((t, e'), s) <- Writer.listen $ infer f env e
+        ((), su) <- Writer.listen $ mgu (apply s t) (TRecExtend name tv tvRec)
         return $ mkResult (EGetField e' name) $ apply su tv
   ERecExtend name e1 e2 ->
-    do  ((t1, e1'), s1) <- listen $ infer f env e1
+    do  ((t1, e1'), s1) <- Writer.listen $ infer f env e1
         (t2, e2') <- infer f (apply s1 env) e2
         return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
   where

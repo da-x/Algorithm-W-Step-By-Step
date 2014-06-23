@@ -23,10 +23,6 @@ instance TVs TypeEnv where
     ftv (TypeEnv env)      =  ftv (Map.elems env)
     apply s (TypeEnv env)  =  TypeEnv (Map.map (apply s) env)
 
-generalize        ::  TypeEnv -> Type -> Scheme
-generalize env t  =   Scheme vars t
-  where vars = Set.toList $ ftv t `Set.difference` ftv env
-
 data InferState = InferState { inferSupply :: Int }
 
 type Infer = EitherT String (State InferState)
@@ -44,6 +40,10 @@ newTyVarName prefix =
 
 newTyVar :: String -> Infer Type
 newTyVar prefix = TVar <$> newTyVarName prefix
+
+generalize        ::  TypeEnv -> Type -> Scheme
+generalize env t  =   Scheme vars t
+  where vars = Set.toList $ ftv t `Set.difference` ftv env
 
 instantiate :: Scheme -> Infer Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars

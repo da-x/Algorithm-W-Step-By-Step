@@ -1,4 +1,5 @@
 import AlgorithmW
+import Pretty
 import qualified Data.Map as Map
 
 exp0 :: Exp ()
@@ -49,11 +50,11 @@ exp9  =  eLet
                  eRecEmpty ) $
          eGetField (eVar "vec") "z"
 
-test :: Exp a -> IO ()
+test :: Exp () -> IO ()
 test e =
     case typeInference Map.empty e of
-        Left err               ->  putStrLn $ show e ++ "\n " ++ err ++ "\n"
-        Right (Exp (t, _) _)   ->  putStrLn $ show e ++ " :: " ++ show t ++ "\n"
+        Left err               ->  putStrLn $ show (prExp e) ++ "\n " ++ err ++ "\n"
+        Right (Exp (t, _) _)   ->  putStrLn $ show (prExp e) ++ " :: " ++ show (prType t) ++ "\n"
 
 main :: IO ()
 main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7, exp8, exp9]

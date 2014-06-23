@@ -1,71 +1,24 @@
-{-# LANGUAGE StandaloneDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric #-}
 module AlgorithmW
-  ( Lit(..)
-  , Leaf(..)
-  , Body(..)
-  , Exp(..), expPayload
-  , Scheme(..)
-  , Type(..)
+  ( module Expr
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
   , typeInference
   ) where
 
 import Control.Applicative
-import Control.DeepSeq
-import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens
 import Control.Monad.Error
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
-import Data.Foldable (Foldable)
-import Data.List
-import GHC.Generics
-import Text.PrettyPrint ((<+>), (<>))
+import Expr
+import Pretty
+import Record
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Text.PrettyPrint ((<+>))
 import qualified Text.PrettyPrint as PP
 
-data Lit     =  LInt Integer
-             |  LChar Char
-  deriving (Eq, Ord, Generic)
-instance NFData Lit where rnf = genericRnf
-
-data Leaf  =  EVar String
-           |  ELit Lit
-           |  ERecEmpty
-  deriving (Eq, Ord, Generic)
-instance NFData Leaf where rnf = genericRnf
-
-data Body exp  =  EApp exp exp
-               |  EAbs String exp
-               |  ELet String exp exp
-               |  EGetField exp String
-               |  ERecExtend String exp exp
-               |  ELeaf Leaf
-  deriving (Functor, Foldable, Traversable, Generic)
-instance NFData exp => NFData (Body exp) where rnf = genericRnf
-
-data Exp a = Exp
-  { _expPayload :: a
-  , expBody :: !(Body (Exp a))
-  } deriving (Functor, Foldable, Traversable, Generic)
-instance NFData a => NFData (Exp a) where rnf = genericRnf
-
-expPayload :: Lens' (Exp a) a
-expPayload f (Exp pl body) = (`Exp` body) <$> f pl
-
-data Type    =  TVar String
-             |  TFun Type Type
-             |  TCon String
-             |  TApp Type Type
-             |  TRecExtend String Type Type
-             |  TRecEmpty
-  deriving (Generic)
-instance NFData Type where rnf = genericRnf
-
-data Scheme  =  Scheme [String] Type
 
 class Types a where
     ftv    ::  a -> Set.Set String
@@ -143,26 +96,10 @@ instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
                                   return $ apply s t
 varBind :: String -> Type -> TIW ()
 varBind u (TVar t) | t == u          =  return ()
-varBind u t  | u `Set.member` ftv t  =  throwError $ "occurs check fails: " ++ u ++
-                                         " vs. " ++ show t
+varBind u t  | u `Set.member` ftv t  =  throwError $ show $
+                                        PP.text "occurs check fails:" <+>
+                                        PP.text u <+> PP.text "vs." <+> prType t
              | otherwise             =  tell $ Subst $ Map.singleton u t
-
-data FlatRecord = FlatRecord
-  { _frFields :: Map.Map String Type
-  , _frExtension :: Maybe String -- TyVar of more possible fields
-  }
-
-frFields :: Lens' FlatRecord (Map.Map String Type)
-frFields f (FlatRecord fields ext) = (`FlatRecord` ext) <$> f fields
-
--- From a record type to a sorted list of fields
-flattenRec :: Type -> Either String FlatRecord
-flattenRec (TRecExtend name typ rest) =
-  flattenRec rest
-  <&> frFields %~ Map.insert name typ
-flattenRec TRecEmpty = return $ FlatRecord Map.empty Nothing
-flattenRec (TVar name) = return $ FlatRecord Map.empty (Just name)
-flattenRec t = Left $ "TRecExtend on non-record: " ++ show t
 
 -- opposite of flatten
 recToType :: FlatRecord -> Type
@@ -174,8 +111,11 @@ unifyRecToPartial ::
   TIW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
-    throwError $ "Incompatible record types: " ++
-    show (FlatRecord tfields (Just tname)) ++ " vs. " ++ show (FlatRecord ufields Nothing)
+    throwError $ show $
+    PP.text "Incompatible record types:" <+>
+    prFlatRecord (FlatRecord tfields (Just tname)) <+>
+    PP.text " vs. " <+>
+    prFlatRecord (FlatRecord ufields Nothing)
   | otherwise = varBind tname $ recToType $ FlatRecord uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -196,10 +136,11 @@ unifyRecFulls ::
   Map.Map String Type -> Map.Map String Type -> TIW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
-    throwError $
-    "Incompatible record types: " ++
-    show (FlatRecord tfields Nothing) ++ " vs. " ++
-    show (FlatRecord ufields Nothing)
+    throwError $ show $
+    PP.text "Incompatible record types:" <+>
+    prFlatRecord (FlatRecord tfields Nothing) <+>
+    PP.text "vs." <+>
+    prFlatRecord (FlatRecord ufields Nothing)
   | otherwise = return mempty
 
 unifyRecs :: FlatRecord -> FlatRecord -> TIW ()
@@ -228,8 +169,9 @@ mgu (TCon t) (TCon u)
 mgu TRecEmpty TRecEmpty      =  return mempty
 mgu t@TRecExtend {}
     u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
-mgu t1 t2                    =  throwError $ "types do not unify: " ++ show t1 ++
-                                " vs. " ++ show t2
+mgu t1 t2                    =  throwError $ show $
+                                PP.text "types do not unify: " <+> prType t1 <+>
+                                PP.text "vs." <+> prType t2
 typeInference :: Map.Map String Scheme -> Exp a -> Either String (Exp (Type, a))
 typeInference rootEnv rootExpr =
     runTI $
@@ -265,7 +207,7 @@ ti f env expr@(Exp pl body) = case body of
         ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
         return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
-    \e -> throwError $ e ++ "\n in " ++ show expr
+    \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
     do  ((t1, e1'), s1) <- listen $ ti f env e1
         let t' = generalize (apply s1 env) t1
@@ -313,102 +255,3 @@ eRecExtend name typ rest = Exp () $ ERecExtend name typ rest
 
 eGetField :: Exp () -> String -> Exp ()
 eGetField r n = Exp () $ EGetField r n
-
-instance Show Type where
-    showsPrec _ x = shows (prType x)
-
-instance Show FlatRecord where
-    showsPrec _ r = shows $ prFlatRecord r
-
-prFlatRecord :: FlatRecord -> PP.Doc
-prFlatRecord (FlatRecord fields varName) =
-    PP.text "T{" <+>
-      mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
-      moreFields <+>
-    PP.text "}"
-    where
-      prField (name, typ) = PP.text name <+> PP.text ":" <+> prType typ
-      moreFields =
-        case varName of
-        Nothing -> PP.empty
-        Just name -> PP.comma <+> PP.text name <> PP.text "..."
-
-prType             ::  Type -> PP.Doc
-prType (TVar n)    =   PP.text n
-prType (TCon s)    =   PP.text s
-prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
-prType (TApp t s)  =   prParenType t <+> prType s
-prType r@(TRecExtend name typ rest) = case flattenRec r of
-  Left _ -> -- Fall back to nested record presentation:
-    PP.text "T{" <+>
-      PP.text name <+> PP.text ":" <+> prType typ <+>
-      PP.text "**" <+> prType rest <+>
-    PP.text "}"
-  Right flatRecord -> prFlatRecord flatRecord
-prType TRecEmpty   =   PP.text "T{}"
-
-prParenType     ::  Type -> PP.Doc
-prParenType  t  =   case t of
-                      TFun _ _  -> PP.parens (prType t)
-                      _         -> prType t
-
-instance Show (Exp a) where
-    showsPrec _ x = shows (prExp x)
-
-flattenERec :: Exp a -> (Map.Map String (Exp a), Maybe (Exp a))
-flattenERec (Exp _ (ERecExtend name val body)) =
-  flattenERec body
-  & _1 %~ Map.insert name val
-flattenERec (Exp _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
-flattenERec other = (Map.empty, Just other)
-
-prExp                  ::  Exp a -> PP.Doc
-prExp expr =
-    case expBody expr of
-    ELeaf (EVar name) ->   PP.text name
-    ELeaf (ELit lit)  ->   prLit lit
-    ELet x b body     ->   PP.text "let" <+>
-                           PP.text x <+> PP.text "=" <+>
-                           prExp b <+> PP.text "in" PP.$$
-                           PP.nest 2 (prExp body)
-    EApp e1 e2        ->   prExp e1 <+> prParenExp e2
-    EAbs n e          ->   PP.char '\\' <> PP.text n <+>
-                           PP.text "->" <+>
-                           prExp e
-    EGetField e n     ->   prParenExp e <> PP.char '.' <> PP.text n
-    ELeaf ERecEmpty   ->   PP.text "{}"
-    ERecExtend {}     ->
-        PP.text "V{" <+>
-            mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
-            moreFields <+>
-        PP.text "}"
-      where
-        prField (name, val) = PP.text name <+> PP.text "=" <+> prExp val
-        moreFields =
-          case mRest of
-          Nothing -> PP.empty
-          Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
-        (fields, mRest) = flattenERec expr
-
-prParenExp    ::  Exp a -> PP.Doc
-prParenExp t  =   case expBody t of
-                    ELet _ _ _  -> PP.parens (prExp t)
-                    EApp _ _    -> PP.parens (prExp t)
-                    EAbs _ _    -> PP.parens (prExp t)
-                    _           -> prExp t
-
-instance Show Lit where
-    showsPrec _ x = shows (prLit x)
-
-prLit            ::  Lit -> PP.Doc
-prLit (LInt i)   =   PP.integer i
-prLit (LChar c)  =   PP.text (show c)
-
-instance Show Scheme where
-    showsPrec _ x = shows (prScheme x)
-
-prScheme                  ::  Scheme -> PP.Doc
-prScheme (Scheme vars t)  =   PP.text "All" <+>
-                              PP.hcat
-                                (PP.punctuate PP.comma (map PP.text vars))
-                              <> PP.text "." <+> prType t

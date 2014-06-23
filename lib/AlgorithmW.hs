@@ -60,11 +60,6 @@ varBind u t  | u `Set.member` ftv t  =  throwError $ show $
                                         PP.text u <+> PP.text "vs." <+> prType t
              | otherwise             =  tell $ substFromList [(u, t)]
 
--- opposite of flatten
-recToType :: FlatRecord -> Type
-recToType (FlatRecord fields extension) =
-  Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields
-
 unifyRecToPartial ::
   (Map.Map String Type, String) -> Map.Map String Type ->
   TIW ()

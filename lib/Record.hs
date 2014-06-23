@@ -2,6 +2,7 @@ module Record
   ( FlatRecord(..)
   , flattenRec
   , flattenERec
+  , recToType
   ) where
 
 import Control.Applicative ((<$>))
@@ -34,3 +35,8 @@ flattenERec (Expr _ (ERecExtend name val body)) =
   & _1 %~ Map.insert name val
 flattenERec (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)
+
+-- opposite of flatten
+recToType :: FlatRecord -> Type
+recToType (FlatRecord fields extension) =
+  Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields

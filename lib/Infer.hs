@@ -28,32 +28,32 @@ generalize        ::  TypeEnv -> Type -> Scheme
 generalize env t  =   Scheme vars t
   where vars = Set.toList $ ftv t `Set.difference` ftv env
 
-data TIEnv = TIEnv  {}
+data InferEnv = InferEnv  {}
 
-data TIState = TIState { tiSupply :: Int }
+data InferState = InferState { inferSupply :: Int }
 
-type TI = EitherT String (ReaderT TIEnv (State TIState))
-type TIW = WriterT Subst TI
+type Infer = EitherT String (ReaderT InferEnv (State InferState))
+type InferW = WriterT Subst Infer
 
-runTI :: TI a -> Either String a
-runTI t = evalState (runReaderT (runEitherT t) initTIEnv) initTIState
-  where initTIEnv = TIEnv
-        initTIState = TIState{tiSupply = 0}
+runInfer :: Infer a -> Either String a
+runInfer t = evalState (runReaderT (runEitherT t) initInferEnv) initInferState
+  where initInferEnv = InferEnv
+        initInferState = InferState{inferSupply = 0}
 
-newTyVarName :: String -> TI String
+newTyVarName :: String -> Infer String
 newTyVarName prefix =
     do  s <- get
-        put s{tiSupply = tiSupply s + 1}
-        return (prefix ++ show (tiSupply s))
+        put s{inferSupply = inferSupply s + 1}
+        return (prefix ++ show (inferSupply s))
 
-newTyVar :: String -> TI Type
+newTyVar :: String -> Infer Type
 newTyVar prefix = TVar <$> newTyVarName prefix
 
-instantiate :: Scheme -> TI Type
+instantiate :: Scheme -> Infer Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
                                   let s = substFromList (zip vars nvars)
                                   return $ apply s t
-varBind :: String -> Type -> TIW ()
+varBind :: String -> Type -> InferW ()
 varBind u (TVar t) | t == u          =  return ()
 varBind u t  | u `Set.member` ftv t  =  throwError $ show $
                                         PP.text "occurs check fails:" <+>
@@ -62,7 +62,7 @@ varBind u t  | u `Set.member` ftv t  =  throwError $ show $
 
 unifyRecToPartial ::
   (Map.Map String Type, String) -> Map.Map String Type ->
-  TIW ()
+  InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
@@ -77,7 +77,7 @@ unifyRecToPartial (tfields, tname) ufields
 
 unifyRecPartials ::
   (Map.Map String Type, String) -> (Map.Map String Type, String) ->
-  TIW ()
+  InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ newTyVar "r"
       ((), s1) <- listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
@@ -87,7 +87,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map.Map String Type -> Map.Map String Type -> TIW ()
+  Map.Map String Type -> Map.Map String Type -> InferW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
@@ -97,7 +97,7 @@ unifyRecFulls tfields ufields
     prFlatRecord (FlatRecord ufields Nothing)
   | otherwise = return mempty
 
-unifyRecs :: FlatRecord -> FlatRecord -> TIW ()
+unifyRecs :: FlatRecord -> FlatRecord -> InferW ()
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
@@ -111,7 +111,7 @@ unifyRecs (FlatRecord tfields tvar)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
-mgu :: Type -> Type -> TIW ()
+mgu :: Type -> Type -> InferW ()
 mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- listen $ mgu l l'
                                     mgu (apply s1 r) (apply s1 r')
 mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- listen $ mgu l l'
@@ -128,8 +128,8 @@ mgu t1 t2                    =  throwError $ show $
                                 PP.text "vs." <+> prType t2
 typeInference :: Map.Map String Scheme -> Expr a -> Either String (Expr (Type, a))
 typeInference rootEnv rootExpr =
-    runTI $
-    do  ((_, t), s) <- runWriterT $ ti (,) (TypeEnv rootEnv) rootExpr
+    runInfer $
+    do  ((_, t), s) <- runWriterT $ infer (,) (TypeEnv rootEnv) rootExpr
         return (t & mapped . _1 %~ apply s)
 
 envLookup :: String -> TypeEnv -> Maybe Scheme
@@ -138,8 +138,12 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-ti :: (Type -> a -> b) -> TypeEnv -> Expr a -> TIW (Type, Expr b)
-ti f env expr@(Expr pl body) = case body of
+inferLit :: Lit -> InferW Type
+inferLit (LInt _)   =  return (TCon "Int")
+inferLit (LChar _)  =  return (TCon "Char")
+
+infer :: (Type -> a -> b) -> TypeEnv -> Expr a -> InferW (Type, Expr b)
+infer f env expr@(Expr pl body) = case body of
   ELeaf leaf ->
     mkResult (ELeaf leaf) <$>
     case leaf of
@@ -147,42 +151,37 @@ ti f env expr@(Expr pl body) = case body of
         case envLookup n env of
            Nothing     -> throwError $ "unbound variable: " ++ n
            Just sigma  -> lift (instantiate sigma)
-    ELit l -> tiLit l
+    ELit l -> inferLit l
     ERecEmpty -> return TRecEmpty
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
         let env' = envInsert n (Scheme [] tv) env
-        ((t1, e'), s1) <- listen $ ti f env' e
+        ((t1, e'), s1) <- listen $ infer f env' e
         return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
-        ((t1, e1'), s1) <- listen $ ti f env e1
-        ((t2, e2'), s2) <- listen $ ti f (apply s1 env) e2
+        ((t1, e1'), s1) <- listen $ infer f env e1
+        ((t2, e2'), s2) <- listen $ infer f (apply s1 env) e2
         ((), s3) <- listen $ mgu (apply s2 t1) (TFun t2 tv)
         return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
-    do  ((t1, e1'), s1) <- listen $ ti f env e1
+    do  ((t1, e1'), s1) <- listen $ infer f env e1
         let t' = generalize (apply s1 env) t1
             env' = envInsert x t' env
-        (t2, e2') <- ti f (apply s1 env') e2
+        (t2, e2') <- infer f (apply s1 env') e2
         return $ mkResult (ELet x e1' e2') $ t2
   EGetField e name ->
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
-        ((t, e'), s) <- listen $ ti f env e
+        ((t, e'), s) <- listen $ infer f env e
         ((), su) <- listen $ mgu (apply s t) (TRecExtend name tv tvRec)
         return $ mkResult (EGetField e' name) $ apply su tv
   ERecExtend name e1 e2 ->
-    do  ((t1, e1'), s1) <- listen $ ti f env e1
-        (t2, e2') <- ti f (apply s1 env) e2
+    do  ((t1, e1'), s1) <- listen $ infer f env e1
+        (t2, e2') <- infer f (apply s1 env) e2
         return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
   where
     mkResult body' typ = (typ, Expr (f typ pl) body')
-
-
-tiLit :: Lit -> TIW Type
-tiLit (LInt _)   =  return (TCon "Int")
-tiLit (LChar _)  =  return (TCon "Char")
 

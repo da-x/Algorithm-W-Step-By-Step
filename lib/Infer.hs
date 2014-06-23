@@ -2,19 +2,22 @@ module Infer
   ( typeInference
   ) where
 
-import Control.Applicative
-import Control.Lens
-import Control.Monad.Error
-import Control.Monad.State
+import Control.Applicative ((<$>), Applicative(..))
+import Control.Lens (mapped)
+import Control.Lens.Operators
+import Control.Lens.Tuple
+import Control.Monad.Error (throwError, catchError)
+import Control.Monad.State (evalState, evalStateT, State)
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
 import Expr
 import Pretty
 import Record
 import TVs
+import Text.PrettyPrint ((<+>))
+import qualified Control.Monad.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Text.PrettyPrint ((<+>))
 import qualified Text.PrettyPrint as PP
 
 newtype TypeEnv = TypeEnv (Map.Map String Scheme)
@@ -33,8 +36,8 @@ runInfer t = evalState (runEitherT t) initInferState
 
 newTyVarName :: String -> Infer String
 newTyVarName prefix =
-    do  s <- get
-        put s{inferSupply = inferSupply s + 1}
+    do  s <- State.get
+        State.put s{inferSupply = inferSupply s + 1}
         return (prefix ++ show (inferSupply s))
 
 newTyVar :: String -> Infer Type
@@ -96,9 +99,9 @@ unifyRecs :: FlatRecord -> FlatRecord -> InferW ()
 unifyRecs (FlatRecord tfields tvar)
           (FlatRecord ufields uvar) =
   do  let unifyField t u =
-              do  old <- get
+              do  old <- State.get
                   ((), s) <- lift $ listen $ mgu (apply old t) (apply old u)
-                  put (old `mappend` s)
+                  State.put (old `mappend` s)
       (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
       case (tvar, uvar) of
           (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields

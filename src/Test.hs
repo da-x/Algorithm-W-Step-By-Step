@@ -1,4 +1,5 @@
 import Infer
+import Expr
 import Pretty
 import qualified Data.Map as Map
 

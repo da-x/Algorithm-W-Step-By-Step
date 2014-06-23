@@ -1,4 +1,1 @@
-*.hi
-*.o
-benchmark
-Test
+dist/

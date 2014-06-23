@@ -10,6 +10,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  ghc-options:         -Wall
   exposed-modules:     Infer
                  ,     Expr
                  ,     Pretty
@@ -27,6 +28,7 @@ library
   hs-source-dirs:      lib
 
 executable AlgoW
+  ghc-options:         -Wall
   main-is:             Test.hs
   -- other-modules:       
   hs-source-dirs:      src

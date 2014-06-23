@@ -6,6 +6,7 @@ module Expr
   , Expr(..), expPayload
   , Scheme(..)
   , Type(..)
+  , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
   ) where
 
 import Control.Applicative ((<$>))
@@ -55,3 +56,27 @@ data Type    =  TVar String
 instance NFData Type where rnf = genericRnf
 
 data Scheme  =  Scheme [String] Type
+
+eLet :: String -> Expr () -> Expr () -> Expr ()
+eLet name e1 e2 = Expr () $ ELet name e1 e2
+
+eAbs :: String -> Expr () -> Expr ()
+eAbs name body = Expr () $ EAbs name body
+
+eVar :: String -> Expr ()
+eVar = Expr () . ELeaf . EVar
+
+eLit :: Lit -> Expr ()
+eLit = Expr () . ELeaf . ELit
+
+eRecEmpty :: Expr ()
+eRecEmpty = Expr () $ ELeaf ERecEmpty
+
+eApp :: Expr () -> Expr () -> Expr ()
+eApp f x = Expr () $ EApp f x
+
+eRecExtend :: String -> Expr () -> Expr () -> Expr ()
+eRecExtend name typ rest = Expr () $ ERecExtend name typ rest
+
+eGetField :: Expr () -> String -> Expr ()
+eGetField r n = Expr () $ EGetField r n

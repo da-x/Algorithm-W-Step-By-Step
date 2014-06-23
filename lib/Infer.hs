@@ -1,6 +1,5 @@
 module Infer
-  ( module Expr
-  , typeInference
+  ( typeInference
   ) where
 
 import Control.Applicative

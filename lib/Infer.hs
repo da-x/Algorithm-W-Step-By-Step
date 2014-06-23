@@ -6,7 +6,6 @@ module Infer
 import Control.Applicative
 import Control.Lens
 import Control.Monad.Error
-import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Either
 import Control.Monad.Writer hiding ((<>))
@@ -28,17 +27,14 @@ generalize        ::  TypeEnv -> Type -> Scheme
 generalize env t  =   Scheme vars t
   where vars = Set.toList $ ftv t `Set.difference` ftv env
 
-data InferEnv = InferEnv  {}
-
 data InferState = InferState { inferSupply :: Int }
 
-type Infer = EitherT String (ReaderT InferEnv (State InferState))
+type Infer = EitherT String (State InferState)
 type InferW = WriterT Subst Infer
 
 runInfer :: Infer a -> Either String a
-runInfer t = evalState (runReaderT (runEitherT t) initInferEnv) initInferState
-  where initInferEnv = InferEnv
-        initInferState = InferState{inferSupply = 0}
+runInfer t = evalState (runEitherT t) initInferState
+  where initInferState = InferState{inferSupply = 0}
 
 newTyVarName :: String -> Infer String
 newTyVarName prefix =

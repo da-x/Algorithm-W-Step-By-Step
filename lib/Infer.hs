@@ -1,4 +1,4 @@
-module AlgorithmW
+module Infer
   ( module Expr
   , typeInference
   ) where

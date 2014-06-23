@@ -1,4 +1,4 @@
-import AlgorithmW hiding (main)
+import Infer hiding (main)
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)

@@ -10,7 +10,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     AlgorithmW
+  exposed-modules:     Infer
                  ,     Expr
                  ,     Pretty
   other-modules:       Record

@@ -1,4 +1,4 @@
-import AlgorithmW
+import Infer
 import Pretty
 import qualified Data.Map as Map
 

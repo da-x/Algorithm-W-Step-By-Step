@@ -46,7 +46,7 @@ unifyRecToPartial (tfields, tname) ufields
     prFlatRecordType (FlatRecordType tfields (Just tname)) <+>
     PP.text " vs. " <+>
     prFlatRecordType (FlatRecordType ufields Nothing)
-  | otherwise = varBind tname $ recToType $ FlatRecordType uniqueUFields Nothing
+  | otherwise = varBind tname $ FlatRecordType.toType $ FlatRecordType uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -100,7 +100,10 @@ mgu (TCon t) (TCon u)
   | t == u                   =  return mempty
 mgu TRecEmpty TRecEmpty      =  return mempty
 mgu t@TRecExtend {}
-    u@TRecExtend {}          =  join $ either throwError return $ unifyRecs <$> flattenRec t <*> flattenRec u
+    u@TRecExtend {}          =  join $ either throwError return $
+                                unifyRecs <$>
+                                FlatRecordType.from t <*>
+                                FlatRecordType.from u
 mgu t1 t2                    =  throwError $ show $
                                 PP.text "types do not unify: " <+> prType t1 <+>
                                 PP.text "vs." <+> prType t2

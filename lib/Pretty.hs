@@ -79,7 +79,7 @@ prType (TVar n)    =   prTypeVar n
 prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
 prType (TApp t s)  =   prParenType t <+> prType s
-prType r@(TRecExtend name typ rest) = case flattenRec r of
+prType r@(TRecExtend name typ rest) = case FlatRecordType.from r of
   Left _ -> -- Fall back to nested record presentation:
     PP.text "T{" <+>
       PP.text name <+> PP.text ":" <+> prType typ <+>

@@ -43,21 +43,18 @@ exp8  =  E.eAbs "a" $ E.eAbs "b" $ E.eApp (E.eVar "b") $ E.eApp (E.eVar "a") $ E
 exp9 :: E.Val ()
 exp9  =  E.eAbs "vec" $
          E.eRecExtend "newX" (E.eGetField (E.eVar "vec") "x") $
-         E.eRecExtend "newY" (E.eGetField (E.eVar "vec") "y") $
-         E.eRecEmpty
+         E.eRecExtend "newY" (E.eGetField (E.eVar "vec") "y") E.eRecEmpty
 
 exp10 :: E.Val ()
 exp10  =  E.eLet
          "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
-                 E.eRecExtend "y" (E.eLit (E.LInt 7)) $
-                 E.eRecEmpty ) $
+                 E.eRecExtend "y" (E.eLit (E.LInt 7)) E.eRecEmpty ) $
          E.eGetField (E.eVar "vec") "x"
 
 exp11 :: E.Val ()
 exp11  =  E.eLet
          "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
-                 E.eRecExtend "y" (E.eLit (E.LInt 7)) $
-                 E.eRecEmpty ) $
+                 E.eRecExtend "y" (E.eLit (E.LInt 7)) E.eRecEmpty ) $
          E.eGetField (E.eVar "vec") "z"
 
 exp12 :: E.Val ()

@@ -21,8 +21,8 @@ instance Monoid Subst where
   mempty = Subst Map.empty Map.empty
   mappend (Subst t0 r0) s1@(Subst t1 r1) =
     Subst
-    (t1 `Map.union` (Map.map (applySubst s1) t0))
-    (r1 `Map.union` (Map.map (applySubst s1) r0))
+    (t1 `Map.union` Map.map (applySubst s1) t0)
+    (r1 `Map.union` Map.map (applySubst s1) r0)
 
 mapSetDifference :: Ord k => Set k -> Map k v -> Map k v
 mapSetDifference s m = Set.foldr Map.delete m s

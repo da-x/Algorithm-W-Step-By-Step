@@ -1,6 +1,6 @@
 module TypeVars
   ( Subst, substLookup, substDelete, substFromList
-  , TypeVars(..)
+  , FreeTypeVars(..)
   ) where
 
 import Data.Monoid (Monoid(..))
@@ -23,17 +23,17 @@ substDelete name (Subst s) = Subst (Map.delete name s)
 substFromList :: [(String, Type)] -> Subst
 substFromList = Subst . Map.fromList
 
-class TypeVars a where
-    ftv    ::  a -> Set.Set String
+class FreeTypeVars a where
+    freeTypeVars    ::  a -> Set.Set String
     apply  ::  Subst -> a -> a
 
-instance TypeVars Type where
-    ftv (TVar n)      =  Set.singleton n
-    ftv (TCon _)      =  Set.empty
-    ftv (TFun t1 t2)  =  ftv t1 `Set.union` ftv t2
-    ftv (TApp t1 t2)  =  ftv t1 `Set.union` ftv t2
-    ftv TRecEmpty     =  Set.empty
-    ftv (TRecExtend _ t1 t2) = ftv t1 `Set.union` ftv t2
+instance FreeTypeVars Type where
+    freeTypeVars (TVar n)      =  Set.singleton n
+    freeTypeVars (TCon _)      =  Set.empty
+    freeTypeVars (TFun t1 t2)  =  freeTypeVars t1 `Set.union` freeTypeVars t2
+    freeTypeVars (TApp t1 t2)  =  freeTypeVars t1 `Set.union` freeTypeVars t2
+    freeTypeVars TRecEmpty     =  Set.empty
+    freeTypeVars (TRecExtend _ t1 t2) = freeTypeVars t1 `Set.union` freeTypeVars t2
 
     apply s (TVar n)      =  case substLookup n s of
                                Nothing  -> TVar n
@@ -44,10 +44,10 @@ instance TypeVars Type where
     apply _s TRecEmpty = TRecEmpty
     apply s (TRecExtend name typ rest) =
       TRecExtend name (apply s typ) $ apply s rest
-instance TypeVars Scheme where
-    ftv (Scheme vars t)      =  (ftv t) `Set.difference` vars
+instance FreeTypeVars Scheme where
+    freeTypeVars (Scheme vars t)      =  (freeTypeVars t) `Set.difference` vars
 
     apply s (Scheme vars t)  =  Scheme vars (apply (Set.foldr substDelete s vars) t)
-instance TypeVars a => TypeVars [a] where
+instance FreeTypeVars a => FreeTypeVars [a] where
     apply s  =  map (apply s)
-    ftv l    =  foldr Set.union Set.empty (map ftv l)
+    freeTypeVars l    =  foldr Set.union Set.empty (map freeTypeVars l)

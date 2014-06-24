@@ -10,9 +10,9 @@ import TypeVars
 import qualified Data.Map as Map
 
 newtype Scope = Scope { typeOfVar :: Map.Map String Scheme }
-instance TypeVars Scope where
-    ftv (Scope env)      =  ftv (Map.elems env)
-    apply s (Scope env)  =  Scope (Map.map (apply s) env)
+instance FreeTypeVars Scope where
+    freeTypeVars (Scope env) =  freeTypeVars (Map.elems env)
+    apply s (Scope env)      =  Scope (Map.map (apply s) env)
 
 empty :: Scope
 empty = Scope Map.empty

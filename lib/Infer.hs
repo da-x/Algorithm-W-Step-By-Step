@@ -46,7 +46,7 @@ newTyVar prefix = TVar <$> newTyVarName prefix
 
 generalize        ::  Scope -> Type -> Scheme
 generalize scope t  =   Scheme vars t
-  where vars = ftv t `Set.difference` ftv scope
+  where vars = freeTypeVars t `Set.difference` freeTypeVars scope
 
 instantiate :: Scheme -> Infer Type
 instantiate (Scheme vars t) =
@@ -62,10 +62,12 @@ instantiate (Scheme vars t) =
 
 varBind :: String -> Type -> InferW ()
 varBind u (TVar t) | t == u          =  return ()
-varBind u t  | u `Set.member` ftv t  =  throwError $ show $
-                                        PP.text "occurs check fails:" <+>
-                                        PP.text u <+> PP.text "vs." <+> prType t
-             | otherwise             =  Writer.tell $ substFromList [(u, t)]
+varBind u t
+  | u `Set.member` freeTypeVars t  =
+    throwError $ show $
+    PP.text "occurs check fails:" <+>
+    PP.text u <+> PP.text "vs." <+> prType t
+  | otherwise                        =  Writer.tell $ substFromList [(u, t)]
 
 unifyRecToPartial ::
   (Map.Map String Type, String) -> Map.Map String Type ->

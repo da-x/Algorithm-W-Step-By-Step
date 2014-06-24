@@ -9,6 +9,7 @@ module Lamdu.Pretty
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Data.List (intersperse)
+import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
@@ -68,7 +69,7 @@ prExp expr =
           Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
         (fields, mRest) = flatRecordValue expr
 
-flatRecordValue :: Expr a -> (Map.Map String (Expr a), Maybe (Expr a))
+flatRecordValue :: Expr a -> (Map String (Expr a), Maybe (Expr a))
 flatRecordValue (Expr _ (ERecExtend name val body)) =
   flatRecordValue body
   & _1 %~ Map.insert name val

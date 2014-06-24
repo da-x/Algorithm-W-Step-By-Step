@@ -7,15 +7,16 @@ module Lamdu.Infer.Internal.FlatRecordType
 import Control.Applicative ((<$>))
 import Control.Lens (Lens')
 import Control.Lens.Operators
+import Data.Map (Map)
 import Lamdu.Expr
 import qualified Data.Map as Map
 
 data FlatRecordType = FlatRecordType
-  { _fields :: Map.Map String Type
+  { _fields :: Map String Type
   , _extension :: Maybe TypeVar -- TyVar of more possible fields
   } deriving (Show)
 
-fields :: Lens' FlatRecordType (Map.Map String Type)
+fields :: Lens' FlatRecordType (Map String Type)
 fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
 
 -- From a record type to a sorted list of fields

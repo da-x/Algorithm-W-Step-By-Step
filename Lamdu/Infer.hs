@@ -10,6 +10,7 @@ import Control.Monad (join)
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
+import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
@@ -39,7 +40,7 @@ varBind u t
   | otherwise = Writer.tell $ FreeTypeVars.substFromList [(u, t)]
 
 unifyRecToPartial ::
-  (Map.Map String Type, TypeVar) -> Map.Map String Type ->
+  (Map String Type, TypeVar) -> Map String Type ->
   InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -54,7 +55,7 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  (Map.Map String Type, TypeVar) -> (Map.Map String Type, TypeVar) ->
+  (Map String Type, TypeVar) -> (Map String Type, TypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ InferMonad.newTyVar "r"
@@ -67,7 +68,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map.Map String Type -> Map.Map String Type -> InferW ()
+  Map String Type -> Map String Type -> InferW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $

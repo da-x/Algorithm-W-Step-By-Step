@@ -3,13 +3,15 @@ module Lamdu.Infer.Internal.FreeTypeVars
   , FreeTypeVars(..)
   ) where
 
+import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import Data.Set (Set)
 import Lamdu.Expr
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 -- TODO: Where should this be defined?
-newtype Subst = Subst (Map.Map TypeVar Type)
+newtype Subst = Subst (Map TypeVar Type)
 instance Monoid Subst where
   mempty = Subst Map.empty
   mappend (Subst s1) (Subst s2) = Subst (s2 `Map.union` (Map.map (applySubst (Subst s2)) s1))
@@ -24,8 +26,8 @@ substFromList :: [(TypeVar, Type)] -> Subst
 substFromList = Subst . Map.fromList
 
 class FreeTypeVars a where
-    freeTypeVars    ::  a -> Set.Set TypeVar
-    applySubst           ::  Subst -> a -> a
+    freeTypeVars :: a -> Set TypeVar
+    applySubst   :: Subst -> a -> a
 
 instance FreeTypeVars Type where
     freeTypeVars (TVar n)      =  Set.singleton n
@@ -36,8 +38,8 @@ instance FreeTypeVars Type where
     freeTypeVars (TRecExtend _ t1 t2) = freeTypeVars t1 `Set.union` freeTypeVars t2
 
     applySubst s (TVar n)      =  case substLookup n s of
-                               Nothing  -> TVar n
-                               Just t   -> t
+                                  Nothing  -> TVar n
+                                  Just t   -> t
     applySubst s (TFun t1 t2)  = TFun (applySubst s t1) (applySubst s t2)
     applySubst s (TApp t1 t2)  = TApp (applySubst s t1) (applySubst s t2)
     applySubst _s (TCon t)     = TCon t

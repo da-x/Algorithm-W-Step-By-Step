@@ -5,12 +5,13 @@ module Lamdu.Infer.Scope
   , lookupTypeOf
   ) where
 
+import Data.Map (Map)
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Scheme (Scheme)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-newtype Scope = Scope { typeOfVar :: Map.Map String Scheme }
+newtype Scope = Scope { typeOfVar :: Map String Scheme }
 instance FreeTypeVars Scope where
     freeTypeVars (Scope env) =  Set.unions $ map freeTypeVars $ Map.elems env
     applySubst s (Scope env)      =  Scope $ Map.map (applySubst s) env
@@ -24,5 +25,5 @@ lookupTypeOf key = Map.lookup key . typeOfVar
 insertTypeOf :: String -> Scheme -> Scope -> Scope
 insertTypeOf key scheme (Scope env) = Scope (Map.insert key scheme env)
 
-fromTypeMap :: Map.Map String Scheme -> Scope
+fromTypeMap :: Map String Scheme -> Scope
 fromTypeMap = Scope

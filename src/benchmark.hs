@@ -8,9 +8,12 @@ import Criterion.Main
 import Data.Map (Map)
 import Expr
 import Infer
+import Pretty
+import Text.PrettyPrint ((<+>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Scope as Scope
+import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs EApp
 -- TODO: TCon "->" instead of TFun
@@ -191,7 +194,7 @@ infer e =
     Left err ->  fail $ "error: " ++ err
     Right eTyped ->
       do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
-          return $ show e ++ " :: " ++ show (eTyped ^. expPayload . _1)
+          return $ show $ prExp e <+> PP.text "::" <+> prType (eTyped ^. expPayload . _1)
 
 benches :: [(String, IO String)]
 benches =

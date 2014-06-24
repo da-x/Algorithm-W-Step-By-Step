@@ -6,6 +6,8 @@ module Pretty
   , prFlatRecordType
   ) where
 
+import Control.Lens.Operators
+import Control.Lens.Tuple
 import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
 import Expr
@@ -53,7 +55,8 @@ prExp expr =
     ELeaf ERecEmpty   ->   PP.text "{}"
     ERecExtend {}     ->
         PP.text "V{" <+>
-            mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
+            mconcat (intersperse (PP.text ", ")
+              (map prField (Map.toList fields))) <>
             moreFields <+>
         PP.text "}"
       where
@@ -62,7 +65,14 @@ prExp expr =
           case mRest of
           Nothing -> PP.empty
           Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
-        (fields, mRest) = flattenERec expr
+        (fields, mRest) = flatRecordValue expr
+
+flatRecordValue :: Expr a -> (Map.Map String (Expr a), Maybe (Expr a))
+flatRecordValue (Expr _ (ERecExtend name val body)) =
+  flatRecordValue body
+  & _1 %~ Map.insert name val
+flatRecordValue (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
+flatRecordValue other = (Map.empty, Just other)
 
 prType             ::  Type -> PP.Doc
 prType (TVar n)    =   prTypeVar n

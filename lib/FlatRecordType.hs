@@ -1,14 +1,12 @@
 module FlatRecordType
   ( FlatRecordType(..)
   , flattenRec
-  , flattenERec
   , recToType
   ) where
 
 import Control.Applicative ((<$>))
 import Control.Lens (Lens')
 import Control.Lens.Operators
-import Control.Lens.Tuple
 import Expr
 import qualified Data.Map as Map
 
@@ -28,13 +26,6 @@ flattenRec (TRecExtend name typ rest) =
 flattenRec TRecEmpty = return $ FlatRecordType Map.empty Nothing
 flattenRec (TVar name) = return $ FlatRecordType Map.empty (Just name)
 flattenRec t = Left $ "TRecExtend on non-record: " ++ show t
-
-flattenERec :: Expr a -> (Map.Map String (Expr a), Maybe (Expr a))
-flattenERec (Expr _ (ERecExtend name val body)) =
-  flattenERec body
-  & _1 %~ Map.insert name val
-flattenERec (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
-flattenERec other = (Map.empty, Just other)
 
 -- opposite of flatten
 recToType :: FlatRecordType -> Type

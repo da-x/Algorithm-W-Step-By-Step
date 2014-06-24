@@ -32,20 +32,28 @@ exp6 :: Expr ()
 exp6  =  eApp (eLit (LInt 2)) (eLit (LInt 2))
 
 exp7 :: Expr ()
-exp7  =  eAbs "vec" $
+exp7  =  eAbs "a" (eLet "x" (eAbs "b" (eLet "y" (eAbs "c" (eApp (eVar "a") (eLit (LInt 1))))
+                                     (eApp (eVar "y") (eLit (LInt 2)))))
+                 (eApp (eVar "x") (eLit (LInt 3))))
+
+exp8 :: Expr ()
+exp8  =  eAbs "a" $ eAbs "b" $ eApp (eVar "b") $ eApp (eVar "a") $ eApp (eVar "a") (eVar "b")
+
+exp9 :: Expr ()
+exp9  =  eAbs "vec" $
          eRecExtend "newX" (eGetField (eVar "vec") "x") $
          eRecExtend "newY" (eGetField (eVar "vec") "y") $
          eRecEmpty
 
-exp8 :: Expr ()
-exp8  =  eLet
+exp10 :: Expr ()
+exp10  =  eLet
          "vec" ( eRecExtend "x" (eLit (LInt 5)) $
                  eRecExtend "y" (eLit (LInt 7)) $
                  eRecEmpty ) $
          eGetField (eVar "vec") "x"
 
-exp9 :: Expr ()
-exp9  =  eLet
+exp11 :: Expr ()
+exp11  =  eLet
          "vec" ( eRecExtend "x" (eLit (LInt 5)) $
                  eRecExtend "y" (eLit (LInt 7)) $
                  eRecEmpty ) $
@@ -60,4 +68,18 @@ test e =
           putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint t) ++ "\n"
 
 main :: IO ()
-main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7, exp8, exp9]
+main =
+  mapM_ test
+  [ exp0
+  , exp1
+  , exp2
+  , exp3
+  , exp4
+  , exp5
+  , exp6
+  , exp7
+  , exp8
+  , exp9
+  , exp10
+  , exp11
+  ]

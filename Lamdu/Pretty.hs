@@ -10,8 +10,8 @@ import Data.Monoid (Monoid(..))
 import Lamdu.Expr
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Scheme
-import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import Text.PrettyPrint ((<+>), (<>), ($$))
+import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
@@ -21,36 +21,34 @@ instance Pretty TypeVar where
   pPrint = PP.text . tvName
 
 instance Pretty Scheme where
-  pPrint (Scheme vars t)  =
+  pPrintPrec lvl prec (Scheme vars t)  =
+    prettyParen (0 < prec) $
     PP.text "All" <+>
     PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList vars))) <>
-    PP.text "." <+> pPrint t
-
-prParenExp    ::  Expr () -> PP.Doc
-prParenExp t  =   case expBody t of
-                    ELet _ _ _  -> PP.parens (pPrint t)
-                    EApp _ _    -> PP.parens (pPrint t)
-                    EAbs _ _    -> PP.parens (pPrint t)
-                    _           -> pPrint t
+    PP.text "." <+> pPrintPrec lvl 0 t
 
 instance Pretty Lit where
   pPrint (LInt i)   =   pPrint i
   pPrint (LChar c)  =   pPrint c
 
 instance Pretty (Expr ()) where
-  pPrint expr =
+  pPrintPrec lvl prec expr =
     case expBody expr of
     ELeaf (EVar name) ->   PP.text name
     ELeaf (ELit lit)  ->   pPrint lit
-    ELet x b body     ->   PP.text "let" <+>
+    ELet x b body     ->   prettyParen (1 < prec) $
+                           PP.text "let" <+>
                            PP.text x <+> PP.text "=" <+>
-                           pPrint b <+> PP.text "in" PP.$$
+                           pPrint b <+> PP.text "in" $$
                            PP.nest 2 (pPrint body)
-    EApp e1 e2        ->   pPrint e1 <+> prParenExp e2
-    EAbs n e          ->   PP.char '\\' <> PP.text n <+>
+    EApp e1 e2        ->   prettyParen (10 < prec) $
+                           pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
+    EAbs n e          ->   prettyParen (0 < prec) $
+                           PP.char '\\' <> PP.text n <+>
                            PP.text "->" <+>
                            pPrint e
-    EGetField e n     ->   prParenExp e <> PP.char '.' <> PP.text n
+    EGetField e n     ->   prettyParen (12 < prec) $
+                           pPrintPrec lvl 12 e <> PP.char '.' <> PP.text n
     ELeaf ERecEmpty   ->   PP.text "{}"
     ERecExtend {}     ->
         PP.text "V{" <+>
@@ -74,23 +72,25 @@ flatRecordValue (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flatRecordValue other = (Map.empty, Just other)
 
 instance Pretty Type where
-  pPrint (TVar n)    =   pPrint n
-  pPrint (TCon s)    =   PP.text s
-  pPrint (TFun t s)  =   prParenType t <+> PP.text "->" <+> pPrint s
-  pPrint (TApp t s)  =   prParenType t <+> pPrint s
-  pPrint r@(TRecExtend name typ rest) = case FlatRecordType.from r of
-    Left _ -> -- Fall back to nested record presentation:
-      PP.text "T{" <+>
-        PP.text name <+> PP.text ":" <+> pPrint typ <+>
-        PP.text "**" <+> pPrint rest <+>
-      PP.text "}"
-    Right flatRecord -> pPrint flatRecord
-  pPrint TRecEmpty   =   PP.text "T{}"
-
-prParenType     ::  Type -> PP.Doc
-prParenType  t  =   case t of
-                      TFun _ _  -> PP.parens (pPrint t)
-                      _         -> pPrint t
+  pPrintPrec lvl prec typ =
+    case typ of
+    TVar n -> pPrint n
+    TCon s -> PP.text s
+    TFun t s ->
+      prettyParen (8 < prec) $
+      pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
+    TApp t s ->
+      prettyParen (10 < prec) $
+      pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
+    TRecEmpty -> PP.text "T{}"
+    TRecExtend name t rest ->
+      case FlatRecordType.from typ of
+      Left _ -> -- Fall back to nested record presentation:
+        PP.text "T{" <+>
+          PP.text name <+> PP.text ":" <+> pPrint t <+>
+          PP.text "**" <+> pPrint rest <+>
+        PP.text "}"
+      Right flatRecord -> pPrint flatRecord
 
 instance Pretty FlatRecordType where
   pPrint (FlatRecordType fields varName) =
@@ -103,4 +103,4 @@ instance Pretty FlatRecordType where
         moreFields =
           case varName of
           Nothing -> PP.empty
-          Just name -> PP.comma <+> pPrint name <> PP.text "..."
+          Just tv -> PP.comma <+> pPrint tv <> PP.text "..."

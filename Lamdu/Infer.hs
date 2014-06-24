@@ -52,11 +52,12 @@ unifyRecPartials ::
   (Map E.Field E.Type, E.RecordTypeVar) -> (Map E.Field E.Type, E.RecordTypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
-  do  restTv <- lift $ InferMonad.newInferredVar "r"
+  do  restTv <- InferMonad.newInferredVar "r"
       ((), s1) <-
         Writer.listen $ varBind tname $
         Map.foldWithKey E.TRecExtend restTv uniqueUFields
-      varBind uname $ FreeTypeVars.applySubst s1 (Map.foldWithKey E.TRecExtend restTv uniqueTFields)
+      varBind uname $ FreeTypeVars.applySubst s1 $
+        Map.foldWithKey E.TRecExtend restTv uniqueTFields
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields

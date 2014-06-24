@@ -10,9 +10,9 @@ import Control.Applicative ((<$>))
 import Control.Monad.State (evalState, State)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
 import Control.Monad.Writer (WriterT, runWriterT)
-import Lamdu.Expr
-import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Control.Monad.State as State
+import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 
 data InferState = InferState { inferSupply :: Int }
 
@@ -27,12 +27,12 @@ run t = evalState (runEitherT t) initInferState
 runW :: InferW a -> Infer (a, FreeTypeVars.Subst)
 runW = runWriterT
 
-newTyVarName :: String -> Infer TypeVar
+newTyVarName :: String -> Infer E.TypeVar
 newTyVarName prefix =
     do  s <- State.get
         State.put s{inferSupply = inferSupply s + 1}
-        return $ TypeVar $ prefix ++ show (inferSupply s)
+        return $ E.TypeVar $ prefix ++ show (inferSupply s)
 
-newTyVar :: String -> Infer Type
-newTyVar prefix = TVar <$> newTyVarName prefix
+newTyVar :: String -> Infer E.Type
+newTyVar prefix = E.TVar <$> newTyVarName prefix
 

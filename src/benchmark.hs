@@ -6,71 +6,71 @@ import Control.Lens.Tuple
 import Control.Monad ((<=<))
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
-import Lamdu.Expr
 import Lamdu.Infer (typeInference)
 import Lamdu.Infer.Scheme (Scheme(..))
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Scope as Scope
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: String -> (Expr () -> Expr ()) -> Expr ()
-lambda varName mkBody = eAbs varName (mkBody (eVar varName))
+lambda :: String -> (E.Val () -> E.Val ()) -> E.Val ()
+lambda varName mkBody = E.eAbs varName (mkBody (E.eVar varName))
 
-lambdaRecord :: [String] -> ([Expr ()] -> Expr ()) -> Expr ()
+lambdaRecord :: [String] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
-  mkBody $ map (eGetField paramsRec) names
+  mkBody $ map (E.eGetField paramsRec) names
 
-whereItem :: String -> Expr () -> (Expr () -> Expr ()) -> Expr ()
+whereItem :: String -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
-record :: [(String, Type)] -> Type
-record = foldr (uncurry TRecExtend) TRecEmpty
+record :: [(String, E.Type)] -> E.Type
+record = foldr (uncurry E.TRecExtend) E.TRecEmpty
 
-eRecord :: [(String, Expr ())] -> Expr ()
-eRecord = foldr (uncurry eRecExtend) eRecEmpty
+eRecord :: [(String, E.Val ())] -> E.Val ()
+eRecord = foldr (uncurry E.eRecExtend) E.eRecEmpty
 
 infixl 4 $$
-($$) :: Expr () -> Expr () -> Expr ()
-($$) = eApp
+($$) :: E.Val () -> E.Val () -> E.Val ()
+($$) = E.eApp
 
 infixl 4 $$:
-($$:) :: Expr () -> [(String, Expr ())] -> Expr ()
+($$:) :: E.Val () -> [(String, E.Val ())] -> E.Val ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>
-(~>) :: Type -> Type -> Type
-(~>) = TFun
+(~>) :: E.Type -> E.Type -> E.Type
+(~>) = E.TFun
 
-getDef :: String -> Expr ()
-getDef = eVar
+getDef :: String -> E.Val ()
+getDef = E.eVar
 
-literalInteger :: Integer -> Expr ()
-literalInteger = eLit . LInt
+literalInteger :: Integer -> E.Val ()
+literalInteger = E.eLit . E.LInt
 
-integerType :: Type
-integerType = TCon "Int"
+integerType :: E.Type
+integerType = E.TCon "Int"
 
-boolType :: Type
-boolType = TCon "Bool"
+boolType :: E.Type
+boolType = E.TCon "Bool"
 
-forAll :: [String] -> ([Type] -> Type) -> Scheme
-forAll names mkType = Scheme (Set.fromList tvs) $ mkType $ map TVar tvs
+forAll :: [String] -> ([E.Type] -> E.Type) -> Scheme
+forAll names mkType = Scheme (Set.fromList tvs) $ mkType $ map E.TVar tvs
   where
-    tvs = map TypeVar names
+    tvs = map E.TypeVar names
 
-listOf :: Type -> Type
-listOf = TApp (TCon "List")
+listOf :: E.Type -> E.Type
+listOf = E.TApp (E.TCon "List")
 
-infixType :: Type -> Type -> Type -> Type
+infixType :: E.Type -> E.Type -> E.Type -> E.Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
-infixArgs :: Expr () -> Expr () -> Expr ()
+infixArgs :: E.Val () -> E.Val () -> E.Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
 env :: Map String Scheme
@@ -97,7 +97,7 @@ env = Map.fromList
   , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
   ]
 
-list :: [Expr ()] -> Expr ()
+list :: [E.Val ()] -> E.Val ()
 list [] = getDef "[]"
 list items@(_x:_) =
   foldr cons nil items
@@ -105,8 +105,8 @@ list items@(_x:_) =
     cons h t = getDef ":" $$: [("head", h), ("tail", t)]
     nil = getDef "[]"
 
-factorialExpr :: Expr ()
-factorialExpr =
+factorialVal :: E.Val ()
+factorialVal =
   getDef "fix" $$
   lambda "loop"
   ( \loop ->
@@ -121,8 +121,8 @@ factorialExpr =
     ]
   )
 
-euler1Expr :: Expr ()
-euler1Expr =
+euler1Val :: E.Val ()
+euler1Val =
   getDef "sum" $$
   ( getDef "filter" $$:
     [ ("from", getDef ".." $$ infixArgs (literalInteger 1) (literalInteger 1000))
@@ -137,8 +137,8 @@ euler1Expr =
     ]
   )
 
-solveDepressedQuarticExpr :: Expr ()
-solveDepressedQuarticExpr =
+solveDepressedQuarticVal :: E.Val ()
+solveDepressedQuarticVal =
   lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
   whereItem "solvePoly" (getDef "id")
   $ \solvePoly ->
@@ -188,19 +188,19 @@ solveDepressedQuarticExpr =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-infer :: Expr () -> IO String
+infer :: E.Val () -> IO String
 infer e =
     case typeInference (Scope.fromTypeMap env) e of
     Left err ->  fail $ "error: " ++ err
     Right eTyped ->
       do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
-          return $ show $ pPrint e <+> pPrint "::" <+> pPrint (eTyped ^. expPayload . _1)
+          return $ show $ pPrint e <+> pPrint "::" <+> pPrint (eTyped ^. E.expPayload . _1)
 
 benches :: [(String, IO String)]
 benches =
-  [ ("factorial", infer factorialExpr)
-  , ("euler1", infer euler1Expr)
-  , ("solveDepressedQuartic", infer solveDepressedQuarticExpr)
+  [ ("factorial", infer factorialVal)
+  , ("euler1", infer euler1Val)
+  , ("solveDepressedQuartic", infer solveDepressedQuarticVal)
   ]
 
 main :: IO ()

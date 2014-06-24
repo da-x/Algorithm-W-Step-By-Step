@@ -3,7 +3,7 @@ module Lamdu.Expr
   ( Lit(..)
   , ValLeaf(..)
   , ValBody(..)
-  , Expr(..), expPayload
+  , Val(..), expPayload
   , Type(..)
   , TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
@@ -43,14 +43,14 @@ data ValBody exp
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
 
-data Expr a = Expr
+data Val a = Val
   { _expPayload :: a
-  , valBody :: !(ValBody (Expr a))
+  , valBody :: !(ValBody (Val a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
-instance NFData a => NFData (Expr a) where rnf = genericRnf
+instance NFData a => NFData (Val a) where rnf = genericRnf
 
-expPayload :: Lens' (Expr a) a
-expPayload f (Expr pl body) = (`Expr` body) <$> f pl
+expPayload :: Lens' (Val a) a
+expPayload f (Val pl body) = (`Val` body) <$> f pl
 
 data Type    =  TVar TypeVar
              |  TFun Type Type
@@ -61,26 +61,26 @@ data Type    =  TVar TypeVar
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
-eLet :: String -> Expr () -> Expr () -> Expr ()
-eLet name e1 e2 = Expr () $ VLet name e1 e2
+eLet :: String -> Val () -> Val () -> Val ()
+eLet name e1 e2 = Val () $ VLet name e1 e2
 
-eAbs :: String -> Expr () -> Expr ()
-eAbs name body = Expr () $ VAbs name body
+eAbs :: String -> Val () -> Val ()
+eAbs name body = Val () $ VAbs name body
 
-eVar :: String -> Expr ()
-eVar = Expr () . VLeaf . VVar
+eVar :: String -> Val ()
+eVar = Val () . VLeaf . VVar
 
-eLit :: Lit -> Expr ()
-eLit = Expr () . VLeaf . VLit
+eLit :: Lit -> Val ()
+eLit = Val () . VLeaf . VLit
 
-eRecEmpty :: Expr ()
-eRecEmpty = Expr () $ VLeaf VRecEmpty
+eRecEmpty :: Val ()
+eRecEmpty = Val () $ VLeaf VRecEmpty
 
-eApp :: Expr () -> Expr () -> Expr ()
-eApp f x = Expr () $ VApp f x
+eApp :: Val () -> Val () -> Val ()
+eApp f x = Val () $ VApp f x
 
-eRecExtend :: String -> Expr () -> Expr () -> Expr ()
-eRecExtend name typ rest = Expr () $ VRecExtend name typ rest
+eRecExtend :: String -> Val () -> Val () -> Val ()
+eRecExtend name typ rest = Val () $ VRecExtend name typ rest
 
-eGetField :: Expr () -> String -> Expr ()
-eGetField r n = Expr () $ VGetField r n
+eGetField :: Val () -> String -> Val ()
+eGetField r n = Val () $ VGetField r n

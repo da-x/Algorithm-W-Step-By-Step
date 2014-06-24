@@ -1,70 +1,70 @@
-import Lamdu.Expr
 import Lamdu.Infer
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Lamdu.Infer.Scope as Scope
+import qualified Lamdu.Expr as E
 
-exp0 :: Expr ()
-exp0  =  eLet "id" (eAbs "x" (eVar "x"))
-          (eVar "id")
+exp0 :: E.Val ()
+exp0  =  E.eLet "id" (E.eAbs "x" (E.eVar "x"))
+          (E.eVar "id")
 
-exp1 :: Expr ()
-exp1  =  eLet "id" (eAbs "x" (eVar "x"))
-          (eApp (eVar "id") (eVar "id"))
+exp1 :: E.Val ()
+exp1  =  E.eLet "id" (E.eAbs "x" (E.eVar "x"))
+          (E.eApp (E.eVar "id") (E.eVar "id"))
 
-exp2 :: Expr ()
-exp2  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
-          (eApp (eVar "id") (eVar "id"))
+exp2 :: E.Val ()
+exp2  =  E.eLet "id" (E.eAbs "x" (E.eLet "y" (E.eVar "x") (E.eVar "y")))
+          (E.eApp (E.eVar "id") (E.eVar "id"))
 
-exp3 :: Expr ()
-exp3  =  eLet "id" (eAbs "x" (eLet "y" (eVar "x") (eVar "y")))
-          (eApp (eApp (eVar "id") (eVar "id")) (eLit (LInt 2)))
+exp3 :: E.Val ()
+exp3  =  E.eLet "id" (E.eAbs "x" (E.eLet "y" (E.eVar "x") (E.eVar "y")))
+          (E.eApp (E.eApp (E.eVar "id") (E.eVar "id")) (E.eLit (E.LInt 2)))
 
-exp4 :: Expr ()
-exp4  =  eLet "id" (eAbs "x" (eApp (eVar "x") (eVar "x")))
-          (eVar "id")
+exp4 :: E.Val ()
+exp4  =  E.eLet "id" (E.eAbs "x" (E.eApp (E.eVar "x") (E.eVar "x")))
+          (E.eVar "id")
 
-exp5 :: Expr ()
-exp5  =  eAbs "m" (eLet "y" (eVar "m")
-                   (eLet "x" (eApp (eVar "y") (eLit (LChar 'x')))
-                         (eVar "x")))
+exp5 :: E.Val ()
+exp5  =  E.eAbs "m" (E.eLet "y" (E.eVar "m")
+                   (E.eLet "x" (E.eApp (E.eVar "y") (E.eLit (E.LChar 'x')))
+                         (E.eVar "x")))
 
-exp6 :: Expr ()
-exp6  =  eApp (eLit (LInt 2)) (eLit (LInt 2))
+exp6 :: E.Val ()
+exp6  =  E.eApp (E.eLit (E.LInt 2)) (E.eLit (E.LInt 2))
 
-exp7 :: Expr ()
-exp7  =  eAbs "a" (eLet "x" (eAbs "b" (eLet "y" (eAbs "c" (eApp (eVar "a") (eLit (LInt 1))))
-                                     (eApp (eVar "y") (eLit (LInt 2)))))
-                 (eApp (eVar "x") (eLit (LInt 3))))
+exp7 :: E.Val ()
+exp7  =  E.eAbs "a" (E.eLet "x" (E.eAbs "b" (E.eLet "y" (E.eAbs "c" (E.eApp (E.eVar "a") (E.eLit (E.LInt 1))))
+                                     (E.eApp (E.eVar "y") (E.eLit (E.LInt 2)))))
+                 (E.eApp (E.eVar "x") (E.eLit (E.LInt 3))))
 
-exp8 :: Expr ()
-exp8  =  eAbs "a" $ eAbs "b" $ eApp (eVar "b") $ eApp (eVar "a") $ eApp (eVar "a") (eVar "b")
+exp8 :: E.Val ()
+exp8  =  E.eAbs "a" $ E.eAbs "b" $ E.eApp (E.eVar "b") $ E.eApp (E.eVar "a") $ E.eApp (E.eVar "a") (E.eVar "b")
 
-exp9 :: Expr ()
-exp9  =  eAbs "vec" $
-         eRecExtend "newX" (eGetField (eVar "vec") "x") $
-         eRecExtend "newY" (eGetField (eVar "vec") "y") $
-         eRecEmpty
+exp9 :: E.Val ()
+exp9  =  E.eAbs "vec" $
+         E.eRecExtend "newX" (E.eGetField (E.eVar "vec") "x") $
+         E.eRecExtend "newY" (E.eGetField (E.eVar "vec") "y") $
+         E.eRecEmpty
 
-exp10 :: Expr ()
-exp10  =  eLet
-         "vec" ( eRecExtend "x" (eLit (LInt 5)) $
-                 eRecExtend "y" (eLit (LInt 7)) $
-                 eRecEmpty ) $
-         eGetField (eVar "vec") "x"
+exp10 :: E.Val ()
+exp10  =  E.eLet
+         "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
+                 E.eRecExtend "y" (E.eLit (E.LInt 7)) $
+                 E.eRecEmpty ) $
+         E.eGetField (E.eVar "vec") "x"
 
-exp11 :: Expr ()
-exp11  =  eLet
-         "vec" ( eRecExtend "x" (eLit (LInt 5)) $
-                 eRecExtend "y" (eLit (LInt 7)) $
-                 eRecEmpty ) $
-         eGetField (eVar "vec") "z"
+exp11 :: E.Val ()
+exp11  =  E.eLet
+         "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
+                 E.eRecExtend "y" (E.eLit (E.LInt 7)) $
+                 E.eRecEmpty ) $
+         E.eGetField (E.eVar "vec") "z"
 
-test :: Expr () -> IO ()
+test :: E.Val () -> IO ()
 test e =
     case typeInference Scope.empty e of
         Left err ->
           putStrLn $ show (pPrint e) ++ "\n " ++ err ++ "\n"
-        Right (Expr (t, _) _) ->
+        Right (E.Val (t, _) _) ->
           putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint t) ++ "\n"
 
 main :: IO ()

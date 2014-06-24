@@ -12,7 +12,6 @@ import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Lamdu.Expr
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Internal.FreeTypeVars (freeTypeVars)
 import Lamdu.Infer.Internal.Monad (InferW)
@@ -24,6 +23,7 @@ import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as InferMonad
@@ -31,8 +31,8 @@ import qualified Lamdu.Infer.Scheme as Scheme
 import qualified Lamdu.Infer.Scope as Scope
 import qualified Text.PrettyPrint as PP
 
-varBind :: TypeVar -> Type -> InferW ()
-varBind u (TVar t) | t == u          =  return ()
+varBind :: E.TypeVar -> E.Type -> InferW ()
+varBind u (E.TVar t) | t == u          =  return ()
 varBind u t
   | u `Set.member` freeTypeVars t  =
     throwError $ show $
@@ -41,7 +41,7 @@ varBind u t
   | otherwise = Writer.tell $ FreeTypeVars.substFromList [(u, t)]
 
 unifyRecToPartial ::
-  (Map String Type, TypeVar) -> Map String Type ->
+  (Map String E.Type, E.TypeVar) -> Map String E.Type ->
   InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -56,20 +56,20 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  (Map String Type, TypeVar) -> (Map String Type, TypeVar) ->
+  (Map String E.Type, E.TypeVar) -> (Map String E.Type, E.TypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ InferMonad.newTyVar "r"
       ((), s1) <-
         Writer.listen $ varBind tname $
-        Map.foldWithKey TRecExtend restTv uniqueUFields
-      varBind uname $ FreeTypeVars.applySubst s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
+        Map.foldWithKey E.TRecExtend restTv uniqueUFields
+      varBind uname $ FreeTypeVars.applySubst s1 (Map.foldWithKey E.TRecExtend restTv uniqueTFields)
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map String Type -> Map String Type -> InferW ()
+  Map String E.Type -> Map String E.Type -> InferW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
@@ -93,73 +93,81 @@ unifyRecs (FlatRecordType tfields tvar)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
-mgu :: Type -> Type -> InferW ()
-mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
-                                    mgu (FreeTypeVars.applySubst s1 r) (FreeTypeVars.applySubst s1 r')
-mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
-                                    mgu (FreeTypeVars.applySubst s1 r) (FreeTypeVars.applySubst s1 r')
-mgu (TVar u) t               =  varBind u t
-mgu t (TVar u)               =  varBind u t
-mgu (TCon t) (TCon u)
+mgu :: E.Type -> E.Type -> InferW ()
+mgu (E.TFun l r) (E.TFun l' r')  =
+  do
+    ((), s1) <- Writer.listen $ mgu l l'
+    mgu
+      (FreeTypeVars.applySubst s1 r)
+      (FreeTypeVars.applySubst s1 r')
+mgu (E.TApp l r) (E.TApp l' r')  =
+  do
+    ((), s1) <- Writer.listen $ mgu l l'
+    mgu
+      (FreeTypeVars.applySubst s1 r)
+      (FreeTypeVars.applySubst s1 r')
+mgu (E.TVar u) t               =  varBind u t
+mgu t (E.TVar u)               =  varBind u t
+mgu (E.TCon t) (E.TCon u)
   | t == u                   =  return mempty
-mgu TRecEmpty TRecEmpty      =  return mempty
-mgu t@TRecExtend {}
-    u@TRecExtend {}          =  join $ either throwError return $
+mgu E.TRecEmpty E.TRecEmpty      =  return mempty
+mgu t@E.TRecExtend {}
+    u@E.TRecExtend {}          =  join $ either throwError return $
                                 unifyRecs <$>
                                 FlatRecordType.from t <*>
                                 FlatRecordType.from u
 mgu t1 t2                    =  throwError $ show $
                                 PP.text "types do not unify: " <+> pPrint t1 <+>
                                 PP.text "vs." <+> pPrint t2
-typeInference :: Scope -> Expr a -> Either String (Expr (Type, a))
-typeInference rootScope rootExpr =
+typeInference :: Scope -> E.Val a -> Either String (E.Val (E.Type, a))
+typeInference rootScope rootVal =
     InferMonad.run $
-    do  ((_, t), s) <- InferMonad.runW $ infer (,) rootScope rootExpr
+    do  ((_, t), s) <- InferMonad.runW $ infer (,) rootScope rootVal
         return (t & mapped . _1 %~ FreeTypeVars.applySubst s)
 
-infer :: (Type -> a -> b) -> Scope -> Expr a -> InferW (Type, Expr b)
-infer f scope expr@(Expr pl body) = case body of
-  VLeaf leaf ->
-    mkResult (VLeaf leaf) <$>
+infer :: (E.Type -> a -> b) -> Scope -> E.Val a -> InferW (E.Type, E.Val b)
+infer f scope expr@(E.Val pl body) = case body of
+  E.VLeaf leaf ->
+    mkResult (E.VLeaf leaf) <$>
     case leaf of
-    VVar n ->
+    E.VVar n ->
         case Scope.lookupTypeOf n scope of
            Nothing     -> throwError $ "unbound variable: " ++ n
            Just sigma  -> lift (Scheme.instantiate sigma)
-    VLit (LInt _) -> return (TCon "Int")
-    VLit (LChar _) -> return (TCon "Char")
-    VRecEmpty -> return TRecEmpty
-  VAbs n e ->
+    E.VLit (E.LInt _) -> return (E.TCon "Int")
+    E.VLit (E.LChar _) -> return (E.TCon "Char")
+    E.VRecEmpty -> return E.TRecEmpty
+  E.VAbs n e ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         let scope' = Scope.insertTypeOf n (Scheme.specific tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
-        return $ mkResult (VAbs n e') $ TFun (FreeTypeVars.applySubst s1 tv) t1
-  VApp e1 e2 ->
+        return $ mkResult (E.VAbs n e') $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
+  E.VApp e1 e2 ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         ((t2, e2'), s2) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
-        ((), s3) <- Writer.listen $ mgu (FreeTypeVars.applySubst s2 t1) (TFun t2 tv)
-        return $ mkResult (VApp e1' e2') $ FreeTypeVars.applySubst s3 tv
+        ((), s3) <- Writer.listen $ mgu (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
+        return $ mkResult (E.VApp e1' e2') $ FreeTypeVars.applySubst s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
-  VLet x e1 e2 ->
+  E.VLet x e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 scope)) makes no sense performance-wise
         -- improve it
         let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 scope)) t1
             scope' = Scope.insertTypeOf x t' scope
         (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope') e2
-        return $ mkResult (VLet x e1' e2') $ t2
-  VGetField e name ->
+        return $ mkResult (E.VLet x e1' e2') $ t2
+  E.VGetField e name ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         tvRec <- lift $ InferMonad.newTyVar "r"
         ((t, e'), s) <- Writer.listen $ infer f scope e
-        ((), su) <- Writer.listen $ mgu (FreeTypeVars.applySubst s t) (TRecExtend name tv tvRec)
-        return $ mkResult (VGetField e' name) $ FreeTypeVars.applySubst su tv
-  VRecExtend name e1 e2 ->
+        ((), su) <- Writer.listen $ mgu (FreeTypeVars.applySubst s t) (E.TRecExtend name tv tvRec)
+        return $ mkResult (E.VGetField e' name) $ FreeTypeVars.applySubst su tv
+  E.VRecExtend name e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope) e2
-        return $ mkResult (VRecExtend name e1' e2') $ TRecExtend name t1 t2
+        return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecExtend name t1 t2
   where
-    mkResult body' typ = (typ, Expr (f typ pl) body')
+    mkResult body' typ = (typ, E.Val (f typ pl) body')
 

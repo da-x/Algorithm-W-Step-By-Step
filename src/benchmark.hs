@@ -8,6 +8,7 @@ import Control.Monad ((<=<))
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Lamdu.Infer (typeInference)
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Lamdu.Infer.Scheme (Scheme(..))
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -32,7 +33,7 @@ whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(E.Field, E.Type)] -> E.Type
-record = foldr (uncurry E.TRecExtend) E.TRecEmpty
+record = E.TRecord . foldr (uncurry E.TRecExtend) E.TRecEmpty
 
 eRecord :: [(E.Field, E.Val ())] -> E.Val ()
 eRecord = foldr (uncurry E.eRecExtend) E.eRecEmpty
@@ -62,7 +63,7 @@ boolType :: E.Type
 boolType = E.TCon "Bool"
 
 forAll :: [E.TypeVar] -> ([E.Type] -> E.Type) -> Scheme
-forAll tvs mkType = Scheme (Set.fromList tvs) $ mkType $ map E.TVar tvs
+forAll tvs mkType = Scheme (TypeVars (Set.fromList tvs) Set.empty) $ mkType $ map E.TVar tvs
 
 listOf :: E.Type -> E.Type
 listOf = E.TApp (E.TCon "List")

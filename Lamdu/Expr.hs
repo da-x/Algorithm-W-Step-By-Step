@@ -3,11 +3,10 @@ module Lamdu.Expr
   ( Lit(..)
   , ValLeaf(..)
   , ValBody(..)
-  , Val(..)
+  , Val(..), expPayload
   , ValVar(..)
-  , expPayload
-  , Type(..)
-  , TypeVar(..)
+  , RecordType(..), RecordTypeVar(..)
+  , Type(..), TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
   , Field(..)
   ) where
@@ -30,6 +29,10 @@ newtype TypeVar = TypeVar { tvName :: String }
   deriving (Eq, Ord, Generic, Show)
 instance NFData TypeVar where rnf = genericRnf
 instance IsString TypeVar where fromString = TypeVar
+
+newtype RecordTypeVar = RecordTypeVar { rtvName :: String }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData RecordTypeVar where rnf = genericRnf
 
 newtype Field = Field { fieldName :: String }
   deriving (Eq, Ord, Generic, Show)
@@ -67,12 +70,17 @@ instance NFData a => NFData (Val a) where rnf = genericRnf
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
+data RecordType = TRecExtend Field Type RecordType
+                | TRecEmpty
+                | TRecVar RecordTypeVar
+  deriving (Generic, Show)
+instance NFData RecordType where rnf = genericRnf
+
 data Type    =  TVar TypeVar
              |  TFun Type Type
              |  TCon String
              |  TApp Type Type
-             |  TRecExtend Field Type Type
-             |  TRecEmpty
+             |  TRecord RecordType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 

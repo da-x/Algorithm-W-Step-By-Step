@@ -8,6 +8,7 @@ import Data.List (intersperse)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Lamdu.Infer.Scheme
 import Text.PrettyPrint ((<+>), (<>), ($$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
@@ -21,11 +22,14 @@ instance Pretty E.ValVar  where pPrint = PP.text . E.vvName
 instance Pretty E.TypeVar where pPrint = PP.text . E.tvName
 instance Pretty E.Field   where pPrint = PP.text . E.fieldName
 
+instance Pretty E.RecordTypeVar where
+  pPrint = PP.text . E.rtvName
+
 instance Pretty Scheme where
-  pPrintPrec lvl prec (Scheme vars t)  =
+  pPrintPrec lvl prec (Scheme (TypeVars tv rv) t)  =
     prettyParen (0 < prec) $
     PP.text "All" <+>
-    PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList vars))) <>
+    PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList tv) ++ map pPrint (Set.toList rv))) <>
     PP.text "." <+> pPrintPrec lvl 0 t
 
 instance Pretty E.Lit where
@@ -83,15 +87,10 @@ instance Pretty E.Type where
     E.TApp t s ->
       prettyParen (10 < prec) $
       pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
-    E.TRecEmpty -> PP.text "T{}"
-    E.TRecExtend field t rest ->
-      case FlatRecordType.from typ of
-      Left _ -> -- Fall back to nested record presentation:
-        PP.text "T{" <+>
-          pPrint field <+> PP.text ":" <+> pPrint t <+>
-          PP.text "**" <+> pPrint rest <+>
-        PP.text "}"
-      Right flatRecord -> pPrint flatRecord
+    E.TRecord r -> pPrint r
+
+instance Pretty E.RecordType where
+  pPrint = pPrint . FlatRecordType.from
 
 instance Pretty FlatRecordType where
   pPrint (FlatRecordType fields mTv) =

@@ -1,7 +1,7 @@
 module Lamdu.Infer.Internal.FlatRecordType
   ( FlatRecordType(..)
   , from
-  , toType
+  , toRecordType
   ) where
 
 import Control.Applicative ((<$>))
@@ -13,20 +13,18 @@ import qualified Lamdu.Expr as E
 
 data FlatRecordType = FlatRecordType
   { _fields :: Map E.Field E.Type
-  , _extension :: Maybe E.TypeVar -- TyVar of more possible fields
+  , _extension :: Maybe E.RecordTypeVar -- TyVar of more possible fields
   } deriving (Show)
 
 fields :: Lens' FlatRecordType (Map E.Field E.Type)
 fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
-from :: E.Type -> Either String FlatRecordType
-from (E.TRecExtend field typ rest) =
-  from rest <&> fields %~ Map.insert field typ
-from E.TRecEmpty = return $ FlatRecordType Map.empty Nothing
-from (E.TVar tv) = return $ FlatRecordType Map.empty (Just tv)
-from t = Left $ "TRecExtend on non-record: " ++ show t
+from :: E.RecordType -> FlatRecordType
+from (E.TRecExtend name typ rest) = from rest & fields %~ Map.insert name typ
+from E.TRecEmpty                  = FlatRecordType Map.empty Nothing
+from (E.TRecVar name)             = FlatRecordType Map.empty (Just name)
 
-toType :: FlatRecordType -> E.Type
-toType (FlatRecordType fs ext) =
-  Map.foldWithKey E.TRecExtend (maybe E.TRecEmpty E.TVar ext) fs
+toRecordType :: FlatRecordType -> E.RecordType
+toRecordType (FlatRecordType fs ext) =
+  Map.foldWithKey E.TRecExtend (maybe E.TRecEmpty E.TRecVar ext) fs

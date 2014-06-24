@@ -19,6 +19,7 @@ library
   other-modules:       Lamdu.Infer.Internal.FlatRecordType
                ,       Lamdu.Infer.Internal.FreeTypeVars
                ,       Lamdu.Infer.Internal.Monad
+               ,       Lamdu.Infer.Internal.TypeVars
   default-language:    Haskell2010
   build-depends:       base >=4.7 && <4.8 
                ,       pretty >=1.1 && <1.2 

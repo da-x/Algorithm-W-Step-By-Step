@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+
 module Lamdu.Infer.Scheme
   ( Scheme(..)
   , generalize
@@ -5,38 +7,54 @@ module Lamdu.Infer.Scheme
   , specific
   ) where
 
-import Control.Monad (forM)
+import Control.Applicative ((<$>), (<*>))
+import Data.Map (Map)
+import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as InferMonad
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
-data Scheme = Scheme (Set E.TypeVar) E.Type
+data Scheme = Scheme TypeVars E.Type
 
 instance FreeTypeVars Scheme where
-    freeTypeVars (Scheme vars t) = freeTypeVars t `Set.difference` vars
+    freeTypeVars (Scheme vars t) = freeTypeVars t `TypeVars.difference` vars
     applySubst s (Scheme vars t) =
-      Scheme vars $ applySubst (Set.foldr FreeTypeVars.substDelete s vars) t
+      Scheme vars $ applySubst (FreeTypeVars.substDelete vars s) t
 
 specific :: E.Type -> Scheme
-specific = Scheme Set.empty
+specific = Scheme mempty
 
-generalize :: Set E.TypeVar -> E.Type -> Scheme
+generalize :: TypeVars -> E.Type -> Scheme
 generalize outsideTVs t  =   Scheme vars t
-  where vars = freeTypeVars t `Set.difference` outsideTVs
+  where vars = freeTypeVars t `TypeVars.difference` outsideTVs
+
+type family VarOf a
+type instance VarOf E.Type = E.TypeVar
+type instance VarOf E.RecordType = E.RecordTypeVar
+
+mkInstantiateSubstPart ::
+  (InferMonad.InfersVars t, Ord (VarOf t)) =>
+  String -> Set (VarOf t) -> Infer (Map (VarOf t) t)
+mkInstantiateSubstPart prefix =
+  fmap Map.fromList . mapM f . Set.toList
+  where
+    f oldVar =
+      do
+        newVarExpr <- InferMonad.newInferredVar prefix
+        return (oldVar, newVarExpr)
 
 instantiate :: Scheme -> Infer E.Type
-instantiate (Scheme vars t) =
+instantiate (Scheme (TypeVars tv rv) t) =
   do
-    -- Create subst from old Scheme-bound TVs to new free TVs
     subst <-
-      fmap FreeTypeVars.substFromList $
-      forM (Set.toList vars) $ \ oldTv ->
-        do
-          newTv <- InferMonad.newTyVar "a"
-          return (oldTv, newTv)
+      FreeTypeVars.Subst
+      <$> mkInstantiateSubstPart "i" tv
+      <*> mkInstantiateSubstPart "k" rv
     return $ applySubst subst t
-

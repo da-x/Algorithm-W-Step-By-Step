@@ -2,11 +2,9 @@ module Lamdu.Infer.Internal.Monad
   ( InferState(..)
   , Infer, run
   , InferW, runW
-  , newTyVarName
-  , newTyVar
+  , InfersVars, newInferredVar
   ) where
 
-import Control.Applicative ((<$>))
 import Control.Monad.State (evalState, State)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
 import Control.Monad.Writer (WriterT, runWriterT)
@@ -27,12 +25,18 @@ run t = evalState (runEitherT t) initInferState
 runW :: InferW a -> Infer (a, FreeTypeVars.Subst)
 runW = runWriterT
 
-newTyVarName :: String -> Infer E.TypeVar
-newTyVarName prefix =
-    do  s <- State.get
-        State.put s{inferSupply = inferSupply s + 1}
-        return $ E.TypeVar $ prefix ++ show (inferSupply s)
+class InfersVars t where
+  liftName :: String -> t
 
-newTyVar :: String -> Infer E.Type
-newTyVar prefix = E.TVar <$> newTyVarName prefix
+instance InfersVars E.Type where
+  liftName = E.TVar . E.TypeVar
 
+instance InfersVars E.RecordType where
+  liftName = E.TRecVar . E.RecordTypeVar
+
+newInferredVar :: InfersVars t => String -> Infer t
+newInferredVar prefix =
+  do
+    s <- State.get
+    State.put s{inferSupply = inferSupply s + 1}
+    return $ liftName $ prefix ++ show (inferSupply s)

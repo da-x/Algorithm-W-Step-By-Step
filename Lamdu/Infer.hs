@@ -60,7 +60,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
       ((), s1) <-
         Writer.listen $ varBind tname $
         Map.foldWithKey TRecExtend restTv uniqueUFields
-      varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
+      varBind uname $ applySubst s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -81,7 +81,7 @@ unifyRecs (FlatRecordType tfields tvar)
           (FlatRecordType ufields uvar) =
   do  let unifyField t u =
               do  old <- State.get
-                  ((), s) <- lift $ Writer.listen $ mgu (apply old t) (apply old u)
+                  ((), s) <- lift $ Writer.listen $ mgu (applySubst old t) (applySubst old u)
                   State.put (old `mappend` s)
       (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
       case (tvar, uvar) of
@@ -92,9 +92,9 @@ unifyRecs (FlatRecordType tfields tvar)
 
 mgu :: Type -> Type -> InferW ()
 mgu (TFun l r) (TFun l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
-                                    mgu (apply s1 r) (apply s1 r')
+                                    mgu (applySubst s1 r) (applySubst s1 r')
 mgu (TApp l r) (TApp l' r')  =  do  ((), s1) <- Writer.listen $ mgu l l'
-                                    mgu (apply s1 r) (apply s1 r')
+                                    mgu (applySubst s1 r) (applySubst s1 r')
 mgu (TVar u) t               =  varBind u t
 mgu t (TVar u)               =  varBind u t
 mgu (TCon t) (TCon u)
@@ -112,7 +112,7 @@ typeInference :: Scope -> Expr a -> Either String (Expr (Type, a))
 typeInference rootScope rootExpr =
     runInfer $
     do  ((_, t), s) <- runWriterT $ infer (,) rootScope rootExpr
-        return (t & mapped . _1 %~ apply s)
+        return (t & mapped . _1 %~ applySubst s)
 
 infer :: (Type -> a -> b) -> Scope -> Expr a -> InferW (Type, Expr b)
 infer f scope expr@(Expr pl body) = case body of
@@ -130,32 +130,32 @@ infer f scope expr@(Expr pl body) = case body of
     do  tv <- lift $ newTyVar "a"
         let scope' = Scope.insertTypeOf n (Scheme Set.empty tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
-        return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
+        return $ mkResult (EAbs n e') $ TFun (applySubst s1 tv) t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
         ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        ((t2, e2'), s2) <- Writer.listen $ infer f (apply s1 scope) e2
-        ((), s3) <- Writer.listen $ mgu (apply s2 t1) (TFun t2 tv)
-        return $ mkResult (EApp e1' e2') $ apply s3 tv
+        ((t2, e2'), s2) <- Writer.listen $ infer f (applySubst s1 scope) e2
+        ((), s3) <- Writer.listen $ mgu (applySubst s2 t1) (TFun t2 tv)
+        return $ mkResult (EApp e1' e2') $ applySubst s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        -- TODO: (freeTypeVars (apply s1 scope)) makes no sense performance-wise
+        -- TODO: (freeTypeVars (applySubst s1 scope)) makes no sense performance-wise
         -- improve it
-        let t' = generalize (freeTypeVars (apply s1 scope)) t1
+        let t' = generalize (freeTypeVars (applySubst s1 scope)) t1
             scope' = Scope.insertTypeOf x t' scope
-        (t2, e2') <- infer f (apply s1 scope') e2
+        (t2, e2') <- infer f (applySubst s1 scope') e2
         return $ mkResult (ELet x e1' e2') $ t2
   EGetField e name ->
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
         ((t, e'), s) <- Writer.listen $ infer f scope e
-        ((), su) <- Writer.listen $ mgu (apply s t) (TRecExtend name tv tvRec)
-        return $ mkResult (EGetField e' name) $ apply su tv
+        ((), su) <- Writer.listen $ mgu (applySubst s t) (TRecExtend name tv tvRec)
+        return $ mkResult (EGetField e' name) $ applySubst su tv
   ERecExtend name e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        (t2, e2') <- infer f (apply s1 scope) e2
+        (t2, e2') <- infer f (applySubst s1 scope) e2
         return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
   where
     mkResult body' typ = (typ, Expr (f typ pl) body')

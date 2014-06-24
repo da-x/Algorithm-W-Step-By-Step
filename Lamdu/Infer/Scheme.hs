@@ -15,7 +15,7 @@ data Scheme = Scheme (Set TypeVar) Type
 
 instance FreeTypeVars Scheme where
     freeTypeVars (Scheme vars t)      =  (freeTypeVars t) `Set.difference` vars
-    apply s (Scheme vars t)  =  Scheme vars (apply (Set.foldr substDelete s vars) t)
+    applySubst s (Scheme vars t)  =  Scheme vars (applySubst (Set.foldr substDelete s vars) t)
 
 generalize :: Set TypeVar -> Type -> Scheme
 generalize outsideTVs t  =   Scheme vars t
@@ -31,5 +31,5 @@ instantiate (Scheme vars t) =
         do
           newTv <- newTyVar "a"
           return (oldTv, newTv)
-    return $ apply subst t
+    return $ applySubst subst t
 

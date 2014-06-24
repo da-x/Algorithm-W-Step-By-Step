@@ -140,10 +140,6 @@ envLookup key (TypeEnv env) = Map.lookup key env
 envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
 envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
 
-inferLit :: Lit -> InferW Type
-inferLit (LInt _)   =  return (TCon "Int")
-inferLit (LChar _)  =  return (TCon "Char")
-
 infer :: (Type -> a -> b) -> TypeEnv -> Expr a -> InferW (Type, Expr b)
 infer f env expr@(Expr pl body) = case body of
   ELeaf leaf ->
@@ -153,7 +149,8 @@ infer f env expr@(Expr pl body) = case body of
         case envLookup n env of
            Nothing     -> throwError $ "unbound variable: " ++ n
            Just sigma  -> lift (instantiate sigma)
-    ELit l -> inferLit l
+    ELit (LInt _) -> return (TCon "Int")
+    ELit (LChar _) -> return (TCon "Char")
     ERecEmpty -> return TRecEmpty
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"

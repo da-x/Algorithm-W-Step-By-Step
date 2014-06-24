@@ -3,7 +3,9 @@ module Lamdu.Expr
   ( Lit(..)
   , ValLeaf(..)
   , ValBody(..)
-  , Val(..), expPayload
+  , Val(..)
+  , ValVar(..)
+  , expPayload
   , Type(..)
   , TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
@@ -14,12 +16,19 @@ import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.Foldable (Foldable)
+import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
+
+newtype ValVar = ValVar { vvName :: String }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData ValVar where rnf = genericRnf
+instance IsString ValVar where fromString = ValVar
 
 newtype TypeVar = TypeVar { tvName :: String }
   deriving (Eq, Ord, Generic, Show)
 instance NFData TypeVar where rnf = genericRnf
+instance IsString TypeVar where fromString = TypeVar
 
 data Lit     =  LInt Integer
              |  LChar Char
@@ -27,7 +36,7 @@ data Lit     =  LInt Integer
 instance NFData Lit where rnf = genericRnf
 
 data ValLeaf
-  =  VVar String
+  =  VVar ValVar
   |  VLit Lit
   |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)
@@ -35,8 +44,8 @@ instance NFData ValLeaf where rnf = genericRnf
 
 data ValBody exp
   =  VApp exp exp
-  |  VAbs String exp
-  |  VLet String exp exp
+  |  VAbs ValVar exp
+  |  VLet ValVar exp exp
   |  VGetField exp String
   |  VRecExtend String exp exp
   |  VLeaf ValLeaf
@@ -61,13 +70,13 @@ data Type    =  TVar TypeVar
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
-eLet :: String -> Val () -> Val () -> Val ()
+eLet :: ValVar -> Val () -> Val () -> Val ()
 eLet name e1 e2 = Val () $ VLet name e1 e2
 
-eAbs :: String -> Val () -> Val ()
+eAbs :: ValVar -> Val () -> Val ()
 eAbs name body = Val () $ VAbs name body
 
-eVar :: String -> Val ()
+eVar :: ValVar -> Val ()
 eVar = Val () . VLeaf . VVar
 
 eLit :: Lit -> Val ()

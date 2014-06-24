@@ -1,7 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 import Lamdu.Infer
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
-import qualified Lamdu.Infer.Scope as Scope
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer.Scope as Scope
 
 exp0 :: E.Val ()
 exp0  =  E.eLet "id" (E.eAbs "x" (E.eVar "x"))

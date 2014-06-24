@@ -132,7 +132,8 @@ infer f scope expr@(E.Val pl body) = case body of
     case leaf of
     E.VVar n ->
         case Scope.lookupTypeOf n scope of
-           Nothing     -> throwError $ "unbound variable: " ++ n
+           Nothing     -> throwError $ show $
+                          PP.text "unbound variable:" <+> pPrint n
            Just sigma  -> lift (Scheme.instantiate sigma)
     E.VLit (E.LInt _) -> return (E.TCon "Int")
     E.VLit (E.LChar _) -> return (E.TCon "Char")

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
@@ -14,11 +15,12 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Scope as Scope
+import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: String -> (E.Val () -> E.Val ()) -> E.Val ()
+lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
 lambda varName mkBody = E.eAbs varName (mkBody (E.eVar varName))
 
 lambdaRecord :: [String] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
@@ -26,7 +28,7 @@ lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (E.eGetField paramsRec) names
 
-whereItem :: String -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
+whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(String, E.Type)] -> E.Type
@@ -47,7 +49,7 @@ infixr 4 ~>
 (~>) :: E.Type -> E.Type -> E.Type
 (~>) = E.TFun
 
-getDef :: String -> E.Val ()
+getDef :: E.ValVar -> E.Val ()
 getDef = E.eVar
 
 literalInteger :: Integer -> E.Val ()
@@ -59,10 +61,8 @@ integerType = E.TCon "Int"
 boolType :: E.Type
 boolType = E.TCon "Bool"
 
-forAll :: [String] -> ([E.Type] -> E.Type) -> Scheme
-forAll names mkType = Scheme (Set.fromList tvs) $ mkType $ map E.TVar tvs
-  where
-    tvs = map E.TypeVar names
+forAll :: [E.TypeVar] -> ([E.Type] -> E.Type) -> Scheme
+forAll tvs mkType = Scheme (Set.fromList tvs) $ mkType $ map E.TVar tvs
 
 listOf :: E.Type -> E.Type
 listOf = E.TApp (E.TCon "List")
@@ -73,7 +73,7 @@ infixType a b c = record [("l", a), ("r", b)] ~> c
 infixArgs :: E.Val () -> E.Val () -> E.Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
-env :: Map String Scheme
+env :: Map E.ValVar Scheme
 env = Map.fromList
   [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
   , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
@@ -194,7 +194,7 @@ infer e =
     Left err ->  fail $ "error: " ++ err
     Right eTyped ->
       do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
-          return $ show $ pPrint e <+> pPrint "::" <+> pPrint (eTyped ^. E.expPayload . _1)
+          return $ show $ pPrint e <+> PP.text "::" <+> pPrint (eTyped ^. E.expPayload . _1)
 
 benches :: [(String, IO String)]
 benches =

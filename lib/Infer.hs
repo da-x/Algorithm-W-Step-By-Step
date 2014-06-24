@@ -16,18 +16,15 @@ import Data.Monoid (Monoid(..))
 import Expr
 import Pretty
 import Record
+import Scope (Scope)
 import TVs
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Scope as Scope
 import qualified Text.PrettyPrint as PP
-
-newtype TypeEnv = TypeEnv (Map.Map String Scheme)
-instance TVs TypeEnv where
-    ftv (TypeEnv env)      =  ftv (Map.elems env)
-    apply s (TypeEnv env)  =  TypeEnv (Map.map (apply s) env)
 
 data InferState = InferState { inferSupply :: Int }
 
@@ -47,9 +44,9 @@ newTyVarName prefix =
 newTyVar :: String -> Infer Type
 newTyVar prefix = TVar <$> newTyVarName prefix
 
-generalize        ::  TypeEnv -> Type -> Scheme
-generalize env t  =   Scheme vars t
-  where vars = Set.toList $ ftv t `Set.difference` ftv env
+generalize        ::  Scope -> Type -> Scheme
+generalize scope t  =   Scheme vars t
+  where vars = Set.toList $ ftv t `Set.difference` ftv scope
 
 instantiate :: Scheme -> Infer Type
 instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
@@ -128,25 +125,19 @@ mgu t@TRecExtend {}
 mgu t1 t2                    =  throwError $ show $
                                 PP.text "types do not unify: " <+> prType t1 <+>
                                 PP.text "vs." <+> prType t2
-typeInference :: Map.Map String Scheme -> Expr a -> Either String (Expr (Type, a))
-typeInference rootEnv rootExpr =
+typeInference :: Scope -> Expr a -> Either String (Expr (Type, a))
+typeInference rootScope rootExpr =
     runInfer $
-    do  ((_, t), s) <- runWriterT $ infer (,) (TypeEnv rootEnv) rootExpr
+    do  ((_, t), s) <- runWriterT $ infer (,) rootScope rootExpr
         return (t & mapped . _1 %~ apply s)
 
-envLookup :: String -> TypeEnv -> Maybe Scheme
-envLookup key (TypeEnv env) = Map.lookup key env
-
-envInsert :: String -> Scheme -> TypeEnv -> TypeEnv
-envInsert key scheme (TypeEnv env) = TypeEnv (Map.insert key scheme env)
-
-infer :: (Type -> a -> b) -> TypeEnv -> Expr a -> InferW (Type, Expr b)
-infer f env expr@(Expr pl body) = case body of
+infer :: (Type -> a -> b) -> Scope -> Expr a -> InferW (Type, Expr b)
+infer f scope expr@(Expr pl body) = case body of
   ELeaf leaf ->
     mkResult (ELeaf leaf) <$>
     case leaf of
     EVar n ->
-        case envLookup n env of
+        case Scope.lookupTypeOf n scope of
            Nothing     -> throwError $ "unbound variable: " ++ n
            Just sigma  -> lift (instantiate sigma)
     ELit (LInt _) -> return (TCon "Int")
@@ -154,32 +145,32 @@ infer f env expr@(Expr pl body) = case body of
     ERecEmpty -> return TRecEmpty
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
-        let env' = envInsert n (Scheme [] tv) env
-        ((t1, e'), s1) <- Writer.listen $ infer f env' e
+        let scope' = Scope.insertTypeOf n (Scheme [] tv) scope
+        ((t1, e'), s1) <- Writer.listen $ infer f scope' e
         return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
   EApp e1 e2 ->
     do  tv <- lift $ newTyVar "a"
-        ((t1, e1'), s1) <- Writer.listen $ infer f env e1
-        ((t2, e2'), s2) <- Writer.listen $ infer f (apply s1 env) e2
+        ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
+        ((t2, e2'), s2) <- Writer.listen $ infer f (apply s1 scope) e2
         ((), s3) <- Writer.listen $ mgu (apply s2 t1) (TFun t2 tv)
         return $ mkResult (EApp e1' e2') $ apply s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
-    do  ((t1, e1'), s1) <- Writer.listen $ infer f env e1
-        let t' = generalize (apply s1 env) t1
-            env' = envInsert x t' env
-        (t2, e2') <- infer f (apply s1 env') e2
+    do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
+        let t' = generalize (apply s1 scope) t1
+            scope' = Scope.insertTypeOf x t' scope
+        (t2, e2') <- infer f (apply s1 scope') e2
         return $ mkResult (ELet x e1' e2') $ t2
   EGetField e name ->
     do  tv <- lift $ newTyVar "a"
         tvRec <- lift $ newTyVar "r"
-        ((t, e'), s) <- Writer.listen $ infer f env e
+        ((t, e'), s) <- Writer.listen $ infer f scope e
         ((), su) <- Writer.listen $ mgu (apply s t) (TRecExtend name tv tvRec)
         return $ mkResult (EGetField e' name) $ apply su tv
   ERecExtend name e1 e2 ->
-    do  ((t1, e1'), s1) <- Writer.listen $ infer f env e1
-        (t2, e2') <- infer f (apply s1 env) e2
+    do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
+        (t2, e2') <- infer f (apply s1 scope) e2
         return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
   where
     mkResult body' typ = (typ, Expr (f typ pl) body')

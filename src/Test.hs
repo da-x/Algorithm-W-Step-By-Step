@@ -1,7 +1,7 @@
-import Infer
 import Expr
+import Infer
 import Pretty
-import qualified Data.Map as Map
+import qualified Scope as Scope
 
 exp0 :: Expr ()
 exp0  =  eLet "id" (eAbs "x" (eVar "x"))
@@ -53,7 +53,7 @@ exp9  =  eLet
 
 test :: Expr () -> IO ()
 test e =
-    case typeInference Map.empty e of
+    case typeInference Scope.empty e of
         Left err               ->  putStrLn $ show (prExp e) ++ "\n " ++ err ++ "\n"
         Right (Expr (t, _) _)   ->  putStrLn $ show (prExp e) ++ " :: " ++ show (prType t) ++ "\n"
 

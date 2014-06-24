@@ -8,6 +8,7 @@ import Expr
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+-- TODO: Where should this be defined?
 newtype Subst = Subst (Map.Map String Type)
 instance Monoid Subst where
   mempty = Subst Map.empty

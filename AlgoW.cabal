@@ -17,6 +17,7 @@ library
                  ,     Scope
   other-modules:       Record
                ,       FreeTypeVars
+               ,       Monad
   default-language:    Haskell2010
   build-depends:       base >=4.7 && <4.8 
                ,       pretty >=1.1 && <1.2 

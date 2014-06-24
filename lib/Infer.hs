@@ -8,16 +8,16 @@ import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad (forM, join)
 import Control.Monad.Error (throwError, catchError)
-import Control.Monad.State (evalState, evalStateT, State)
+import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
-import Control.Monad.Trans.Either (EitherT, runEitherT)
-import Control.Monad.Writer (WriterT, runWriterT)
+import Control.Monad.Writer (runWriterT)
 import Data.Monoid (Monoid(..))
 import Expr
+import FreeTypeVars
+import Monad
 import Pretty
 import Record
 import Scope (Scope)
-import FreeTypeVars
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
@@ -25,24 +25,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Scope as Scope
 import qualified Text.PrettyPrint as PP
-
-data InferState = InferState { inferSupply :: Int }
-
-type Infer = EitherT String (State InferState)
-type InferW = WriterT Subst Infer
-
-runInfer :: Infer a -> Either String a
-runInfer t = evalState (runEitherT t) initInferState
-  where initInferState = InferState{inferSupply = 0}
-
-newTyVarName :: String -> Infer TypeVar
-newTyVarName prefix =
-    do  s <- State.get
-        State.put s{inferSupply = inferSupply s + 1}
-        return $ TypeVar $ prefix ++ show (inferSupply s)
-
-newTyVar :: String -> Infer Type
-newTyVar prefix = TVar <$> newTyVarName prefix
 
 generalize        ::  Scope -> Type -> Scheme
 generalize scope t  =   Scheme vars t

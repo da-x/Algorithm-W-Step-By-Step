@@ -44,10 +44,9 @@ instance FreeTypeVars Type where
     apply _s TRecEmpty = TRecEmpty
     apply s (TRecExtend name typ rest) =
       TRecExtend name (apply s typ) $ apply s rest
+
 instance FreeTypeVars Scheme where
     freeTypeVars (Scheme vars t)      =  (freeTypeVars t) `Set.difference` vars
 
     apply s (Scheme vars t)  =  Scheme vars (apply (Set.foldr substDelete s vars) t)
-instance FreeTypeVars a => FreeTypeVars [a] where
-    apply s  =  map (apply s)
-    freeTypeVars l    =  foldr Set.union Set.empty (map freeTypeVars l)
+

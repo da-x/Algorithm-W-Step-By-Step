@@ -8,11 +8,12 @@ module Scope
 import Expr (Scheme)
 import TypeVars
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 newtype Scope = Scope { typeOfVar :: Map.Map String Scheme }
 instance FreeTypeVars Scope where
-    freeTypeVars (Scope env) =  freeTypeVars (Map.elems env)
-    apply s (Scope env)      =  Scope (Map.map (apply s) env)
+    freeTypeVars (Scope env) =  Set.unions $ map freeTypeVars $ Map.elems env
+    apply s (Scope env)      =  Scope $ Map.map (apply s) env
 
 empty :: Scope
 empty = Scope Map.empty

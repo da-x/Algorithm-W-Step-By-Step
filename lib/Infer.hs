@@ -35,11 +35,11 @@ runInfer :: Infer a -> Either String a
 runInfer t = evalState (runEitherT t) initInferState
   where initInferState = InferState{inferSupply = 0}
 
-newTyVarName :: String -> Infer String
+newTyVarName :: String -> Infer TypeVar
 newTyVarName prefix =
     do  s <- State.get
         State.put s{inferSupply = inferSupply s + 1}
-        return (prefix ++ show (inferSupply s))
+        return $ TypeVar $ prefix ++ show (inferSupply s)
 
 newTyVar :: String -> Infer Type
 newTyVar prefix = TVar <$> newTyVarName prefix
@@ -60,17 +60,17 @@ instantiate (Scheme vars t) =
           return (oldTv, newTv)
     return $ apply subst t
 
-varBind :: String -> Type -> InferW ()
+varBind :: TypeVar -> Type -> InferW ()
 varBind u (TVar t) | t == u          =  return ()
 varBind u t
   | u `Set.member` freeTypeVars t  =
     throwError $ show $
     PP.text "occurs check fails:" <+>
-    PP.text u <+> PP.text "vs." <+> prType t
+    prTypeVar u <+> PP.text "vs." <+> prType t
   | otherwise                        =  Writer.tell $ substFromList [(u, t)]
 
 unifyRecToPartial ::
-  (Map.Map String Type, String) -> Map.Map String Type ->
+  (Map.Map String Type, TypeVar) -> Map.Map String Type ->
   InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -85,11 +85,13 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  (Map.Map String Type, String) -> (Map.Map String Type, String) ->
+  (Map.Map String Type, TypeVar) -> (Map.Map String Type, TypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ newTyVar "r"
-      ((), s1) <- Writer.listen $ varBind tname $ Map.foldWithKey TRecExtend restTv uniqueUFields
+      ((), s1) <-
+        Writer.listen $ varBind tname $
+        Map.foldWithKey TRecExtend restTv uniqueUFields
       varBind uname $ apply s1 (Map.foldWithKey TRecExtend restTv uniqueTFields)
   where
     uniqueTFields = tfields `Map.difference` ufields

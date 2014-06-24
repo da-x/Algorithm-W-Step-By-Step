@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 
 data FlatRecord = FlatRecord
   { _frFields :: Map.Map String Type
-  , _frExtension :: Maybe String -- TyVar of more possible fields
+  , _frExtension :: Maybe TypeVar -- TyVar of more possible fields
   } deriving (Show)
 
 frFields :: Lens' FlatRecord (Map.Map String Type)

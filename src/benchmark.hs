@@ -57,7 +57,9 @@ boolType :: Type
 boolType = TCon "Bool"
 
 forAll :: [String] -> ([Type] -> Type) -> Scheme
-forAll names mkType = Scheme (Set.fromList names) $ mkType $ map TVar names
+forAll names mkType = Scheme (Set.fromList tvs) $ mkType $ map TVar tvs
+  where
+    tvs = map TypeVar names
 
 listOf :: Type -> Type
 listOf = TApp (TCon "List")

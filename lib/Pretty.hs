@@ -1,5 +1,6 @@
 module Pretty
-  ( prScheme
+  ( prTypeVar
+  , prScheme
   , prExp
   , prType
   , prFlatRecord
@@ -14,10 +15,13 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
 
+prTypeVar :: TypeVar -> PP.Doc
+prTypeVar (TypeVar n) = PP.text n
+
 prScheme                  ::  Scheme -> PP.Doc
 prScheme (Scheme vars t)  =
   PP.text "All" <+>
-  PP.hcat (PP.punctuate PP.comma (map PP.text (Set.toList vars))) <>
+  PP.hcat (PP.punctuate PP.comma (map prTypeVar (Set.toList vars))) <>
   PP.text "." <+> prType t
 
 prParenExp    ::  Expr a -> PP.Doc
@@ -60,7 +64,7 @@ prExp expr =
         (fields, mRest) = flattenERec expr
 
 prType             ::  Type -> PP.Doc
-prType (TVar n)    =   PP.text n
+prType (TVar n)    =   prTypeVar n
 prType (TCon s)    =   PP.text s
 prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
 prType (TApp t s)  =   prParenType t <+> prType s
@@ -89,4 +93,4 @@ prFlatRecord (FlatRecord fields varName) =
       moreFields =
         case varName of
         Nothing -> PP.empty
-        Just name -> PP.comma <+> PP.text name <> PP.text "..."
+        Just name -> PP.comma <+> prTypeVar name <> PP.text "..."

@@ -6,6 +6,7 @@ module Expr
   , Expr(..), expPayload
   , Scheme(..)
   , Type(..)
+  , TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
   ) where
 
@@ -17,6 +18,10 @@ import Data.Foldable (Foldable)
 import Data.Set (Set)
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
+
+newtype TypeVar = TypeVar { tvName :: String }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData TypeVar where rnf = genericRnf
 
 data Lit     =  LInt Integer
              |  LChar Char
@@ -47,7 +52,7 @@ instance NFData a => NFData (Expr a) where rnf = genericRnf
 expPayload :: Lens' (Expr a) a
 expPayload f (Expr pl body) = (`Expr` body) <$> f pl
 
-data Type    =  TVar String
+data Type    =  TVar TypeVar
              |  TFun Type Type
              |  TCon String
              |  TApp Type Type
@@ -56,7 +61,7 @@ data Type    =  TVar String
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
-data Scheme  =  Scheme (Set String) Type
+data Scheme  =  Scheme (Set TypeVar) Type
 
 eLet :: String -> Expr () -> Expr () -> Expr ()
 eLet name e1 e2 = Expr () $ ELet name e1 e2

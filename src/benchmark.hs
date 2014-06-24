@@ -1,4 +1,5 @@
-import Infer hiding (main)
+import Infer
+import Expr
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
@@ -8,43 +9,44 @@ import Control.Monad
 import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Scope as Scope
 
 -- TODO: $$ to be type-classed for TApp vs EApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: String -> (Exp () -> Exp ()) -> Exp ()
+lambda :: String -> (Expr () -> Expr ()) -> Expr ()
 lambda varName mkBody = eAbs varName (mkBody (eVar varName))
 
-lambdaRecord :: [String] -> ([Exp ()] -> Exp ()) -> Exp ()
+lambdaRecord :: [String] -> ([Expr ()] -> Expr ()) -> Expr ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (eGetField paramsRec) names
 
-whereItem :: String -> Exp () -> (Exp () -> Exp ()) -> Exp ()
+whereItem :: String -> Expr () -> (Expr () -> Expr ()) -> Expr ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(String, Type)] -> Type
 record = foldr (uncurry TRecExtend) TRecEmpty
 
-eRecord :: [(String, Exp ())] -> Exp ()
+eRecord :: [(String, Expr ())] -> Expr ()
 eRecord = foldr (uncurry eRecExtend) eRecEmpty
 
 infixl 4 $$
-($$) :: Exp () -> Exp () -> Exp ()
+($$) :: Expr () -> Expr () -> Expr ()
 ($$) = eApp
 
 infixl 4 $$:
-($$:) :: Exp () -> [(String, Exp ())] -> Exp ()
+($$:) :: Expr () -> [(String, Expr ())] -> Expr ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>
 (~>) :: Type -> Type -> Type
 (~>) = TFun
 
-getDef :: String -> Exp ()
+getDef :: String -> Expr ()
 getDef = eVar
 
-literalInteger :: Integer -> Exp ()
+literalInteger :: Integer -> Expr ()
 literalInteger = eLit . LInt
 
 integerType :: Type
@@ -62,7 +64,7 @@ listOf = TApp (TCon "List")
 infixType :: Type -> Type -> Type -> Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
-infixArgs :: Exp () -> Exp () -> Exp ()
+infixArgs :: Expr () -> Expr () -> Expr ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
 env :: Map String Scheme
@@ -89,7 +91,7 @@ env = Map.fromList
   , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
   ]
 
-list :: [Exp ()] -> Exp ()
+list :: [Expr ()] -> Expr ()
 list [] = getDef "[]"
 list items@(_x:_) =
   foldr cons nil items
@@ -97,7 +99,7 @@ list items@(_x:_) =
     cons h t = getDef ":" $$: [("head", h), ("tail", t)]
     nil = getDef "[]"
 
-factorialExpr :: Exp ()
+factorialExpr :: Expr ()
 factorialExpr =
   getDef "fix" $$
   lambda "loop"
@@ -113,7 +115,7 @@ factorialExpr =
     ]
   )
 
-euler1Expr :: Exp ()
+euler1Expr :: Expr ()
 euler1Expr =
   getDef "sum" $$
   ( getDef "filter" $$:
@@ -129,7 +131,7 @@ euler1Expr =
     ]
   )
 
-solveDepressedQuarticExpr :: Exp ()
+solveDepressedQuarticExpr :: Expr ()
 solveDepressedQuarticExpr =
   lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
   whereItem "solvePoly" (getDef "id")
@@ -180,14 +182,13 @@ solveDepressedQuarticExpr =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-infer :: Exp () -> IO String
+infer :: Expr () -> IO String
 infer e =
-    do  res <- runTI (typeInference env e)
-        case res of
-          Left err ->  fail $ "error: " ++ err
-          Right eTyped ->
-            do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
-                return $ show e ++ " :: " ++ show (eTyped ^. expPayload . _1)
+    case typeInference (Scope.fromTypeMap env) e of
+    Left err ->  fail $ "error: " ++ err
+    Right eTyped ->
+      do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
+          return $ show e ++ " :: " ++ show (eTyped ^. expPayload . _1)
 
 benches :: [(String, IO String)]
 benches =

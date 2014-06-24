@@ -1,5 +1,3 @@
-import Infer
-import Expr
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
@@ -8,7 +6,10 @@ import Control.Lens.Tuple
 import Control.Monad
 import Criterion.Main
 import Data.Map (Map)
+import Expr
+import Infer
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Scope as Scope
 
 -- TODO: $$ to be type-classed for TApp vs EApp
@@ -56,7 +57,7 @@ boolType :: Type
 boolType = TCon "Bool"
 
 forAll :: [String] -> ([Type] -> Type) -> Scheme
-forAll names mkType = Scheme names $ mkType $ map TVar names
+forAll names mkType = Scheme (Set.fromList names) $ mkType $ map TVar names
 
 listOf :: Type -> Type
 listOf = TApp (TCon "List")

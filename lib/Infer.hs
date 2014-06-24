@@ -6,7 +6,7 @@ import Control.Applicative ((<$>), Applicative(..))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad (join)
+import Control.Monad (forM, join)
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State (evalState, evalStateT, State)
 import Control.Monad.Trans (lift)
@@ -46,12 +46,20 @@ newTyVar prefix = TVar <$> newTyVarName prefix
 
 generalize        ::  Scope -> Type -> Scheme
 generalize scope t  =   Scheme vars t
-  where vars = Set.toList $ ftv t `Set.difference` ftv scope
+  where vars = ftv t `Set.difference` ftv scope
 
 instantiate :: Scheme -> Infer Type
-instantiate (Scheme vars t) = do  nvars <- mapM (\ _ -> newTyVar "a") vars
-                                  let s = substFromList (zip vars nvars)
-                                  return $ apply s t
+instantiate (Scheme vars t) =
+  do
+    -- Create subst from old Scheme-bound TVs to new free TVs
+    subst <-
+      fmap substFromList $
+      forM (Set.toList vars) $ \ oldTv ->
+        do
+          newTv <- newTyVar "a"
+          return (oldTv, newTv)
+    return $ apply subst t
+
 varBind :: String -> Type -> InferW ()
 varBind u (TVar t) | t == u          =  return ()
 varBind u t  | u `Set.member` ftv t  =  throwError $ show $
@@ -145,7 +153,7 @@ infer f scope expr@(Expr pl body) = case body of
     ERecEmpty -> return TRecEmpty
   EAbs n e ->
     do  tv <- lift $ newTyVar "a"
-        let scope' = Scope.insertTypeOf n (Scheme [] tv) scope
+        let scope' = Scope.insertTypeOf n (Scheme Set.empty tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
         return $ mkResult (EAbs n e') $ TFun (apply s1 tv) t1
   EApp e1 e2 ->

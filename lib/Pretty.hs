@@ -11,13 +11,14 @@ import Expr
 import Record
 import Text.PrettyPrint ((<+>), (<>))
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Text.PrettyPrint as PP
 
 prScheme                  ::  Scheme -> PP.Doc
-prScheme (Scheme vars t)  =   PP.text "All" <+>
-                              PP.hcat
-                                (PP.punctuate PP.comma (map PP.text vars))
-                              <> PP.text "." <+> prType t
+prScheme (Scheme vars t)  =
+  PP.text "All" <+>
+  PP.hcat (PP.punctuate PP.comma (map PP.text (Set.toList vars))) <>
+  PP.text "." <+> prType t
 
 prParenExp    ::  Expr a -> PP.Doc
 prParenExp t  =   case expBody t of

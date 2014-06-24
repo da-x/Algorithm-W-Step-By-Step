@@ -45,9 +45,9 @@ instance TypeVars Type where
     apply s (TRecExtend name typ rest) =
       TRecExtend name (apply s typ) $ apply s rest
 instance TypeVars Scheme where
-    ftv (Scheme vars t)      =  (ftv t) `Set.difference` (Set.fromList vars)
+    ftv (Scheme vars t)      =  (ftv t) `Set.difference` vars
 
-    apply s (Scheme vars t)  =  Scheme vars (apply (foldr substDelete s vars) t)
+    apply s (Scheme vars t)  =  Scheme vars (apply (Set.foldr substDelete s vars) t)
 instance TypeVars a => TypeVars [a] where
     apply s  =  map (apply s)
     ftv l    =  foldr Set.union Set.empty (map ftv l)

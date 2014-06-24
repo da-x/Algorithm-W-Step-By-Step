@@ -9,6 +9,7 @@ import Data.Map (Map)
 import Expr
 import Infer
 import Pretty
+import Scheme
 import Text.PrettyPrint ((<+>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set

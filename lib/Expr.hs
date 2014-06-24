@@ -4,7 +4,6 @@ module Expr
   , Leaf(..)
   , Body(..)
   , Expr(..), expPayload
-  , Scheme(..)
   , Type(..)
   , TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
@@ -15,7 +14,6 @@ import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.Foldable (Foldable)
-import Data.Set (Set)
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 
@@ -60,8 +58,6 @@ data Type    =  TVar TypeVar
              |  TRecEmpty
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
-
-data Scheme  =  Scheme (Set TypeVar) Type
 
 eLet :: String -> Expr () -> Expr () -> Expr ()
 eLet name e1 e2 = Expr () $ ELet name e1 e2

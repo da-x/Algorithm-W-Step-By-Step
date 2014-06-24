@@ -10,6 +10,7 @@ import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
 import Expr
 import Record
+import Scheme
 import Text.PrettyPrint ((<+>), (<>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -18,7 +19,7 @@ import qualified Text.PrettyPrint as PP
 prTypeVar :: TypeVar -> PP.Doc
 prTypeVar (TypeVar n) = PP.text n
 
-prScheme                  ::  Scheme -> PP.Doc
+prScheme :: Scheme -> PP.Doc
 prScheme (Scheme vars t)  =
   PP.text "All" <+>
   PP.hcat (PP.punctuate PP.comma (map prTypeVar (Set.toList vars))) <>

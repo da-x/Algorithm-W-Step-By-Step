@@ -6,7 +6,7 @@ import Control.Applicative ((<$>), Applicative(..))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad (forM, join)
+import Control.Monad (join)
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
@@ -17,6 +17,7 @@ import FreeTypeVars
 import Monad
 import Pretty
 import Record
+import Scheme
 import Scope (Scope)
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
@@ -25,22 +26,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Scope as Scope
 import qualified Text.PrettyPrint as PP
-
-generalize        ::  Scope -> Type -> Scheme
-generalize scope t  =   Scheme vars t
-  where vars = freeTypeVars t `Set.difference` freeTypeVars scope
-
-instantiate :: Scheme -> Infer Type
-instantiate (Scheme vars t) =
-  do
-    -- Create subst from old Scheme-bound TVs to new free TVs
-    subst <-
-      fmap substFromList $
-      forM (Set.toList vars) $ \ oldTv ->
-        do
-          newTv <- newTyVar "a"
-          return (oldTv, newTv)
-    return $ apply subst t
 
 varBind :: TypeVar -> Type -> InferW ()
 varBind u (TVar t) | t == u          =  return ()
@@ -152,7 +137,9 @@ infer f scope expr@(Expr pl body) = case body of
     \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
   ELet x e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        let t' = generalize (apply s1 scope) t1
+        -- TODO: (freeTypeVars (apply s1 scope)) makes no sense performance-wise
+        -- improve it
+        let t' = generalize (freeTypeVars (apply s1 scope)) t1
             scope' = Scope.insertTypeOf x t' scope
         (t2, e2') <- infer f (apply s1 scope') e2
         return $ mkResult (ELet x e1' e2') $ t2

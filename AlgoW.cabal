@@ -15,6 +15,7 @@ library
                  ,     Expr
                  ,     Pretty
                  ,     Scope
+                 ,     Scheme
   other-modules:       Record
                ,       FreeTypeVars
                ,       Monad

@@ -5,7 +5,7 @@ module Scope
   , lookupTypeOf
   ) where
 
-import Expr (Scheme)
+import Scheme (Scheme)
 import FreeTypeVars
 import qualified Data.Map as Map
 import qualified Data.Set as Set

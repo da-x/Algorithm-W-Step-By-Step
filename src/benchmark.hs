@@ -3,13 +3,13 @@ import Control.Exception (evaluate)
 import Control.Lens (folded)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad
-import Criterion.Main
+import Control.Monad ((<=<))
+import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Lamdu.Expr
-import Lamdu.Infer
-import Lamdu.Infer.Scheme
-import Lamdu.Pretty
+import Lamdu.Infer (typeInference)
+import Lamdu.Infer.Scheme (Scheme(..))
+import Lamdu.Pretty (prExp, prType)
 import Text.PrettyPrint ((<+>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set

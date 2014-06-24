@@ -1,7 +1,7 @@
 module Lamdu.Infer.Internal.Monad
   ( InferState(..)
-  , Infer, runInfer
-  , InferW
+  , Infer, run
+  , InferW, runW
   , newTyVarName
   , newTyVar
   ) where
@@ -9,7 +9,7 @@ module Lamdu.Infer.Internal.Monad
 import Control.Applicative ((<$>))
 import Control.Monad.State (evalState, State)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
-import Control.Monad.Writer (WriterT)
+import Control.Monad.Writer (WriterT, runWriterT)
 import Lamdu.Expr
 import Lamdu.Infer.Internal.FreeTypeVars
 import qualified Control.Monad.State as State
@@ -20,9 +20,12 @@ data InferState = InferState { inferSupply :: Int }
 type Infer = EitherT String (State InferState)
 type InferW = WriterT Subst Infer
 
-runInfer :: Infer a -> Either String a
-runInfer t = evalState (runEitherT t) initInferState
+run :: Infer a -> Either String a
+run t = evalState (runEitherT t) initInferState
   where initInferState = InferState{inferSupply = 0}
+
+runW :: InferW a -> Infer (a, Subst)
+runW = runWriterT
 
 newTyVarName :: String -> Infer TypeVar
 newTyVarName prefix =

@@ -2,6 +2,7 @@ module Lamdu.Infer.Scheme
   ( Scheme(..)
   , generalize
   , instantiate
+  , specific
   ) where
 
 import Control.Monad (forM)
@@ -16,6 +17,9 @@ data Scheme = Scheme (Set TypeVar) Type
 instance FreeTypeVars Scheme where
     freeTypeVars (Scheme vars t)      =  (freeTypeVars t) `Set.difference` vars
     applySubst s (Scheme vars t)  =  Scheme vars (applySubst (Set.foldr substDelete s vars) t)
+
+specific :: Type -> Scheme
+specific = Scheme Set.empty
 
 generalize :: Set TypeVar -> Type -> Scheme
 generalize outsideTVs t  =   Scheme vars t

@@ -1,10 +1,6 @@
-module Lamdu.Pretty
-  ( prTypeVar
-  , prScheme
-  , prExp
-  , prType
-  , prFlatRecordType
-  ) where
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS -fno-warn-orphans #-}
+module Lamdu.Pretty () where
 
 import Control.Lens.Operators
 import Control.Lens.Tuple
@@ -15,44 +11,45 @@ import Lamdu.Expr
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Scheme
 import Text.PrettyPrint ((<+>), (<>))
+import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Text.PrettyPrint as PP
 
-prTypeVar :: TypeVar -> PP.Doc
-prTypeVar (TypeVar n) = PP.text n
+instance Pretty TypeVar where
+  pPrint = PP.text . tvName
 
-prScheme :: Scheme -> PP.Doc
-prScheme (Scheme vars t)  =
-  PP.text "All" <+>
-  PP.hcat (PP.punctuate PP.comma (map prTypeVar (Set.toList vars))) <>
-  PP.text "." <+> prType t
+instance Pretty Scheme where
+  pPrint (Scheme vars t)  =
+    PP.text "All" <+>
+    PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList vars))) <>
+    PP.text "." <+> pPrint t
 
-prParenExp    ::  Expr a -> PP.Doc
+prParenExp    ::  Expr () -> PP.Doc
 prParenExp t  =   case expBody t of
-                    ELet _ _ _  -> PP.parens (prExp t)
-                    EApp _ _    -> PP.parens (prExp t)
-                    EAbs _ _    -> PP.parens (prExp t)
-                    _           -> prExp t
+                    ELet _ _ _  -> PP.parens (pPrint t)
+                    EApp _ _    -> PP.parens (pPrint t)
+                    EAbs _ _    -> PP.parens (pPrint t)
+                    _           -> pPrint t
 
-prLit            ::  Lit -> PP.Doc
-prLit (LInt i)   =   PP.integer i
-prLit (LChar c)  =   PP.text (show c)
+instance Pretty Lit where
+  pPrint (LInt i)   =   pPrint i
+  pPrint (LChar c)  =   pPrint c
 
-prExp                  ::  Expr a -> PP.Doc
-prExp expr =
+instance Pretty (Expr ()) where
+  pPrint expr =
     case expBody expr of
     ELeaf (EVar name) ->   PP.text name
-    ELeaf (ELit lit)  ->   prLit lit
+    ELeaf (ELit lit)  ->   pPrint lit
     ELet x b body     ->   PP.text "let" <+>
                            PP.text x <+> PP.text "=" <+>
-                           prExp b <+> PP.text "in" PP.$$
-                           PP.nest 2 (prExp body)
-    EApp e1 e2        ->   prExp e1 <+> prParenExp e2
+                           pPrint b <+> PP.text "in" PP.$$
+                           PP.nest 2 (pPrint body)
+    EApp e1 e2        ->   pPrint e1 <+> prParenExp e2
     EAbs n e          ->   PP.char '\\' <> PP.text n <+>
                            PP.text "->" <+>
-                           prExp e
+                           pPrint e
     EGetField e n     ->   prParenExp e <> PP.char '.' <> PP.text n
     ELeaf ERecEmpty   ->   PP.text "{}"
     ERecExtend {}     ->
@@ -62,11 +59,11 @@ prExp expr =
             moreFields <+>
         PP.text "}"
       where
-        prField (name, val) = PP.text name <+> PP.text "=" <+> prExp val
+        prField (name, val) = PP.text name <+> PP.text "=" <+> pPrint val
         moreFields =
           case mRest of
           Nothing -> PP.empty
-          Just rest -> PP.comma <+> PP.text "{" <+> prExp rest <+> PP.text "}"
+          Just rest -> PP.comma <+> PP.text "{" <+> pPrint rest <+> PP.text "}"
         (fields, mRest) = flatRecordValue expr
 
 flatRecordValue :: Expr a -> (Map String (Expr a), Maybe (Expr a))
@@ -76,34 +73,34 @@ flatRecordValue (Expr _ (ERecExtend name val body)) =
 flatRecordValue (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flatRecordValue other = (Map.empty, Just other)
 
-prType             ::  Type -> PP.Doc
-prType (TVar n)    =   prTypeVar n
-prType (TCon s)    =   PP.text s
-prType (TFun t s)  =   prParenType t <+> PP.text "->" <+> prType s
-prType (TApp t s)  =   prParenType t <+> prType s
-prType r@(TRecExtend name typ rest) = case FlatRecordType.from r of
-  Left _ -> -- Fall back to nested record presentation:
-    PP.text "T{" <+>
-      PP.text name <+> PP.text ":" <+> prType typ <+>
-      PP.text "**" <+> prType rest <+>
-    PP.text "}"
-  Right flatRecord -> prFlatRecordType flatRecord
-prType TRecEmpty   =   PP.text "T{}"
+instance Pretty Type where
+  pPrint (TVar n)    =   pPrint n
+  pPrint (TCon s)    =   PP.text s
+  pPrint (TFun t s)  =   prParenType t <+> PP.text "->" <+> pPrint s
+  pPrint (TApp t s)  =   prParenType t <+> pPrint s
+  pPrint r@(TRecExtend name typ rest) = case FlatRecordType.from r of
+    Left _ -> -- Fall back to nested record presentation:
+      PP.text "T{" <+>
+        PP.text name <+> PP.text ":" <+> pPrint typ <+>
+        PP.text "**" <+> pPrint rest <+>
+      PP.text "}"
+    Right flatRecord -> pPrint flatRecord
+  pPrint TRecEmpty   =   PP.text "T{}"
 
 prParenType     ::  Type -> PP.Doc
 prParenType  t  =   case t of
-                      TFun _ _  -> PP.parens (prType t)
-                      _         -> prType t
+                      TFun _ _  -> PP.parens (pPrint t)
+                      _         -> pPrint t
 
-prFlatRecordType :: FlatRecordType -> PP.Doc
-prFlatRecordType (FlatRecordType fields varName) =
-    PP.text "T{" <+>
-      mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
-      moreFields <+>
-    PP.text "}"
-    where
-      prField (name, typ) = PP.text name <+> PP.text ":" <+> prType typ
-      moreFields =
-        case varName of
-        Nothing -> PP.empty
-        Just name -> PP.comma <+> prTypeVar name <> PP.text "..."
+instance Pretty FlatRecordType where
+  pPrint (FlatRecordType fields varName) =
+      PP.text "T{" <+>
+        mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
+        moreFields <+>
+      PP.text "}"
+      where
+        prField (name, typ) = PP.text name <+> PP.text ":" <+> pPrint typ
+        moreFields =
+          case varName of
+          Nothing -> PP.empty
+          Just name -> PP.comma <+> pPrint name <> PP.text "..."

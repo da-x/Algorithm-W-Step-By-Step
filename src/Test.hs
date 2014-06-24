@@ -1,6 +1,6 @@
 import Lamdu.Expr
 import Lamdu.Infer
-import Lamdu.Pretty
+import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Lamdu.Infer.Scope as Scope
 
 exp0 :: Expr ()
@@ -54,8 +54,10 @@ exp9  =  eLet
 test :: Expr () -> IO ()
 test e =
     case typeInference Scope.empty e of
-        Left err               ->  putStrLn $ show (prExp e) ++ "\n " ++ err ++ "\n"
-        Right (Expr (t, _) _)   ->  putStrLn $ show (prExp e) ++ " :: " ++ show (prType t) ++ "\n"
+        Left err ->
+          putStrLn $ show (pPrint e) ++ "\n " ++ err ++ "\n"
+        Right (Expr (t, _) _) ->
+          putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint t) ++ "\n"
 
 main :: IO ()
 main = mapM_ test [exp0, exp1, exp2, exp3, exp4, exp5, exp6, exp7, exp8, exp9]

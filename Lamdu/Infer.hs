@@ -6,7 +6,7 @@ import Control.Applicative ((<$>), Applicative(..))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad (join)
+import Control.Monad (void, join)
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
@@ -17,8 +17,9 @@ import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Internal.FreeTypeVars (freeTypeVars)
 import Lamdu.Infer.Internal.Monad (InferW)
 import Lamdu.Infer.Scope (Scope)
-import Lamdu.Pretty (prTypeVar, prType, prFlatRecordType, prExp)
+import Lamdu.Pretty ()
 import Text.PrettyPrint ((<+>))
+import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as Map
@@ -36,7 +37,7 @@ varBind u t
   | u `Set.member` freeTypeVars t  =
     throwError $ show $
     PP.text "occurs check fails:" <+>
-    prTypeVar u <+> PP.text "vs." <+> prType t
+    pPrint u <+> PP.text "vs." <+> pPrint t
   | otherwise = Writer.tell $ FreeTypeVars.substFromList [(u, t)]
 
 unifyRecToPartial ::
@@ -46,9 +47,9 @@ unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    prFlatRecordType (FlatRecordType tfields (Just tname)) <+>
+    pPrint (FlatRecordType tfields (Just tname)) <+>
     PP.text " vs. " <+>
-    prFlatRecordType (FlatRecordType ufields Nothing)
+    pPrint (FlatRecordType ufields Nothing)
   | otherwise = varBind tname $ FlatRecordType.toType $ FlatRecordType uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -73,9 +74,9 @@ unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    prFlatRecordType (FlatRecordType tfields Nothing) <+>
+    pPrint (FlatRecordType tfields Nothing) <+>
     PP.text "vs." <+>
-    prFlatRecordType (FlatRecordType ufields Nothing)
+    pPrint (FlatRecordType ufields Nothing)
   | otherwise = return mempty
 
 unifyRecs :: FlatRecordType -> FlatRecordType -> InferW ()
@@ -108,8 +109,8 @@ mgu t@TRecExtend {}
                                 FlatRecordType.from t <*>
                                 FlatRecordType.from u
 mgu t1 t2                    =  throwError $ show $
-                                PP.text "types do not unify: " <+> prType t1 <+>
-                                PP.text "vs." <+> prType t2
+                                PP.text "types do not unify: " <+> pPrint t1 <+>
+                                PP.text "vs." <+> pPrint t2
 typeInference :: Scope -> Expr a -> Either String (Expr (Type, a))
 typeInference rootScope rootExpr =
     InferMonad.run $
@@ -140,7 +141,7 @@ infer f scope expr@(Expr pl body) = case body of
         ((), s3) <- Writer.listen $ mgu (FreeTypeVars.applySubst s2 t1) (TFun t2 tv)
         return $ mkResult (EApp e1' e2') $ FreeTypeVars.applySubst s3 tv
     `catchError`
-    \e -> throwError $ e ++ "\n in " ++ show (prExp expr)
+    \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
   ELet x e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 scope)) makes no sense performance-wise

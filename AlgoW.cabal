@@ -28,6 +28,7 @@ library
                ,       either >=4.1 && <4.2 
                ,       deepseq >=1.3 && <1.4 
                ,       deepseq-generics >=0.1 && <0.2
+               ,       prettyclass >=1.0 && <1.1
 
 benchmark bench-builder-all
   type:             exitcode-stdio-1.0
@@ -40,6 +41,7 @@ benchmark bench-builder-all
                ,    lens
                ,    containers
                ,    pretty
+               ,    prettyclass
   ghc-options:      -O2 -Wall
   default-language:    Haskell2010
 
@@ -51,4 +53,5 @@ executable AlgoW
   build-depends:       AlgoW
                ,       base
                ,       containers
+               ,       prettyclass
   default-language:    Haskell2010

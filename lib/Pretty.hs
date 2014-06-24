@@ -3,13 +3,13 @@ module Pretty
   , prScheme
   , prExp
   , prType
-  , prFlatRecord
+  , prFlatRecordType
   ) where
 
 import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
 import Expr
-import Record
+import FlatRecordType
 import Scheme
 import Text.PrettyPrint ((<+>), (<>))
 import qualified Data.Map as Map
@@ -75,7 +75,7 @@ prType r@(TRecExtend name typ rest) = case flattenRec r of
       PP.text name <+> PP.text ":" <+> prType typ <+>
       PP.text "**" <+> prType rest <+>
     PP.text "}"
-  Right flatRecord -> prFlatRecord flatRecord
+  Right flatRecord -> prFlatRecordType flatRecord
 prType TRecEmpty   =   PP.text "T{}"
 
 prParenType     ::  Type -> PP.Doc
@@ -83,8 +83,8 @@ prParenType  t  =   case t of
                       TFun _ _  -> PP.parens (prType t)
                       _         -> prType t
 
-prFlatRecord :: FlatRecord -> PP.Doc
-prFlatRecord (FlatRecord fields varName) =
+prFlatRecordType :: FlatRecordType -> PP.Doc
+prFlatRecordType (FlatRecordType fields varName) =
     PP.text "T{" <+>
       mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
       moreFields <+>

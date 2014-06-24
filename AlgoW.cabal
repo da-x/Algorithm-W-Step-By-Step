@@ -16,7 +16,7 @@ library
                  ,     Pretty
                  ,     Scope
                  ,     Scheme
-  other-modules:       Record
+  other-modules:       FlatRecordType
                ,       FreeTypeVars
                ,       Monad
   default-language:    Haskell2010

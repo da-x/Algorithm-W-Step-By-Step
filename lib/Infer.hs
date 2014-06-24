@@ -13,10 +13,10 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Writer (runWriterT)
 import Data.Monoid (Monoid(..))
 import Expr
+import FlatRecordType
 import FreeTypeVars
 import Monad
 import Pretty
-import Record
 import Scheme
 import Scope (Scope)
 import Text.PrettyPrint ((<+>))
@@ -43,10 +43,10 @@ unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    prFlatRecord (FlatRecord tfields (Just tname)) <+>
+    prFlatRecordType (FlatRecordType tfields (Just tname)) <+>
     PP.text " vs. " <+>
-    prFlatRecord (FlatRecord ufields Nothing)
-  | otherwise = varBind tname $ recToType $ FlatRecord uniqueUFields Nothing
+    prFlatRecordType (FlatRecordType ufields Nothing)
+  | otherwise = varBind tname $ recToType $ FlatRecordType uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -70,14 +70,14 @@ unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    prFlatRecord (FlatRecord tfields Nothing) <+>
+    prFlatRecordType (FlatRecordType tfields Nothing) <+>
     PP.text "vs." <+>
-    prFlatRecord (FlatRecord ufields Nothing)
+    prFlatRecordType (FlatRecordType ufields Nothing)
   | otherwise = return mempty
 
-unifyRecs :: FlatRecord -> FlatRecord -> InferW ()
-unifyRecs (FlatRecord tfields tvar)
-          (FlatRecord ufields uvar) =
+unifyRecs :: FlatRecordType -> FlatRecordType -> InferW ()
+unifyRecs (FlatRecordType tfields tvar)
+          (FlatRecordType ufields uvar) =
   do  let unifyField t u =
               do  old <- State.get
                   ((), s) <- lift $ Writer.listen $ mgu (apply old t) (apply old u)

@@ -1,5 +1,5 @@
-module Record
-  ( FlatRecord(..)
+module FlatRecordType
+  ( FlatRecordType(..)
   , flattenRec
   , flattenERec
   , recToType
@@ -12,21 +12,21 @@ import Control.Lens.Tuple
 import Expr
 import qualified Data.Map as Map
 
-data FlatRecord = FlatRecord
+data FlatRecordType = FlatRecordType
   { _frFields :: Map.Map String Type
   , _frExtension :: Maybe TypeVar -- TyVar of more possible fields
   } deriving (Show)
 
-frFields :: Lens' FlatRecord (Map.Map String Type)
-frFields f (FlatRecord fields ext) = (`FlatRecord` ext) <$> f fields
+frFields :: Lens' FlatRecordType (Map.Map String Type)
+frFields f (FlatRecordType fields ext) = (`FlatRecordType` ext) <$> f fields
 
 -- From a record type to a sorted list of fields
-flattenRec :: Type -> Either String FlatRecord
+flattenRec :: Type -> Either String FlatRecordType
 flattenRec (TRecExtend name typ rest) =
   flattenRec rest
   <&> frFields %~ Map.insert name typ
-flattenRec TRecEmpty = return $ FlatRecord Map.empty Nothing
-flattenRec (TVar name) = return $ FlatRecord Map.empty (Just name)
+flattenRec TRecEmpty = return $ FlatRecordType Map.empty Nothing
+flattenRec (TVar name) = return $ FlatRecordType Map.empty (Just name)
 flattenRec t = Left $ "TRecExtend on non-record: " ++ show t
 
 flattenERec :: Expr a -> (Map.Map String (Expr a), Maybe (Expr a))
@@ -37,6 +37,6 @@ flattenERec (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
 flattenERec other = (Map.empty, Just other)
 
 -- opposite of flatten
-recToType :: FlatRecord -> Type
-recToType (FlatRecord fields extension) =
+recToType :: FlatRecordType -> Type
+recToType (FlatRecordType fields extension) =
   Map.foldWithKey TRecExtend (maybe TRecEmpty TVar extension) fields

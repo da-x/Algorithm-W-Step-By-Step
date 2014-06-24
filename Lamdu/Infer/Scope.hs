@@ -5,7 +5,7 @@ module Lamdu.Infer.Scope
   , lookupTypeOf
   ) where
 
-import Lamdu.Infer.Internal.FreeTypeVars
+import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Scheme (Scheme)
 import qualified Data.Map as Map
 import qualified Data.Set as Set

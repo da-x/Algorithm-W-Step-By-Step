@@ -9,6 +9,7 @@ module Lamdu.Expr
   , Type(..)
   , TypeVar(..)
   , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
+  , Field(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -30,6 +31,11 @@ newtype TypeVar = TypeVar { tvName :: String }
 instance NFData TypeVar where rnf = genericRnf
 instance IsString TypeVar where fromString = TypeVar
 
+newtype Field = Field { fieldName :: String }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData Field where rnf = genericRnf
+instance IsString Field where fromString = Field
+
 data Lit     =  LInt Integer
              |  LChar Char
   deriving (Eq, Ord, Generic, Show)
@@ -46,8 +52,8 @@ data ValBody exp
   =  VApp exp exp
   |  VAbs ValVar exp
   |  VLet ValVar exp exp
-  |  VGetField exp String
-  |  VRecExtend String exp exp
+  |  VGetField exp Field
+  |  VRecExtend Field exp exp
   |  VLeaf ValLeaf
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
@@ -65,7 +71,7 @@ data Type    =  TVar TypeVar
              |  TFun Type Type
              |  TCon String
              |  TApp Type Type
-             |  TRecExtend String Type Type
+             |  TRecExtend Field Type Type
              |  TRecEmpty
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
@@ -88,8 +94,8 @@ eRecEmpty = Val () $ VLeaf VRecEmpty
 eApp :: Val () -> Val () -> Val ()
 eApp f x = Val () $ VApp f x
 
-eRecExtend :: String -> Val () -> Val () -> Val ()
+eRecExtend :: Field -> Val () -> Val () -> Val ()
 eRecExtend name typ rest = Val () $ VRecExtend name typ rest
 
-eGetField :: Val () -> String -> Val ()
+eGetField :: Val () -> Field -> Val ()
 eGetField r n = Val () $ VGetField r n

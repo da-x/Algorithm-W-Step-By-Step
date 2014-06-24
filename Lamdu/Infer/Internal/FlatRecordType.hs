@@ -12,19 +12,19 @@ import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 
 data FlatRecordType = FlatRecordType
-  { _fields :: Map String E.Type
+  { _fields :: Map E.Field E.Type
   , _extension :: Maybe E.TypeVar -- TyVar of more possible fields
   } deriving (Show)
 
-fields :: Lens' FlatRecordType (Map String E.Type)
+fields :: Lens' FlatRecordType (Map E.Field E.Type)
 fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
 from :: E.Type -> Either String FlatRecordType
-from (E.TRecExtend name typ rest) =
-  from rest <&> fields %~ Map.insert name typ
+from (E.TRecExtend field typ rest) =
+  from rest <&> fields %~ Map.insert field typ
 from E.TRecEmpty = return $ FlatRecordType Map.empty Nothing
-from (E.TVar name) = return $ FlatRecordType Map.empty (Just name)
+from (E.TVar tv) = return $ FlatRecordType Map.empty (Just tv)
 from t = Left $ "TRecExtend on non-record: " ++ show t
 
 toType :: FlatRecordType -> E.Type

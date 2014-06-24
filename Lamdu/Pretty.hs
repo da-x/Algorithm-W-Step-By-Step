@@ -17,11 +17,9 @@ import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Text.PrettyPrint as PP
 
-instance Pretty E.ValVar where
-  pPrint = PP.text . E.vvName
-
-instance Pretty E.TypeVar where
-  pPrint = PP.text . E.tvName
+instance Pretty E.ValVar  where pPrint = PP.text . E.vvName
+instance Pretty E.TypeVar where pPrint = PP.text . E.tvName
+instance Pretty E.Field   where pPrint = PP.text . E.fieldName
 
 instance Pretty Scheme where
   pPrintPrec lvl prec (Scheme vars t)  =
@@ -51,7 +49,7 @@ instance Pretty (E.Val ()) where
                             PP.text "->" <+>
                             pPrint e
     E.VGetField e n      -> prettyParen (12 < prec) $
-                            pPrintPrec lvl 12 e <> PP.char '.' <> PP.text n
+                            pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
     E.VLeaf E.VRecEmpty  -> PP.text "{}"
     E.VRecExtend {}      ->
         PP.text "V{" <+>
@@ -60,17 +58,17 @@ instance Pretty (E.Val ()) where
             moreFields <+>
         PP.text "}"
       where
-        prField (name, val) = PP.text name <+> PP.text "=" <+> pPrint val
+        prField (field, val) = pPrint field <+> PP.text "=" <+> pPrint val
         moreFields =
           case mRest of
           Nothing -> PP.empty
           Just rest -> PP.comma <+> PP.text "{" <+> pPrint rest <+> PP.text "}"
         (fields, mRest) = flatRecordValue expr
 
-flatRecordValue :: E.Val a -> (Map String (E.Val a), Maybe (E.Val a))
-flatRecordValue (E.Val _ (E.VRecExtend name val body)) =
+flatRecordValue :: E.Val a -> (Map E.Field (E.Val a), Maybe (E.Val a))
+flatRecordValue (E.Val _ (E.VRecExtend field val body)) =
   flatRecordValue body
-  & _1 %~ Map.insert name val
+  & _1 %~ Map.insert field val
 flatRecordValue (E.Val _ (E.VLeaf E.VRecEmpty)) = (Map.empty, Nothing)
 flatRecordValue other = (Map.empty, Just other)
 
@@ -86,24 +84,24 @@ instance Pretty E.Type where
       prettyParen (10 < prec) $
       pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
     E.TRecEmpty -> PP.text "T{}"
-    E.TRecExtend name t rest ->
+    E.TRecExtend field t rest ->
       case FlatRecordType.from typ of
       Left _ -> -- Fall back to nested record presentation:
         PP.text "T{" <+>
-          PP.text name <+> PP.text ":" <+> pPrint t <+>
+          pPrint field <+> PP.text ":" <+> pPrint t <+>
           PP.text "**" <+> pPrint rest <+>
         PP.text "}"
       Right flatRecord -> pPrint flatRecord
 
 instance Pretty FlatRecordType where
-  pPrint (FlatRecordType fields varName) =
+  pPrint (FlatRecordType fields mTv) =
       PP.text "T{" <+>
         mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
         moreFields <+>
       PP.text "}"
       where
-        prField (name, typ) = PP.text name <+> PP.text ":" <+> pPrint typ
+        prField (field, typ) = pPrint field <+> PP.text ":" <+> pPrint typ
         moreFields =
-          case varName of
+          case mTv of
           Nothing -> PP.empty
           Just tv -> PP.comma <+> pPrint tv <> PP.text "..."

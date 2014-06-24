@@ -23,7 +23,7 @@ import qualified Text.PrettyPrint as PP
 lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
 lambda varName mkBody = E.eAbs varName (mkBody (E.eVar varName))
 
-lambdaRecord :: [String] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
+lambdaRecord :: [E.Field] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (E.eGetField paramsRec) names
@@ -31,10 +31,10 @@ lambdaRecord names mkBody =
 whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
-record :: [(String, E.Type)] -> E.Type
+record :: [(E.Field, E.Type)] -> E.Type
 record = foldr (uncurry E.TRecExtend) E.TRecEmpty
 
-eRecord :: [(String, E.Val ())] -> E.Val ()
+eRecord :: [(E.Field, E.Val ())] -> E.Val ()
 eRecord = foldr (uncurry E.eRecExtend) E.eRecEmpty
 
 infixl 4 $$
@@ -42,7 +42,7 @@ infixl 4 $$
 ($$) = E.eApp
 
 infixl 4 $$:
-($$:) :: E.Val () -> [(String, E.Val ())] -> E.Val ()
+($$:) :: E.Val () -> [(E.Field, E.Val ())] -> E.Val ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>

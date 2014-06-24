@@ -41,7 +41,7 @@ varBind u t
   | otherwise = Writer.tell $ FreeTypeVars.substFromList [(u, t)]
 
 unifyRecToPartial ::
-  (Map String E.Type, E.TypeVar) -> Map String E.Type ->
+  (Map E.Field E.Type, E.TypeVar) -> Map E.Field E.Type ->
   InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -56,7 +56,7 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  (Map String E.Type, E.TypeVar) -> (Map String E.Type, E.TypeVar) ->
+  (Map E.Field E.Type, E.TypeVar) -> (Map E.Field E.Type, E.TypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- lift $ InferMonad.newTyVar "r"
@@ -69,7 +69,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map String E.Type -> Map String E.Type -> InferW ()
+  Map E.Field E.Type -> Map E.Field E.Type -> InferW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $

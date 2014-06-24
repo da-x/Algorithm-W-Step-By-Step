@@ -33,24 +33,24 @@ instance Pretty Lit where
 
 instance Pretty (Expr ()) where
   pPrintPrec lvl prec expr =
-    case expBody expr of
-    ELeaf (EVar name) ->   PP.text name
-    ELeaf (ELit lit)  ->   pPrint lit
-    ELet x b body     ->   prettyParen (1 < prec) $
+    case valBody expr of
+    VLeaf (VVar name) ->   PP.text name
+    VLeaf (VLit lit)  ->   pPrint lit
+    VLet x b body     ->   prettyParen (1 < prec) $
                            PP.text "let" <+>
                            PP.text x <+> PP.text "=" <+>
                            pPrint b <+> PP.text "in" $$
                            PP.nest 2 (pPrint body)
-    EApp e1 e2        ->   prettyParen (10 < prec) $
+    VApp e1 e2        ->   prettyParen (10 < prec) $
                            pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-    EAbs n e          ->   prettyParen (0 < prec) $
+    VAbs n e          ->   prettyParen (0 < prec) $
                            PP.char '\\' <> PP.text n <+>
                            PP.text "->" <+>
                            pPrint e
-    EGetField e n     ->   prettyParen (12 < prec) $
+    VGetField e n     ->   prettyParen (12 < prec) $
                            pPrintPrec lvl 12 e <> PP.char '.' <> PP.text n
-    ELeaf ERecEmpty   ->   PP.text "{}"
-    ERecExtend {}     ->
+    VLeaf VRecEmpty   ->   PP.text "{}"
+    VRecExtend {}     ->
         PP.text "V{" <+>
             mconcat (intersperse (PP.text ", ")
               (map prField (Map.toList fields))) <>
@@ -65,10 +65,10 @@ instance Pretty (Expr ()) where
         (fields, mRest) = flatRecordValue expr
 
 flatRecordValue :: Expr a -> (Map String (Expr a), Maybe (Expr a))
-flatRecordValue (Expr _ (ERecExtend name val body)) =
+flatRecordValue (Expr _ (VRecExtend name val body)) =
   flatRecordValue body
   & _1 %~ Map.insert name val
-flatRecordValue (Expr _ (ELeaf ERecEmpty)) = (Map.empty, Nothing)
+flatRecordValue (Expr _ (VLeaf VRecEmpty)) = (Map.empty, Nothing)
 flatRecordValue other = (Map.empty, Just other)
 
 instance Pretty Type where

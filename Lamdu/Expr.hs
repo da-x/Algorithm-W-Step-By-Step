@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Lamdu.Expr
   ( Lit(..)
-  , Leaf(..)
-  , Body(..)
+  , ValLeaf(..)
+  , ValBody(..)
   , Expr(..), expPayload
   , Type(..)
   , TypeVar(..)
@@ -26,24 +26,26 @@ data Lit     =  LInt Integer
   deriving (Eq, Ord, Generic, Show)
 instance NFData Lit where rnf = genericRnf
 
-data Leaf  =  EVar String
-           |  ELit Lit
-           |  ERecEmpty
+data ValLeaf
+  =  VVar String
+  |  VLit Lit
+  |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)
-instance NFData Leaf where rnf = genericRnf
+instance NFData ValLeaf where rnf = genericRnf
 
-data Body exp  =  EApp exp exp
-               |  EAbs String exp
-               |  ELet String exp exp
-               |  EGetField exp String
-               |  ERecExtend String exp exp
-               |  ELeaf Leaf
+data ValBody exp
+  =  VApp exp exp
+  |  VAbs String exp
+  |  VLet String exp exp
+  |  VGetField exp String
+  |  VRecExtend String exp exp
+  |  VLeaf ValLeaf
   deriving (Functor, Foldable, Traversable, Generic, Show)
-instance NFData exp => NFData (Body exp) where rnf = genericRnf
+instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
 
 data Expr a = Expr
   { _expPayload :: a
-  , expBody :: !(Body (Expr a))
+  , valBody :: !(ValBody (Expr a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Expr a) where rnf = genericRnf
 
@@ -60,25 +62,25 @@ data Type    =  TVar TypeVar
 instance NFData Type where rnf = genericRnf
 
 eLet :: String -> Expr () -> Expr () -> Expr ()
-eLet name e1 e2 = Expr () $ ELet name e1 e2
+eLet name e1 e2 = Expr () $ VLet name e1 e2
 
 eAbs :: String -> Expr () -> Expr ()
-eAbs name body = Expr () $ EAbs name body
+eAbs name body = Expr () $ VAbs name body
 
 eVar :: String -> Expr ()
-eVar = Expr () . ELeaf . EVar
+eVar = Expr () . VLeaf . VVar
 
 eLit :: Lit -> Expr ()
-eLit = Expr () . ELeaf . ELit
+eLit = Expr () . VLeaf . VLit
 
 eRecEmpty :: Expr ()
-eRecEmpty = Expr () $ ELeaf ERecEmpty
+eRecEmpty = Expr () $ VLeaf VRecEmpty
 
 eApp :: Expr () -> Expr () -> Expr ()
-eApp f x = Expr () $ EApp f x
+eApp f x = Expr () $ VApp f x
 
 eRecExtend :: String -> Expr () -> Expr () -> Expr ()
-eRecExtend name typ rest = Expr () $ ERecExtend name typ rest
+eRecExtend name typ rest = Expr () $ VRecExtend name typ rest
 
 eGetField :: Expr () -> String -> Expr ()
-eGetField r n = Expr () $ EGetField r n
+eGetField r n = Expr () $ VGetField r n

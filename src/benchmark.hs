@@ -15,7 +15,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Infer.Scope as Scope
 
--- TODO: $$ to be type-classed for TApp vs EApp
+-- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
 
 lambda :: String -> (Expr () -> Expr ()) -> Expr ()

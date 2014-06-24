@@ -119,47 +119,47 @@ typeInference rootScope rootExpr =
 
 infer :: (Type -> a -> b) -> Scope -> Expr a -> InferW (Type, Expr b)
 infer f scope expr@(Expr pl body) = case body of
-  ELeaf leaf ->
-    mkResult (ELeaf leaf) <$>
+  VLeaf leaf ->
+    mkResult (VLeaf leaf) <$>
     case leaf of
-    EVar n ->
+    VVar n ->
         case Scope.lookupTypeOf n scope of
            Nothing     -> throwError $ "unbound variable: " ++ n
            Just sigma  -> lift (Scheme.instantiate sigma)
-    ELit (LInt _) -> return (TCon "Int")
-    ELit (LChar _) -> return (TCon "Char")
-    ERecEmpty -> return TRecEmpty
-  EAbs n e ->
+    VLit (LInt _) -> return (TCon "Int")
+    VLit (LChar _) -> return (TCon "Char")
+    VRecEmpty -> return TRecEmpty
+  VAbs n e ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         let scope' = Scope.insertTypeOf n (Scheme.specific tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
-        return $ mkResult (EAbs n e') $ TFun (FreeTypeVars.applySubst s1 tv) t1
-  EApp e1 e2 ->
+        return $ mkResult (VAbs n e') $ TFun (FreeTypeVars.applySubst s1 tv) t1
+  VApp e1 e2 ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         ((t2, e2'), s2) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
         ((), s3) <- Writer.listen $ mgu (FreeTypeVars.applySubst s2 t1) (TFun t2 tv)
-        return $ mkResult (EApp e1' e2') $ FreeTypeVars.applySubst s3 tv
+        return $ mkResult (VApp e1' e2') $ FreeTypeVars.applySubst s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
-  ELet x e1 e2 ->
+  VLet x e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 scope)) makes no sense performance-wise
         -- improve it
         let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 scope)) t1
             scope' = Scope.insertTypeOf x t' scope
         (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope') e2
-        return $ mkResult (ELet x e1' e2') $ t2
-  EGetField e name ->
+        return $ mkResult (VLet x e1' e2') $ t2
+  VGetField e name ->
     do  tv <- lift $ InferMonad.newTyVar "a"
         tvRec <- lift $ InferMonad.newTyVar "r"
         ((t, e'), s) <- Writer.listen $ infer f scope e
         ((), su) <- Writer.listen $ mgu (FreeTypeVars.applySubst s t) (TRecExtend name tv tvRec)
-        return $ mkResult (EGetField e' name) $ FreeTypeVars.applySubst su tv
-  ERecExtend name e1 e2 ->
+        return $ mkResult (VGetField e' name) $ FreeTypeVars.applySubst su tv
+  VRecExtend name e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope) e2
-        return $ mkResult (ERecExtend name e1' e2') $ TRecExtend name t1 t2
+        return $ mkResult (VRecExtend name e1' e2') $ TRecExtend name t1 t2
   where
     mkResult body' typ = (typ, Expr (f typ pl) body')
 

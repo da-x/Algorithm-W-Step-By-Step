@@ -6,11 +6,11 @@ module Scope
   ) where
 
 import Expr (Scheme)
-import TVs
+import TypeVars
 import qualified Data.Map as Map
 
 newtype Scope = Scope { typeOfVar :: Map.Map String Scheme }
-instance TVs Scope where
+instance TypeVars Scope where
     ftv (Scope env)      =  ftv (Map.elems env)
     apply s (Scope env)  =  Scope (Map.map (apply s) env)
 

@@ -1,12 +1,12 @@
-module Scope
+module Lamdu.Infer.Scope
   ( Scope, empty
   , fromTypeMap
   , insertTypeOf
   , lookupTypeOf
   ) where
 
-import Scheme (Scheme)
-import FreeTypeVars
+import Lamdu.Infer.Internal.FreeTypeVars
+import Lamdu.Infer.Scheme (Scheme)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 

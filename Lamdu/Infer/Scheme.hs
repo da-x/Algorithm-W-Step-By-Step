@@ -1,4 +1,4 @@
-module Scheme
+module Lamdu.Infer.Scheme
   ( Scheme(..)
   , generalize
   , instantiate
@@ -6,9 +6,9 @@ module Scheme
 
 import Control.Monad (forM)
 import Data.Set (Set)
-import Expr
-import FreeTypeVars
-import Monad
+import Lamdu.Expr
+import Lamdu.Infer.Internal.FreeTypeVars
+import Lamdu.Infer.Internal.Monad
 import qualified Data.Set as Set
 
 data Scheme = Scheme (Set TypeVar) Type

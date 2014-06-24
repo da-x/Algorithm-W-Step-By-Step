@@ -1,10 +1,10 @@
-module FreeTypeVars
+module Lamdu.Infer.Internal.FreeTypeVars
   ( Subst, substLookup, substDelete, substFromList
   , FreeTypeVars(..)
   ) where
 
 import Data.Monoid (Monoid(..))
-import Expr
+import Lamdu.Expr
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 

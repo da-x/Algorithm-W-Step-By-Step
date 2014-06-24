@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
-module Expr
+module Lamdu.Expr
   ( Lit(..)
   , Leaf(..)
   , Body(..)

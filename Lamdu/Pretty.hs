@@ -1,4 +1,4 @@
-module Pretty
+module Lamdu.Pretty
   ( prTypeVar
   , prScheme
   , prExp
@@ -10,12 +10,13 @@ import Control.Lens.Operators
 import Control.Lens.Tuple
 import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
-import Expr
-import FlatRecordType
-import Scheme
+import Lamdu.Expr
+import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
+import Lamdu.Infer.Scheme
 import Text.PrettyPrint ((<+>), (<>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Text.PrettyPrint as PP
 
 prTypeVar :: TypeVar -> PP.Doc

@@ -1,7 +1,7 @@
-import Expr
-import Infer
-import Pretty
-import qualified Scope as Scope
+import Lamdu.Expr
+import Lamdu.Infer
+import Lamdu.Pretty
+import qualified Lamdu.Infer.Scope as Scope
 
 exp0 :: Expr ()
 exp0  =  eLet "id" (eAbs "x" (eVar "x"))

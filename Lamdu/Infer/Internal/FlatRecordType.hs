@@ -1,4 +1,4 @@
-module FlatRecordType
+module Lamdu.Infer.Internal.FlatRecordType
   ( FlatRecordType(..)
   , from
   , toType
@@ -7,7 +7,7 @@ module FlatRecordType
 import Control.Applicative ((<$>))
 import Control.Lens (Lens')
 import Control.Lens.Operators
-import Expr
+import Lamdu.Expr
 import qualified Data.Map as Map
 
 data FlatRecordType = FlatRecordType

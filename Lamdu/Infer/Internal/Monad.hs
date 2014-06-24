@@ -1,4 +1,4 @@
-module Monad
+module Lamdu.Infer.Internal.Monad
   ( InferState(..)
   , Infer, runInfer
   , InferW
@@ -10,8 +10,8 @@ import Control.Applicative ((<$>))
 import Control.Monad.State (evalState, State)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
 import Control.Monad.Writer (WriterT)
-import Expr
-import FreeTypeVars
+import Lamdu.Expr
+import Lamdu.Infer.Internal.FreeTypeVars
 import qualified Control.Monad.State as State
 
 data InferState = InferState { inferSupply :: Int }

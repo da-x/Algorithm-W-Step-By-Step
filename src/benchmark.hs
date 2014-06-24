@@ -6,14 +6,14 @@ import Control.Lens.Tuple
 import Control.Monad
 import Criterion.Main
 import Data.Map (Map)
-import Expr
-import Infer
-import Pretty
-import Scheme
+import Lamdu.Expr
+import Lamdu.Infer
+import Lamdu.Infer.Scheme
+import Lamdu.Pretty
 import Text.PrettyPrint ((<+>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Scope as Scope
+import qualified Lamdu.Infer.Scope as Scope
 import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs EApp

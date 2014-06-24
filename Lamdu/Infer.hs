@@ -1,4 +1,4 @@
-module Infer
+module Lamdu.Infer
   ( typeInference
   ) where
 
@@ -12,19 +12,20 @@ import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (runWriterT)
 import Data.Monoid (Monoid(..))
-import Expr
-import FlatRecordType
-import FreeTypeVars
-import Monad
-import Pretty
-import Scheme
-import Scope (Scope)
+import Lamdu.Expr
+import Lamdu.Infer.Internal.FlatRecordType
+import Lamdu.Infer.Internal.FreeTypeVars
+import Lamdu.Infer.Internal.Monad
+import Lamdu.Infer.Scheme
+import Lamdu.Infer.Scope (Scope)
+import Lamdu.Pretty
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Scope as Scope
+import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
+import qualified Lamdu.Infer.Scope as Scope
 import qualified Text.PrettyPrint as PP
 
 varBind :: TypeVar -> Type -> InferW ()

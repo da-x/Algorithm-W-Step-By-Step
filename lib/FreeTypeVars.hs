@@ -1,4 +1,4 @@
-module TypeVars
+module FreeTypeVars
   ( Subst, substLookup, substDelete, substFromList
   , FreeTypeVars(..)
   ) where

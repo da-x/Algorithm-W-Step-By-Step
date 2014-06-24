@@ -17,7 +17,7 @@ import Expr
 import Pretty
 import Record
 import Scope (Scope)
-import TypeVars
+import FreeTypeVars
 import Text.PrettyPrint ((<+>))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer

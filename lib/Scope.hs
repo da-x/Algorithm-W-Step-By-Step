@@ -6,7 +6,7 @@ module Scope
   ) where
 
 import Expr (Scheme)
-import TypeVars
+import FreeTypeVars
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 

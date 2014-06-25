@@ -9,7 +9,7 @@ import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad (void)
-import Control.Monad.Error (throwError, catchError)
+import Control.Monad.Except (throwError, catchError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)

@@ -8,8 +8,8 @@ import Data.List (intersperse)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Lamdu.Infer.Scheme
+import Lamdu.Infer.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>), ($$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Map as Map

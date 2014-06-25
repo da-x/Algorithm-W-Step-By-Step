@@ -13,13 +13,13 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
+import Lamdu.Infer.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as InferMonad
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
+import qualified Lamdu.Infer.TypeVars as TypeVars
 
 data Scheme = Scheme TypeVars E.Type
 

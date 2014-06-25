@@ -7,7 +7,7 @@ import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
+import Lamdu.Infer.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E

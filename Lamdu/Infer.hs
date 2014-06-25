@@ -28,9 +28,9 @@ import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as InferMonad
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Lamdu.Infer.Scheme as Scheme
 import qualified Lamdu.Infer.Scope as Scope
+import qualified Lamdu.Infer.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 unifyRecToPartial ::

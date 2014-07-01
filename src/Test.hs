@@ -61,6 +61,11 @@ exp12 :: E.Val ()
 exp12  =  E.eAbs "x" $
           E.eRecExtend "prev" (E.eGetField (E.eVar "x") "cur") $ E.eVar "x"
 
+exp13 :: E.Val ()
+exp13  =  E.eRecExtend "x" (E.eLitInt 2) $
+          E.eRecExtend "x" (E.eLitInt 3) $
+          E.eRecEmpty
+
 test :: E.Val () -> IO ()
 test e =
     case typeInference Scope.empty e of
@@ -85,4 +90,5 @@ main =
   , exp10
   , exp11
   , exp12
+  , exp13
   ]

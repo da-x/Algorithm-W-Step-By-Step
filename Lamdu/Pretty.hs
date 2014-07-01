@@ -5,18 +5,14 @@ module Lamdu.Pretty () where
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Data.List (intersperse)
-import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Scheme
 import Lamdu.Infer.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>), ($$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Text.PrettyPrint as PP
 
 instance Pretty E.ValVar        where pPrint = PP.text . BS.unpack . E.vvName
@@ -54,7 +50,7 @@ instance Pretty (E.Val ()) where
     E.VRecExtend {}               ->
         PP.text "V{" <+>
             mconcat (intersperse (PP.text ", ")
-              (map prField (Map.toList fields))) <>
+              (map prField fields)) <>
             moreFields <+>
         PP.text "}"
       where
@@ -65,12 +61,12 @@ instance Pretty (E.Val ()) where
           Just rest -> PP.comma <+> PP.text "{" <+> pPrint rest <+> PP.text "}"
         (fields, mRest) = flatRecordValue expr
 
-flatRecordValue :: E.Val a -> (Map E.Tag (E.Val a), Maybe (E.Val a))
+flatRecordValue :: E.Val a -> ([(E.Tag, E.Val a)], Maybe (E.Val a))
 flatRecordValue (E.Val _ (E.VRecExtend field val body)) =
   flatRecordValue body
-  & _1 %~ Map.insert field val
-flatRecordValue (E.Val _ (E.VLeaf E.VRecEmpty)) = (Map.empty, Nothing)
-flatRecordValue other = (Map.empty, Just other)
+  & _1 %~ ((field, val):)
+flatRecordValue (E.Val _ (E.VLeaf E.VRecEmpty)) = ([], Nothing)
+flatRecordValue other = ([], Just other)
 
 instance Pretty E.Type where
   pPrintPrec lvl prec typ =
@@ -86,17 +82,9 @@ instance Pretty E.Type where
     E.TRecord r -> pPrint r
 
 instance Pretty E.RecordType where
-  pPrint = pPrint . FlatRecordType.from
-
-instance Pretty FlatRecordType where
-  pPrint (FlatRecordType fields mTv) =
-      PP.text "T{" <+>
-        mconcat (intersperse (PP.text ", ") (map prField (Map.toList fields))) <>
-        moreFields <+>
-      PP.text "}"
-      where
-        prField (field, typ) = pPrint field <+> PP.text ":" <+> pPrint typ
-        moreFields =
-          case mTv of
-          Nothing -> PP.empty
-          Just tv -> PP.comma <+> pPrint tv <> PP.text "..."
+  pPrint x =
+    PP.text "T{" <+> go PP.empty x <+> PP.text "}"
+    where
+      go _   E.TRecEmpty          = PP.empty
+      go sep (E.TRecVar tv)       = sep <> pPrint tv <> PP.text "..."
+      go sep (E.TRecExtend f t r) = sep <> pPrint f <+> PP.text ":" <+> pPrint t <> go (PP.text ", ") r

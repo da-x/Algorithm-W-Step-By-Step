@@ -40,9 +40,9 @@ unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    pPrint (FlatRecordType tfields (Just tname)) <+>
+    pPrint (FlatRecordType.toRecordType (FlatRecordType tfields (Just tname))) <+>
     PP.text " vs. " <+>
-    pPrint (FlatRecordType ufields Nothing)
+    pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
   | otherwise = varBind tname $ FlatRecordType.toRecordType $ FlatRecordType uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -68,9 +68,9 @@ unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    pPrint (FlatRecordType tfields Nothing) <+>
+    pPrint (FlatRecordType.toRecordType (FlatRecordType tfields Nothing)) <+>
     PP.text "vs." <+>
-    pPrint (FlatRecordType ufields Nothing)
+    pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
   | otherwise = return mempty
 
 unifyRecs :: FlatRecordType -> FlatRecordType -> InferW ()

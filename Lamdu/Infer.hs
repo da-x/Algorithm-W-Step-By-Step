@@ -34,7 +34,7 @@ import qualified Lamdu.Infer.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 unifyRecToPartial ::
-  (Map E.Field E.Type, E.RecordTypeVar) -> Map E.Field E.Type ->
+  (Map E.Tag E.Type, E.RecordTypeVar) -> Map E.Tag E.Type ->
   InferW ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -49,7 +49,7 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecPartials ::
-  (Map E.Field E.Type, E.RecordTypeVar) -> (Map E.Field E.Type, E.RecordTypeVar) ->
+  (Map E.Tag E.Type, E.RecordTypeVar) -> (Map E.Tag E.Type, E.RecordTypeVar) ->
   InferW ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- InferMonad.newInferredVar "r"
@@ -63,7 +63,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map E.Field E.Type -> Map E.Field E.Type -> InferW ()
+  Map E.Tag E.Type -> Map E.Tag E.Type -> InferW ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
@@ -166,23 +166,22 @@ infer f scope expr@(E.Val pl body) = case body of
     case leaf of
     E.VVar n ->
         case Scope.lookupTypeOf n scope of
-           Nothing     -> throwError $ show $
-                          PP.text "unbound variable:" <+> pPrint n
-           Just sigma  -> lift (Scheme.instantiate sigma)
-    E.VLit (E.LInt _) -> return (E.TCon "Int")
-    E.VLit (E.LChar _) -> return (E.TCon "Char")
+           Nothing      -> throwError $ show $
+                           PP.text "unbound variable:" <+> pPrint n
+           Just sigma   -> lift (Scheme.instantiate sigma)
+    E.VLiteralInteger _ -> return (E.TCon "Int")
     E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
-  E.VAbs n e ->
+  E.VAbs (E.Lam n e) ->
     do  tv <- lift $ InferMonad.newInferredVar "a"
         let scope' = Scope.insertTypeOf n (Scheme.specific tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
-        return $ mkResult (E.VAbs n e') $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
-  E.VApp e1 e2 ->
+        return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
+  E.VApp (E.Apply e1 e2) ->
     do  tv <- lift $ InferMonad.newInferredVar "a"
         ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         ((t2, e2'), s2) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
         ((), s3) <- Writer.listen $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
-        return $ mkResult (E.VApp e1' e2') $ FreeTypeVars.applySubst s3 tv
+        return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
     `catchError`
     \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
   E.VLet x e1 e2 ->
@@ -193,12 +192,12 @@ infer f scope expr@(E.Val pl body) = case body of
             scope' = Scope.insertTypeOf x t' scope
         (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope') e2
         return $ mkResult (E.VLet x e1' e2') t2
-  E.VGetField e name ->
+  E.VGetField (E.GetField e name) ->
     do  tv <- lift $ InferMonad.newInferredVar "a"
         tvRec <- lift $ InferMonad.newInferredVar "r"
         ((t, e'), s) <- Writer.listen $ infer f scope e
         ((), su) <- Writer.listen $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
-        return $ mkResult (E.VGetField e' name) $ FreeTypeVars.applySubst su tv
+        return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
   E.VRecExtend name e1 e2 ->
     do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         ((t2, e2'), _) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2

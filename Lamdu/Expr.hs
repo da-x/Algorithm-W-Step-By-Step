@@ -1,14 +1,13 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Lamdu.Expr
-  ( Lit(..)
-  , ValLeaf(..)
-  , ValBody(..)
+  ( ValLeaf(..)
+  , ValBody(..), Apply(..), GetField(..), Lam(..)
   , Val(..), expPayload
   , ValVar(..)
   , RecordType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
-  , eLet, eAbs, eVar, eLit, eRecEmpty, eApp, eRecExtend, eGetField
-  , Field(..)
+  , eLet, eAbs, eVar, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
+  , Tag(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -34,29 +33,42 @@ newtype RecordTypeVar = RecordTypeVar { rtvName :: String }
   deriving (Eq, Ord, Generic, Show)
 instance NFData RecordTypeVar where rnf = genericRnf
 
-newtype Field = Field { fieldName :: String }
+newtype Tag = Tag { tagName :: String }
   deriving (Eq, Ord, Generic, Show)
-instance NFData Field where rnf = genericRnf
-instance IsString Field where fromString = Field
-
-data Lit     =  LInt Integer
-             |  LChar Char
-  deriving (Eq, Ord, Generic, Show)
-instance NFData Lit where rnf = genericRnf
+instance NFData Tag where rnf = genericRnf
+instance IsString Tag where fromString = Tag
 
 data ValLeaf
   =  VVar ValVar
-  |  VLit Lit
+  |  VLiteralInteger Integer
   |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)
 instance NFData ValLeaf where rnf = genericRnf
 
+data Apply expr = Apply
+  { _applyFunc :: expr
+  , _applyArg :: expr
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
+instance NFData exp => NFData (Apply exp) where rnf = genericRnf
+
+data GetField expr = GetField
+  { _getFieldRecord :: expr
+  , _getFieldTag :: Tag
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
+instance NFData exp => NFData (GetField exp) where rnf = genericRnf
+
+data Lam expr = Lam
+  { _lamParamId :: ValVar
+  , _lamResult :: expr
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
+instance NFData exp => NFData (Lam exp) where rnf = genericRnf
+
 data ValBody exp
-  =  VApp exp exp
-  |  VAbs ValVar exp
+  =  VApp {-# UNPACK #-}!(Apply exp)
+  |  VAbs {-# UNPACK #-}!(Lam exp)
   |  VLet ValVar exp exp
-  |  VGetField exp Field
-  |  VRecExtend Field exp exp
+  |  VGetField {-# UNPACK #-}!(GetField exp)
+  |  VRecExtend Tag exp exp
   |  VLeaf ValLeaf
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
@@ -70,7 +82,7 @@ instance NFData a => NFData (Val a) where rnf = genericRnf
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
-data RecordType = TRecExtend Field Type RecordType
+data RecordType = TRecExtend Tag Type RecordType
                 | TRecEmpty
                 | TRecVar RecordTypeVar
   deriving (Generic, Show)
@@ -88,22 +100,22 @@ eLet :: ValVar -> Val () -> Val () -> Val ()
 eLet name e1 e2 = Val () $ VLet name e1 e2
 
 eAbs :: ValVar -> Val () -> Val ()
-eAbs name body = Val () $ VAbs name body
+eAbs name body = Val () $ VAbs $ Lam name body
 
 eVar :: ValVar -> Val ()
 eVar = Val () . VLeaf . VVar
 
-eLit :: Lit -> Val ()
-eLit = Val () . VLeaf . VLit
+eLitInt :: Integer -> Val ()
+eLitInt = Val () . VLeaf . VLiteralInteger
 
 eRecEmpty :: Val ()
 eRecEmpty = Val () $ VLeaf VRecEmpty
 
 eApp :: Val () -> Val () -> Val ()
-eApp f x = Val () $ VApp f x
+eApp f x = Val () $ VApp $ Apply f x
 
-eRecExtend :: Field -> Val () -> Val () -> Val ()
+eRecExtend :: Tag -> Val () -> Val () -> Val ()
 eRecExtend name typ rest = Val () $ VRecExtend name typ rest
 
-eGetField :: Val () -> Field -> Val ()
-eGetField r n = Val () $ VGetField r n
+eGetField :: Val () -> Tag -> Val ()
+eGetField r n = Val () $ VGetField $ GetField r n

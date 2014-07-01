@@ -12,11 +12,11 @@ import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 
 data FlatRecordType = FlatRecordType
-  { _fields :: Map E.Field E.Type
+  { _fields :: Map E.Tag E.Type
   , _extension :: Maybe E.RecordTypeVar -- TyVar of more possible fields
   } deriving (Show)
 
-fields :: Lens' FlatRecordType (Map E.Field E.Type)
+fields :: Lens' FlatRecordType (Map E.Tag E.Type)
 fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
 
 -- From a record type to a sorted list of fields

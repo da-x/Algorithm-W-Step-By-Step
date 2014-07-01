@@ -20,7 +20,7 @@ import qualified Text.PrettyPrint as PP
 
 instance Pretty E.ValVar  where pPrint = PP.text . E.vvName
 instance Pretty E.TypeVar where pPrint = PP.text . E.tvName
-instance Pretty E.Field   where pPrint = PP.text . E.fieldName
+instance Pretty E.Tag     where pPrint = PP.text . E.tagName
 
 instance Pretty E.RecordTypeVar where
   pPrint = PP.text . E.rtvName
@@ -32,30 +32,26 @@ instance Pretty Scheme where
     PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList tv) ++ map pPrint (Set.toList rv))) <>
     PP.text "." <+> pPrintPrec lvl 0 t
 
-instance Pretty E.Lit where
-  pPrint (E.LInt i)   =   pPrint i
-  pPrint (E.LChar c)  =   pPrint c
-
 instance Pretty (E.Val ()) where
   pPrintPrec lvl prec expr =
     case E.valBody expr of
-    E.VLeaf (E.VVar var) -> pPrint var
-    E.VLeaf (E.VLit lit) -> pPrint lit
-    E.VLet x b body      -> prettyParen (1 < prec) $
-                            PP.text "let" <+>
-                            pPrint x <+> PP.text "=" <+>
-                            pPrint b <+> PP.text "in" $$
-                            PP.nest 2 (pPrint body)
-    E.VApp e1 e2         -> prettyParen (10 < prec) $
-                            pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-    E.VAbs n e           -> prettyParen (0 < prec) $
-                            PP.char '\\' <> pPrint n <+>
-                            PP.text "->" <+>
-                            pPrint e
-    E.VGetField e n      -> prettyParen (12 < prec) $
-                            pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-    E.VLeaf E.VRecEmpty  -> PP.text "{}"
-    E.VRecExtend {}      ->
+    E.VLeaf (E.VVar var)          -> pPrint var
+    E.VLeaf (E.VLiteralInteger i) -> pPrint i
+    E.VLet x b body               -> prettyParen (1 < prec) $
+                                     PP.text "let" <+>
+                                     pPrint x <+> PP.text "=" <+>
+                                     pPrint b <+> PP.text "in" $$
+                                     PP.nest 2 (pPrint body)
+    E.VApp (E.Apply e1 e2)        -> prettyParen (10 < prec) $
+                                     pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
+    E.VAbs (E.Lam n e)            -> prettyParen (0 < prec) $
+                                     PP.char '\\' <> pPrint n <+>
+                                     PP.text "->" <+>
+                                     pPrint e
+    E.VGetField (E.GetField e n)  -> prettyParen (12 < prec) $
+                                     pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
+    E.VLeaf E.VRecEmpty           -> PP.text "{}"
+    E.VRecExtend {}               ->
         PP.text "V{" <+>
             mconcat (intersperse (PP.text ", ")
               (map prField (Map.toList fields))) <>
@@ -69,7 +65,7 @@ instance Pretty (E.Val ()) where
           Just rest -> PP.comma <+> PP.text "{" <+> pPrint rest <+> PP.text "}"
         (fields, mRest) = flatRecordValue expr
 
-flatRecordValue :: E.Val a -> (Map E.Field (E.Val a), Maybe (E.Val a))
+flatRecordValue :: E.Val a -> (Map E.Tag (E.Val a), Maybe (E.Val a))
 flatRecordValue (E.Val _ (E.VRecExtend field val body)) =
   flatRecordValue body
   & _1 %~ Map.insert field val

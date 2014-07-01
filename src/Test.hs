@@ -18,7 +18,7 @@ exp2  =  E.eLet "id" (E.eAbs "x" (E.eLet "y" (E.eVar "x") (E.eVar "y")))
 
 exp3 :: E.Val ()
 exp3  =  E.eLet "id" (E.eAbs "x" (E.eLet "y" (E.eVar "x") (E.eVar "y")))
-          (E.eApp (E.eApp (E.eVar "id") (E.eVar "id")) (E.eLit (E.LInt 2)))
+          (E.eApp (E.eApp (E.eVar "id") (E.eVar "id")) (E.eLitInt 2))
 
 exp4 :: E.Val ()
 exp4  =  E.eLet "id" (E.eAbs "x" (E.eApp (E.eVar "x") (E.eVar "x")))
@@ -26,16 +26,16 @@ exp4  =  E.eLet "id" (E.eAbs "x" (E.eApp (E.eVar "x") (E.eVar "x")))
 
 exp5 :: E.Val ()
 exp5  =  E.eAbs "m" (E.eLet "y" (E.eVar "m")
-                   (E.eLet "x" (E.eApp (E.eVar "y") (E.eLit (E.LChar 'x')))
+                   (E.eLet "x" (E.eApp (E.eVar "y") (E.eLitInt 3))
                          (E.eVar "x")))
 
 exp6 :: E.Val ()
-exp6  =  E.eApp (E.eLit (E.LInt 2)) (E.eLit (E.LInt 2))
+exp6  =  E.eApp (E.eLitInt 2) (E.eLitInt 2)
 
 exp7 :: E.Val ()
-exp7  =  E.eAbs "a" (E.eLet "x" (E.eAbs "b" (E.eLet "y" (E.eAbs "c" (E.eApp (E.eVar "a") (E.eLit (E.LInt 1))))
-                                     (E.eApp (E.eVar "y") (E.eLit (E.LInt 2)))))
-                 (E.eApp (E.eVar "x") (E.eLit (E.LInt 3))))
+exp7  =  E.eAbs "a" (E.eLet "x" (E.eAbs "b" (E.eLet "y" (E.eAbs "c" (E.eApp (E.eVar "a") (E.eLitInt 1)))
+                                     (E.eApp (E.eVar "y") (E.eLitInt 2))))
+                 (E.eApp (E.eVar "x") (E.eLitInt 3)))
 
 exp8 :: E.Val ()
 exp8  =  E.eAbs "a" $ E.eAbs "b" $ E.eApp (E.eVar "b") $ E.eApp (E.eVar "a") $ E.eApp (E.eVar "a") (E.eVar "b")
@@ -47,14 +47,14 @@ exp9  =  E.eAbs "vec" $
 
 exp10 :: E.Val ()
 exp10  =  E.eLet
-         "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
-                 E.eRecExtend "y" (E.eLit (E.LInt 7)) E.eRecEmpty ) $
+         "vec" ( E.eRecExtend "x" (E.eLitInt 5) $
+                 E.eRecExtend "y" (E.eLitInt 7) E.eRecEmpty ) $
          E.eGetField (E.eVar "vec") "x"
 
 exp11 :: E.Val ()
 exp11  =  E.eLet
-         "vec" ( E.eRecExtend "x" (E.eLit (E.LInt 5)) $
-                 E.eRecExtend "y" (E.eLit (E.LInt 7)) E.eRecEmpty ) $
+         "vec" ( E.eRecExtend "x" (E.eLitInt 5) $
+                 E.eRecExtend "y" (E.eLitInt 7) E.eRecEmpty ) $
          E.eGetField (E.eVar "vec") "z"
 
 exp12 :: E.Val ()

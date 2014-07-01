@@ -44,6 +44,7 @@ instance IsString Tag where fromString = Tag . fromString
 
 data ValLeaf
   =  VVar ValVar
+  |  VHole
   |  VLiteralInteger Integer
   |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)

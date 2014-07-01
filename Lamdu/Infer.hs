@@ -164,6 +164,7 @@ infer f scope expr@(E.Val pl body) = case body of
   E.VLeaf leaf ->
     mkResult (E.VLeaf leaf) <$>
     case leaf of
+    E.VHole -> InferMonad.newInferredVar "h"
     E.VVar n ->
         case Scope.lookupTypeOf n scope of
            Nothing      -> throwError $ show $
@@ -172,12 +173,12 @@ infer f scope expr@(E.Val pl body) = case body of
     E.VLiteralInteger _ -> return (E.TCon "Int")
     E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
   E.VAbs (E.Lam n e) ->
-    do  tv <- lift $ InferMonad.newInferredVar "a"
+    do  tv <- InferMonad.newInferredVar "a"
         let scope' = Scope.insertTypeOf n (Scheme.specific tv) scope
         ((t1, e'), s1) <- Writer.listen $ infer f scope' e
         return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
   E.VApp (E.Apply e1 e2) ->
-    do  tv <- lift $ InferMonad.newInferredVar "a"
+    do  tv <- InferMonad.newInferredVar "a"
         ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
         ((t2, e2'), s2) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
         ((), s3) <- Writer.listen $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)

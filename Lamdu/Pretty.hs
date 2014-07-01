@@ -36,6 +36,7 @@ instance Pretty (E.Val ()) where
     case E.valBody expr of
     E.VLeaf (E.VVar var)          -> pPrint var
     E.VLeaf (E.VLiteralInteger i) -> pPrint i
+    E.VLeaf E.VHole               -> PP.text "?"
     E.VLet x b body               -> prettyParen (1 < prec) $
                                      PP.text "let" <+>
                                      pPrint x <+> PP.text "=" <+>

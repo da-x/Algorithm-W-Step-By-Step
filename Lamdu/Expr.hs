@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, TypeFamilies #-}
 module Lamdu.Expr
   ( ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..)
@@ -8,6 +8,7 @@ module Lamdu.Expr
   , Type(..), TypeVar(..)
   , eLet, eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , Tag(..)
+  , VarOf
   ) where
 
 import Control.Applicative ((<$>))
@@ -101,6 +102,10 @@ data Type    =  TVar TypeVar
              |  TRecord RecordType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
+
+type family VarOf a
+type instance VarOf Type = TypeVar
+type instance VarOf RecordType = RecordTypeVar
 
 eLet :: ValVar -> Val () -> Val () -> Val ()
 eLet name e1 e2 = Val () $ VLet name e1 e2

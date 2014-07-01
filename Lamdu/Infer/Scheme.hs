@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Lamdu.Infer.Scheme
   ( Scheme(..)
@@ -35,13 +35,9 @@ generalize :: TypeVars -> E.Type -> Scheme
 generalize outsideTVs t  =   Scheme vars t
   where vars = freeTypeVars t `TypeVars.difference` outsideTVs
 
-type family VarOf a
-type instance VarOf E.Type = E.TypeVar
-type instance VarOf E.RecordType = E.RecordTypeVar
-
 mkInstantiateSubstPart ::
-  (InferMonad.InfersVars t, Ord (VarOf t)) =>
-  String -> Set (VarOf t) -> Infer (Map (VarOf t) t)
+  (InferMonad.InfersVars t, Ord (E.VarOf t)) =>
+  String -> Set (E.VarOf t) -> Infer (Map (E.VarOf t) t)
 mkInstantiateSubstPart prefix =
   fmap Map.fromList . mapM f . Set.toList
   where

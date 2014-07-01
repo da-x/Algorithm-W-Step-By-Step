@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
 module Lamdu.Infer
   ( typeInference
   ) where
@@ -25,6 +24,7 @@ import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as M
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
@@ -95,15 +95,14 @@ dontUnify x y =
   PP.text "vs." <+> pPrint y
 
 class Unify t where
-  type Var t
   unify :: t -> t -> InferW ()
-  varBind :: Var t -> t -> InferW ()
+  varBind :: E.VarOf t -> t -> InferW ()
 
 checkOccurs ::
-  (Pretty v, Pretty t, TypeVars.Occurs v, FreeTypeVars t) =>
+  (Pretty v, Pretty t, Ord v, TypeVars.Var v, FreeTypeVars t) =>
   v -> t -> InferW () -> InferW ()
 checkOccurs var typ act
-  | TypeVars.occurs var (freeTypeVars typ) =
+  | var `Set.member` TypeVars.getVars (freeTypeVars typ) =
     throwError $ show $
     PP.text "occurs check fails:" <+>
     pPrint var <+> PP.text "vs." <+> pPrint typ
@@ -111,8 +110,6 @@ checkOccurs var typ act
     act
 
 instance Unify E.Type where
-  type Var E.Type = E.TypeVar
-
   unify (E.TFun l r) (E.TFun l' r') =
     do
       ((), s1) <- Writer.listen $ unify l l'
@@ -138,8 +135,6 @@ instance Unify E.Type where
     Writer.tell $ FreeTypeVars.Subst (Map.singleton u t) mempty
 
 instance Unify E.RecordType where
-  type Var E.RecordType = E.RecordTypeVar
-
   unify E.TRecEmpty E.TRecEmpty =  return ()
   unify (E.TRecVar u) t         =  varBind u t
   unify t (E.TRecVar u)         =  varBind u t

@@ -1,6 +1,6 @@
 module Lamdu.Infer.TypeVars
   ( TypeVars(..)
-  , Occurs(..)
+  , Var(..)
   , difference
   ) where
 
@@ -15,14 +15,14 @@ instance Monoid TypeVars where
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
-class Occurs v where
-  occurs :: v -> TypeVars -> Bool
+class Var v where
+  getVars :: TypeVars -> Set v
 
-instance Occurs E.TypeVar where
-  occurs v (TypeVars vs _) = Set.member v vs
+instance Var E.TypeVar where
+  getVars (TypeVars vs _) = vs
 
-instance Occurs E.RecordTypeVar where
-  occurs v (TypeVars _ vs) = Set.member v vs
+instance Var E.RecordTypeVar where
+  getVars (TypeVars _ vs) = vs
 
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =

@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-
 module Lamdu.Infer
   ( typeInference
   ) where
@@ -17,19 +16,21 @@ import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (InferW)
-import Lamdu.Infer.Scope (Scope)
+import Lamdu.Infer.Internal.Scope (Scope)
+import Lamdu.Infer.Scheme (Scheme)
 import Lamdu.Pretty ()
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
 import qualified Control.Monad.Writer as Writer
+import qualified Data.Map as M
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as InferMonad
+import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Scheme as Scheme
-import qualified Lamdu.Infer.Scope as Scope
 import qualified Lamdu.Infer.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
@@ -153,63 +154,71 @@ instance Unify E.RecordType where
     checkOccurs u t $
     Writer.tell $ FreeTypeVars.Subst mempty (Map.singleton u t)
 
-typeInference :: Scope -> E.Val a -> Either String (E.Val (E.Type, a))
-typeInference rootScope rootVal =
+typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (E.Val (E.Type, a))
+typeInference globals rootVal =
     InferMonad.run $
-    do  ((_, t), s) <- InferMonad.runW $ infer (,) rootScope rootVal
+    do  ((_, t), s) <- InferMonad.runW $ infer (,) globals Scope.empty rootVal
         return (t & mapped . _1 %~ FreeTypeVars.applySubst s)
 
-infer :: (E.Type -> a -> b) -> Scope -> E.Val a -> InferW (E.Type, E.Val b)
-infer f scope expr@(E.Val pl body) = case body of
-  E.VLeaf leaf ->
-    mkResult (E.VLeaf leaf) <$>
-    case leaf of
-    E.VHole -> InferMonad.newInferredVar "h"
-    E.VVar n ->
-        case Scope.lookupTypeOf n scope of
-           Nothing      -> throwError $ show $
-                           PP.text "unbound variable:" <+> pPrint n
-           Just sigma   -> lift (Scheme.instantiate sigma)
-    E.VLiteralInteger _ -> return (E.TCon "Int")
-    E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
-  E.VAbs (E.Lam n e) ->
-    do  tv <- InferMonad.newInferredVar "a"
-        let scope' = Scope.insertTypeOf n (Scheme.specific tv) scope
-        ((t1, e'), s1) <- Writer.listen $ infer f scope' e
-        return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
-  E.VApp (E.Apply e1 e2) ->
-    do  tv <- InferMonad.newInferredVar "a"
-        ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        ((t2, e2'), s2) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
-        ((), s3) <- Writer.listen $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
-        return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
-    `catchError`
-    \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
-  E.VLet x e1 e2 ->
-    do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 scope)) makes no sense performance-wise
-        -- improve it
-        let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 scope)) t1
-            scope' = Scope.insertTypeOf x t' scope
-        (t2, e2') <- infer f (FreeTypeVars.applySubst s1 scope') e2
-        return $ mkResult (E.VLet x e1' e2') t2
-  E.VGetField (E.GetField e name) ->
-    do  tv <- lift $ InferMonad.newInferredVar "a"
-        tvRec <- lift $ InferMonad.newInferredVar "r"
-        ((t, e'), s) <- Writer.listen $ infer f scope e
-        ((), su) <- Writer.listen $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
-        return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
-  E.VRecExtend name e1 e2 ->
-    do  ((t1, e1'), s1) <- Writer.listen $ infer f scope e1
-        ((t2, e2'), _) <- Writer.listen $ infer f (FreeTypeVars.applySubst s1 scope) e2
-        rest <-
-          -- In case t2 is already inferred as a TRecord avoid extra unify
-          case t2 of
-          E.TRecord x -> return x
-          _ -> do
-            tv <- lift $ InferMonad.newInferredVar "r"
-            ((), s) <- Writer.listen $ unify t2 $ E.TRecord tv
-            return $ FreeTypeVars.applySubst s tv
-        return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest
+infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> InferW (E.Type, E.Val b)
+infer f globals = go
   where
-    mkResult body' typ = (typ, E.Val (f typ pl) body')
+    go locals expr@(E.Val pl body) =
+      case body of
+      E.VLeaf leaf ->
+        mkResult (E.VLeaf leaf) <$>
+        case leaf of
+        E.VHole -> InferMonad.newInferredVar "h"
+        E.VVar n ->
+            case Scope.lookupTypeOf n locals of
+               Nothing      -> throwError $ show $
+                               PP.text "unbound variable:" <+> pPrint n
+               Just sigma   -> lift (Scheme.instantiate sigma)
+        E.VGlobal n ->
+            case M.lookup n globals of
+               Nothing      -> throwError $ show $
+                               PP.text "missing global:" <+> pPrint n
+               Just sigma   -> lift (Scheme.instantiate sigma)
+        E.VLiteralInteger _ -> return (E.TCon "Int")
+        E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
+      E.VAbs (E.Lam n e) ->
+        do  tv <- InferMonad.newInferredVar "a"
+            let locals' = Scope.insertTypeOf n (Scheme.specific tv) locals
+            ((t1, e'), s1) <- Writer.listen $ go locals' e
+            return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
+      E.VApp (E.Apply e1 e2) ->
+        do  tv <- InferMonad.newInferredVar "a"
+            ((t1, e1'), s1) <- Writer.listen $ go locals e1
+            ((t2, e2'), s2) <- Writer.listen $ go (FreeTypeVars.applySubst s1 locals) e2
+            ((), s3) <- Writer.listen $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
+            return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
+        `catchError`
+        \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
+      E.VLet x e1 e2 ->
+        do  ((t1, e1'), s1) <- Writer.listen $ go locals e1
+            -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 locals)) makes no sense performance-wise
+            -- improve it
+            let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 locals)) t1
+                locals' = Scope.insertTypeOf x t' locals
+            (t2, e2') <- go (FreeTypeVars.applySubst s1 locals') e2
+            return $ mkResult (E.VLet x e1' e2') t2
+      E.VGetField (E.GetField e name) ->
+        do  tv <- lift $ InferMonad.newInferredVar "a"
+            tvRec <- lift $ InferMonad.newInferredVar "r"
+            ((t, e'), s) <- Writer.listen $ go locals e
+            ((), su) <- Writer.listen $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
+            return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
+      E.VRecExtend name e1 e2 ->
+        do  ((t1, e1'), s1) <- Writer.listen $ go locals e1
+            ((t2, e2'), _) <- Writer.listen $ go (FreeTypeVars.applySubst s1 locals) e2
+            rest <-
+              -- In case t2 is already inferred as a TRecord avoid extra unify
+              case t2 of
+              E.TRecord x -> return x
+              _ -> do
+                tv <- lift $ InferMonad.newInferredVar "r"
+                ((), s) <- Writer.listen $ unify t2 $ E.TRecord tv
+                return $ FreeTypeVars.applySubst s tv
+            return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest
+      where
+        mkResult body' typ = (typ, E.Val (f typ pl) body')

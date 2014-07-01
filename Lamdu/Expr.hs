@@ -6,7 +6,7 @@ module Lamdu.Expr
   , ValVar(..)
   , RecordType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
-  , eLet, eAbs, eVar, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
+  , eLet, eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , Tag(..)
   ) where
 
@@ -44,6 +44,7 @@ instance IsString Tag where fromString = Tag . fromString
 
 data ValLeaf
   =  VVar ValVar
+  |  VGlobal Tag
   |  VHole
   |  VLiteralInteger Integer
   |  VRecEmpty
@@ -109,6 +110,9 @@ eAbs name body = Val () $ VAbs $ Lam name body
 
 eVar :: ValVar -> Val ()
 eVar = Val () . VLeaf . VVar
+
+eGlobal :: Tag -> Val ()
+eGlobal = Val () . VLeaf . VGlobal
 
 eLitInt :: Integer -> Val ()
 eLitInt = Val () . VLeaf . VLiteralInteger

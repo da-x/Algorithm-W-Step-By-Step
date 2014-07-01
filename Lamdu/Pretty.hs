@@ -31,6 +31,7 @@ instance Pretty (E.Val ()) where
   pPrintPrec lvl prec expr =
     case E.valBody expr of
     E.VLeaf (E.VVar var)          -> pPrint var
+    E.VLeaf (E.VGlobal tag)       -> pPrint tag
     E.VLeaf (E.VLiteralInteger i) -> pPrint i
     E.VLeaf E.VHole               -> PP.text "?"
     E.VLet x b body               -> prettyParen (1 < prec) $

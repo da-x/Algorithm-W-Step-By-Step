@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Lamdu.Infer
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import qualified Data.Map as M
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Scope as Scope
 
 exp0 :: E.Val ()
 exp0  =  E.eLet "id" (E.eAbs "x" (E.eVar "x"))
@@ -68,7 +68,7 @@ exp13  =  E.eRecExtend "x" (E.eLitInt 2) $
 
 test :: E.Val () -> IO ()
 test e =
-    case typeInference Scope.empty e of
+    case typeInference M.empty e of
         Left err ->
           putStrLn $ show (pPrint e) ++ "\n " ++ err ++ "\n"
         Right (E.Val (t, _) _) ->

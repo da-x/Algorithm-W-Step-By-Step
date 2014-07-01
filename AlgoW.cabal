@@ -13,13 +13,13 @@ library
   ghc-options:         -Wall -O2
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Infer
-                 ,     Lamdu.Infer.Scope
                  ,     Lamdu.Infer.Scheme
                  ,     Lamdu.Pretty
                  ,     Lamdu.Infer.TypeVars
   other-modules:       Lamdu.Infer.Internal.FlatRecordType
                ,       Lamdu.Infer.Internal.FreeTypeVars
                ,       Lamdu.Infer.Internal.Monad
+               ,       Lamdu.Infer.Internal.Scope
   default-language:    Haskell2010
   build-depends:       base >=4.7 && <4.8
                ,       pretty >=1.1 && <1.2

@@ -15,7 +15,6 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Scope as Scope
 import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs VApp
@@ -50,8 +49,8 @@ infixr 4 ~>
 (~>) :: E.Type -> E.Type -> E.Type
 (~>) = E.TFun
 
-getDef :: E.ValVar -> E.Val ()
-getDef = E.eVar
+getDef :: E.Tag -> E.Val ()
+getDef = E.eGlobal
 
 literalInteger :: Integer -> E.Val ()
 literalInteger = E.eLitInt
@@ -74,7 +73,7 @@ infixType a b c = record [("l", a), ("r", b)] ~> c
 infixArgs :: E.Val () -> E.Val () -> E.Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
-env :: Map E.ValVar Scheme
+env :: Map E.Tag Scheme
 env = Map.fromList
   [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
   , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
@@ -191,7 +190,7 @@ solveDepressedQuarticVal =
 
 infer :: E.Val () -> IO String
 infer e =
-    case typeInference (Scope.fromTypeMap env) e of
+    case typeInference env e of
     Left err ->  fail $ "error: " ++ err
     Right eTyped ->
       do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1

@@ -1,4 +1,4 @@
-module Lamdu.Infer.Scope
+module Lamdu.Infer.Internal.Scope
   ( Scope, empty
   , fromTypeMap
   , insertTypeOf

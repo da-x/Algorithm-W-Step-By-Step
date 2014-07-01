@@ -14,29 +14,33 @@ import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
+import Data.ByteString (ByteString)
 import Data.Foldable (Foldable)
 import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 
-newtype ValVar = ValVar { vvName :: String }
+type Identifier = ByteString
+
+newtype ValVar = ValVar { vvName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
 instance NFData ValVar where rnf = genericRnf
-instance IsString ValVar where fromString = ValVar
+instance IsString ValVar where fromString = ValVar . fromString
 
-newtype TypeVar = TypeVar { tvName :: String }
+newtype TypeVar = TypeVar { tvName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
 instance NFData TypeVar where rnf = genericRnf
-instance IsString TypeVar where fromString = TypeVar
+instance IsString TypeVar where fromString = TypeVar . fromString
 
-newtype RecordTypeVar = RecordTypeVar { rtvName :: String }
+newtype RecordTypeVar = RecordTypeVar { rtvName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
 instance NFData RecordTypeVar where rnf = genericRnf
+instance IsString RecordTypeVar where fromString = RecordTypeVar . fromString
 
-newtype Tag = Tag { tagName :: String }
+newtype Tag = Tag { tagName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
 instance NFData Tag where rnf = genericRnf
-instance IsString Tag where fromString = Tag
+instance IsString Tag where fromString = Tag . fromString
 
 data ValLeaf
   =  VVar ValVar

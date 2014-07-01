@@ -12,6 +12,7 @@ import Control.Monad.State (evalState, State)
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, runWriterT)
 import Data.Monoid (Monoid)
+import Data.String (IsString(..))
 import qualified Control.Monad.State as State
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
@@ -37,8 +38,8 @@ runW :: InferW a -> Infer (a, FreeTypeVars.Subst)
 runW = runWriterT
 
 class    InfersVars t            where liftName :: String -> t
-instance InfersVars E.Type       where liftName = E.TVar . E.TypeVar
-instance InfersVars E.RecordType where liftName = E.TRecVar . E.RecordTypeVar
+instance InfersVars E.Type       where liftName = E.TVar . fromString
+instance InfersVars E.RecordType where liftName = E.TRecVar . fromString
 
 class (Applicative m, Monad m) => MonadInfer m where
   newInferredVar :: InfersVars t => String -> m t

@@ -12,18 +12,17 @@ import Lamdu.Infer.Scheme
 import Lamdu.Infer.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>), ($$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Text.PrettyPrint as PP
 
-instance Pretty E.ValVar  where pPrint = PP.text . E.vvName
-instance Pretty E.TypeVar where pPrint = PP.text . E.tvName
-instance Pretty E.Tag     where pPrint = PP.text . E.tagName
-
-instance Pretty E.RecordTypeVar where
-  pPrint = PP.text . E.rtvName
+instance Pretty E.ValVar        where pPrint = PP.text . BS.unpack . E.vvName
+instance Pretty E.TypeVar       where pPrint = PP.text . BS.unpack . E.tvName
+instance Pretty E.Tag           where pPrint = PP.text . BS.unpack . E.tagName
+instance Pretty E.RecordTypeVar where pPrint = PP.text . BS.unpack . E.rtvName
 
 instance Pretty Scheme where
   pPrintPrec lvl prec (Scheme (TypeVars tv rv) t)  =

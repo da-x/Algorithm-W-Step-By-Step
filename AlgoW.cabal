@@ -10,7 +10,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Scope

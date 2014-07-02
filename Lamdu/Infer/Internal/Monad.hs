@@ -1,51 +1,72 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses #-}
 module Lamdu.Infer.Internal.Monad
   ( InferState(..)
   , Infer, run
-  , InferW, runW
-  , MonadInfer(..)
+  , newInferredVar
   ) where
 
-import Control.Applicative (Applicative)
-import Control.Monad.Except (ExceptT(..), runExceptT, MonadError(..))
-import Control.Monad.State (evalState, State)
-import Control.Monad.Trans (lift)
-import Control.Monad.Writer (WriterT, runWriterT)
-import Data.Monoid (Monoid)
+import Control.Applicative (Applicative(..))
+import Control.Monad.Except (MonadError(..))
+import Control.Monad.State (MonadState(..))
+import Control.Monad.Writer (MonadWriter(..))
+import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
+import qualified Control.Monad as Monad
 import qualified Control.Monad.State as State
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 
 data InferState = InferState { inferSupply :: Int }
 
-newtype Infer a = Infer { runInfer :: ExceptT String (State InferState) a }
-  deriving (Functor, Applicative, Monad)
+newtype Infer a = Infer { runInfer :: InferState -> Either String (a, FreeTypeVars.Subst, InferState) }
+  deriving Functor
 
--- TODO: Remove MonadError instance (Catch makes no sense in inference context!)
--- Export "annotateErrors" instead.
+instance Monad Infer where
+  return x = Infer $ \s -> Right (x, mempty, s)
+  Infer x >>= f =
+    Infer $ \s ->
+    do
+      (y, w0, s0) <- x s
+      (z, w1, s1) <- runInfer (f y) s0
+      Right (z, mappend w0 w1, s1)
+
+instance Applicative Infer where
+  pure = return
+  (<*>) = Monad.ap
+
+instance MonadState InferState Infer where
+  get = Infer $ \s -> Right (s, mempty, s)
+  put s = Infer $ const $ Right ((), mempty, s)
+
+instance MonadWriter FreeTypeVars.Subst Infer where
+  tell w = Infer $ \s -> Right ((), w, s)
+  listen (Infer x) =
+    Infer $ \s ->
+    do
+      (y, w, s0) <- x s
+      Right ((y, w), w, s0)
+  pass (Infer x) =
+    Infer $ \s ->
+    do
+      ((y, f), w, s0) <- x s
+      Right (y, f w, s0)
+
 instance MonadError [Char] Infer where
-  throwError = Infer . throwError
-  catchError (Infer act) f = Infer $ catchError act (runInfer . f)
+  throwError = Infer . const . Left
+  catchError (Infer x) f =
+    Infer $ \s ->
+    case x s of
+    Left e -> runInfer (f e) s
+    Right r -> Right r
 
-type InferW = WriterT FreeTypeVars.Subst Infer
+run :: Infer a -> Either String (a, FreeTypeVars.Subst)
+run (Infer t) =
+  do
+    (r, w, _) <- t InferState{inferSupply = 0}
+    Right (r, w)
 
-run :: Infer a -> Either String a
-run (Infer t) = evalState (runExceptT t) initInferState
-  where initInferState = InferState{inferSupply = 0}
-
-runW :: InferW a -> Infer (a, FreeTypeVars.Subst)
-runW = runWriterT
-
-class (Applicative m, Monad m) => MonadInfer m where
-  newInferredVar :: E.TypePart t => String -> m t
-
-instance MonadInfer Infer where
-  newInferredVar prefix =
-    Infer $
-    do  s <- State.get
-        State.put s{inferSupply = inferSupply s + 1}
-        return $ E.liftVar $ fromString $ prefix ++ show (inferSupply s)
-
-instance (Monoid w, MonadInfer m) => MonadInfer (WriterT w m) where
-  newInferredVar = lift . newInferredVar
+newInferredVar :: E.TypePart t => String -> Infer t
+newInferredVar prefix =
+  do  s <- State.get
+      State.put s{inferSupply = inferSupply s + 1}
+      return $ E.liftVar $ fromString $ prefix ++ show (inferSupply s)

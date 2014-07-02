@@ -7,14 +7,14 @@ import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad (void)
-import Control.Monad.Except (throwError, catchError)
+import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
-import Lamdu.Infer.Internal.Monad (InferW)
+import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Scope (Scope)
 import Lamdu.Infer.Scheme (Scheme)
 import Lamdu.Pretty ()
@@ -36,7 +36,7 @@ import qualified Text.PrettyPrint as PP
 
 unifyRecToPartial ::
   (Map E.Tag E.Type, E.RecordTypeVar) -> Map E.Tag E.Type ->
-  InferW ()
+  Infer ()
 unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
@@ -51,7 +51,7 @@ unifyRecToPartial (tfields, tname) ufields
 
 unifyRecPartials ::
   (Map E.Tag E.Type, E.RecordTypeVar) -> (Map E.Tag E.Type, E.RecordTypeVar) ->
-  InferW ()
+  Infer ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- InferMonad.newInferredVar "r"
       ((), s1) <-
@@ -64,7 +64,7 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyRecFulls ::
-  Map E.Tag E.Type -> Map E.Tag E.Type -> InferW ()
+  Map E.Tag E.Type -> Map E.Tag E.Type -> Infer ()
 unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
@@ -74,7 +74,7 @@ unifyRecFulls tfields ufields
     pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
   | otherwise = return mempty
 
-unifyRecs :: FlatRecordType -> FlatRecordType -> InferW ()
+unifyRecs :: FlatRecordType -> FlatRecordType -> Infer ()
 unifyRecs (FlatRecordType tfields tvar)
           (FlatRecordType ufields uvar) =
   do  let unifyField t u =
@@ -88,19 +88,19 @@ unifyRecs (FlatRecordType tfields tvar)
           (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
           (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
-dontUnify :: Pretty t => t -> t -> InferW ()
+dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
   throwError $ show $
   PP.text "types do not unify: " <+> pPrint x <+>
   PP.text "vs." <+> pPrint y
 
 class Unify t where
-  unify :: t -> t -> InferW ()
-  varBind :: E.VarOf t -> t -> InferW ()
+  unify :: t -> t -> Infer ()
+  varBind :: E.VarOf t -> t -> Infer ()
 
 checkOccurs ::
   (Pretty v, Pretty t, Ord v, TypeVars.Var v, FreeTypeVars t) =>
-  v -> t -> InferW () -> InferW ()
+  v -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (freeTypeVars typ) =
     throwError $ show $
@@ -151,8 +151,7 @@ instance Unify E.RecordType where
 
 typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (E.Val (E.Type, a))
 typeInference globals rootVal =
-    InferMonad.run $
-    do  ((_, t), s) <- InferMonad.runW $ infer (,) globals Scope.empty rootVal
+    do  ((_, t), s) <- InferMonad.run $ infer (,) globals Scope.empty rootVal
         return (t & mapped . _1 %~ FreeTypeVars.applySubst s)
 
 hasField :: E.Tag -> E.RecordType -> Either E.RecordTypeVar Bool
@@ -162,7 +161,7 @@ hasField tag (E.TRecExtend t _ r)
   | tag == t  = Right True
   | otherwise = hasField tag r
 
-infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> InferW (E.Type, E.Val b)
+infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
 infer f globals = go
   where
     go locals expr@(E.Val pl body) =
@@ -175,12 +174,12 @@ infer f globals = go
             case Scope.lookupTypeOf n locals of
                Nothing      -> throwError $ show $
                                PP.text "unbound variable:" <+> pPrint n
-               Just sigma   -> lift (Scheme.instantiate sigma)
+               Just sigma   -> Scheme.instantiate sigma
         E.VGlobal n ->
             case M.lookup n globals of
                Nothing      -> throwError $ show $
                                PP.text "missing global:" <+> pPrint n
-               Just sigma   -> lift (Scheme.instantiate sigma)
+               Just sigma   -> Scheme.instantiate sigma
         E.VLiteralInteger _ -> return (E.TCon "Int")
         E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
       E.VAbs (E.Lam n e) ->
@@ -228,7 +227,7 @@ infer f globals = go
                   pPrint x
                 _ -> return x
               _ -> do
-                tv <- lift $ InferMonad.newInferredVar "r"
+                tv <- InferMonad.newInferredVar "r"
                 ((), s) <- Writer.listen $ unify t2 $ E.TRecord tv
                 return $ FreeTypeVars.applySubst s tv
             return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest

@@ -1,9 +1,9 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
 module Lamdu.Infer.Internal.Monad
   ( InferState(..)
   , Infer, run
   , InferW, runW
-  , InfersVars, newInferredVar
+  , MonadInfer(..)
   ) where
 
 import Control.Applicative (Applicative)
@@ -37,19 +37,15 @@ run (Infer t) = evalState (runExceptT t) initInferState
 runW :: InferW a -> Infer (a, FreeTypeVars.Subst)
 runW = runWriterT
 
-class    InfersVars t            where liftName :: String -> t
-instance InfersVars E.Type       where liftName = E.TVar . fromString
-instance InfersVars E.RecordType where liftName = E.TRecVar . fromString
-
 class (Applicative m, Monad m) => MonadInfer m where
-  newInferredVar :: InfersVars t => String -> m t
+  newInferredVar :: E.TypePart t => String -> m t
 
 instance MonadInfer Infer where
   newInferredVar prefix =
     Infer $
     do  s <- State.get
         State.put s{inferSupply = inferSupply s + 1}
-        return $ liftName $ prefix ++ show (inferSupply s)
+        return $ E.liftVar $ fromString $ prefix ++ show (inferSupply s)
 
 instance (Monoid w, MonadInfer m) => MonadInfer (WriterT w m) where
   newInferredVar = lift . newInferredVar

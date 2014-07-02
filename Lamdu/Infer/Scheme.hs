@@ -36,7 +36,7 @@ generalize outsideTVs t  =   Scheme vars t
   where vars = freeTypeVars t `TypeVars.difference` outsideTVs
 
 mkInstantiateSubstPart ::
-  (InferMonad.InfersVars t, Ord (E.VarOf t)) =>
+  (E.TypePart t, Ord (E.VarOf t)) =>
   String -> Set (E.VarOf t) -> Infer (Map (E.VarOf t) t)
 mkInstantiateSubstPart prefix =
   fmap Map.fromList . mapM f . Set.toList

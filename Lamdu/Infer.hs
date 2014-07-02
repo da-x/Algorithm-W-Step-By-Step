@@ -198,8 +198,8 @@ infer f globals = go
             (t2, e2') <- go (FreeTypeVars.applySubst s1 locals') e2
             return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->
-        do  tv <- lift $ InferMonad.newInferredVar "a"
-            tvRec <- lift $ InferMonad.newInferredVar "r"
+        do  tv <- InferMonad.newInferredVar "a"
+            tvRec <- InferMonad.newInferredVar "r"
             ((t, e'), s) <- Writer.listen $ go locals e
             ((), su) <- Writer.listen $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv

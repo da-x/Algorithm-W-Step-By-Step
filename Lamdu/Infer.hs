@@ -155,6 +155,13 @@ typeInference globals rootVal =
     do  ((_, t), s) <- InferMonad.runW $ infer (,) globals Scope.empty rootVal
         return (t & mapped . _1 %~ FreeTypeVars.applySubst s)
 
+hasField :: E.Tag -> E.RecordType -> Either E.RecordTypeVar Bool
+hasField _ E.TRecEmpty   = Right False
+hasField _ (E.TRecVar v) = Left v
+hasField tag (E.TRecExtend t _ r)
+  | tag == t  = Right True
+  | otherwise = hasField tag r
+
 infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> InferW (E.Type, E.Val b)
 infer f globals = go
   where
@@ -207,9 +214,19 @@ infer f globals = go
         do  ((t1, e1'), s1) <- Writer.listen $ go locals e1
             ((t2, e2'), _) <- Writer.listen $ go (FreeTypeVars.applySubst s1 locals) e2
             rest <-
-              -- In case t2 is already inferred as a TRecord avoid extra unify
               case t2 of
-              E.TRecord x -> return x
+              E.TRecord x ->
+                -- In case t2 is already inferred as a TRecord,
+                -- verify it doesn't already have this field,
+                -- and avoid unnecessary unify from other case
+                case hasField name x of
+                Right True ->
+                  throwError $ show $
+                  PP.text "Added field already in record:" <+>
+                  pPrint name <+>
+                  PP.text " added to " <+>
+                  pPrint x
+                _ -> return x
               _ -> do
                 tv <- lift $ InferMonad.newInferredVar "r"
                 ((), s) <- Writer.listen $ unify t2 $ E.TRecord tv

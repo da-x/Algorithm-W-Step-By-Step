@@ -66,6 +66,11 @@ exp13  =  E.eRecExtend "x" (E.eLitInt 2) $
           E.eRecExtend "x" (E.eLitInt 3) $
           E.eRecEmpty
 
+exp14 :: E.Val ()
+exp14  =  E.eApp (E.eAbs "r" (E.eRecExtend "x" (E.eLitInt 2) (E.eVar "r"))) $
+          E.eRecExtend "x" (E.eLitInt 3) $
+          E.eRecEmpty
+
 test :: E.Val () -> IO ()
 test e =
     case typeInference M.empty e of
@@ -91,4 +96,5 @@ main =
   , exp11
   , exp12
   , exp13
+  , exp14
   ]

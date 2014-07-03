@@ -13,6 +13,7 @@ library
   ghc-options:         -Wall -O2
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Infer
+                 ,     Lamdu.Infer.Constraints
                  ,     Lamdu.Infer.Scheme
                  ,     Lamdu.Pretty
                  ,     Lamdu.Infer.TypeVars

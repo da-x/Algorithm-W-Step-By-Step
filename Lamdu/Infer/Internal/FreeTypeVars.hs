@@ -1,6 +1,6 @@
 module Lamdu.Infer.Internal.FreeTypeVars
   ( Subst(..), substDelete
-  , FreeTypeVars(..)
+  , FreeTypeVars(..), NewSubst(..)
   ) where
 
 import Data.Map (Map)
@@ -16,6 +16,17 @@ data Subst = Subst
   { substTypes :: Map E.TypeVar E.Type
   , substRecordTypes :: Map E.RecordTypeVar E.RecordType
   }
+
+class E.TypePart t => NewSubst t where
+  newSubst :: E.VarOf t -> t -> Subst
+
+instance NewSubst E.Type       where
+  newSubst tv t = Subst (Map.singleton tv t) mempty
+  {-# INLINE newSubst #-}
+
+instance NewSubst E.RecordType where
+  newSubst tv t = Subst mempty (Map.singleton tv t)
+  {-# INLINE newSubst #-}
 
 instance Monoid Subst where
   mempty = Subst Map.empty Map.empty

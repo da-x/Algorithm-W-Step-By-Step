@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
 module Lamdu.Infer.Internal.Monad
   ( InferState(..), Results(..), emptyResults
-  , Infer, run, tell, listen
-  , newInferredVar
+  , Infer, run
+  , tellSubst, tellConstraint
+  , listen
+  , newInferredVar, newInferredVarName
   ) where
 
 import Control.Applicative (Applicative(..))
@@ -10,9 +12,11 @@ import Control.Monad.Except (MonadError(..))
 import Control.Monad.State (MonadState(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
-import Lamdu.Infer.Constraints (Constraints)
+import Lamdu.Infer.Constraints (Constraints(..))
 import qualified Control.Monad as Monad
 import qualified Control.Monad.State as State
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
@@ -71,6 +75,15 @@ run (Infer t) =
 tell :: Results -> Infer ()
 tell w = Infer $ \s -> Right ((), w, s)
 
+tellSubst :: FreeTypeVars.NewSubst t => E.VarOf t -> t -> Infer ()
+tellSubst v t =
+  tell $ emptyResults
+  { subst = FreeTypeVars.newSubst v t }
+
+tellConstraint :: E.RecordTypeVar -> E.Tag -> Infer ()
+tellConstraint v tag =
+  tell $ emptyResults { constraints = Constraints $ Map.singleton v (Set.singleton tag) }
+
 listen :: Infer a -> Infer (a, Results)
 listen (Infer x) =
   Infer $ \s ->
@@ -78,8 +91,11 @@ listen (Infer x) =
     (y, w, s0) <- x s
     Right ((y, w), w, s0)
 
-newInferredVar :: E.TypePart t => String -> Infer t
-newInferredVar prefix =
+newInferredVarName :: IsString v => String -> Infer v
+newInferredVarName prefix =
   do  s <- State.get
       State.put s{inferSupply = inferSupply s + 1}
-      return $ E.liftVar $ fromString $ prefix ++ show (inferSupply s)
+      return $ fromString $ prefix ++ show (inferSupply s)
+
+newInferredVar :: E.TypePart t => String -> Infer t
+newInferredVar = fmap E.liftVar . newInferredVarName

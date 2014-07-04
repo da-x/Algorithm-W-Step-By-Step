@@ -15,7 +15,7 @@ import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Text.PrettyPrint as PP
 
-data Constraints = Constraints
+newtype Constraints = Constraints
   { forbiddenRecordFields :: Map E.RecordTypeVar (Set E.Tag)
   }
 

@@ -2,7 +2,7 @@ module Lamdu.Infer
   ( typeInference
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$), (<$>))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
@@ -132,11 +132,7 @@ instance Unify E.Type where
   unify t1 t2                       =  dontUnify t1 t2
 
   varBind u (E.TVar t) | t == u = return ()
-  varBind u t =
-    checkOccurs u t $
-    M.tell $ M.emptyResults
-      { M.subst = FreeTypeVars.Subst (Map.singleton u t) mempty
-      }
+  varBind u t = checkOccurs u t $ M.tellSubst u t
 
 instance Unify E.RecordType where
   unify E.TRecEmpty E.TRecEmpty =  return ()
@@ -149,22 +145,20 @@ instance Unify E.RecordType where
   unify t1 t2                   =  dontUnify t1 t2
 
   varBind u (E.TRecVar t) | t == u = return ()
-  varBind u t =
-    checkOccurs u t $
-    M.tell $ M.emptyResults
-      { M.subst = FreeTypeVars.Subst mempty (Map.singleton u t)
-      }
+  varBind u t = checkOccurs u t $ M.tellSubst u t
 
 typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (E.Val (E.Type, a))
 typeInference globals rootVal =
     do  ((_, t), s) <- M.run $ infer (,) globals Scope.empty rootVal
         return (t & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
 
-hasField :: E.Tag -> E.RecordType -> Either E.RecordTypeVar Bool
-hasField _ E.TRecEmpty   = Right False
-hasField _ (E.TRecVar v) = Left v
+data RecordHasField = HasField | DoesNotHaveField | MayHaveField E.RecordTypeVar
+
+hasField :: E.Tag -> E.RecordType -> RecordHasField
+hasField _ E.TRecEmpty   = DoesNotHaveField
+hasField _ (E.TRecVar v) = MayHaveField v
 hasField tag (E.TRecExtend t _ r)
-  | tag == t  = Right True
+  | tag == t  = HasField
   | otherwise = hasField tag r
 
 infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
@@ -225,17 +219,20 @@ infer f globals = go
                 -- verify it doesn't already have this field,
                 -- and avoid unnecessary unify from other case
                 case hasField name x of
-                Right True ->
+                HasField ->
                   throwError $ show $
                   PP.text "Added field already in record:" <+>
                   pPrint name <+>
                   PP.text " added to " <+>
                   pPrint x
-                _ -> return x
+                DoesNotHaveField -> return x
+                MayHaveField var -> x <$ M.tellConstraint var name
               _ -> do
-                tv <- M.newInferredVar "r"
-                ((), s) <- withSubst $ unify t2 $ E.TRecord tv
-                return $ FreeTypeVars.applySubst s tv
+                tv <- M.newInferredVarName "r"
+                M.tellConstraint tv name
+                let tve = E.liftVar tv
+                ((), s) <- withSubst $ unify t2 $ E.TRecord tve
+                return $ FreeTypeVars.applySubst s tve
             return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest
       where
         mkResult body' typ = (typ, E.Val (f typ pl) body')

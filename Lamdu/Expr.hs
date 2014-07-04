@@ -20,6 +20,10 @@ import Data.Foldable (Foldable)
 import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
+import Text.PrettyPrint ((<+>), (<>))
+import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import qualified Data.ByteString.Char8 as BS
+import qualified Text.PrettyPrint as PP
 
 type Identifier = ByteString
 
@@ -139,3 +143,28 @@ eRecExtend name typ rest = Val () $ VRecExtend name typ rest
 
 eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n
+
+instance Pretty RecordTypeVar where pPrint = PP.text . BS.unpack . rtvName
+instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
+instance Pretty TypeVar       where pPrint = PP.text . BS.unpack . tvName
+
+instance Pretty Type where
+  pPrintPrec lvl prec typ =
+    case typ of
+    TVar n -> pPrint n
+    TCon s -> PP.text s
+    TFun t s ->
+      prettyParen (8 < prec) $
+      pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
+    TApp t s ->
+      prettyParen (10 < prec) $
+      pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
+    TRecord r -> pPrint r
+
+instance Pretty RecordType where
+  pPrint x =
+    PP.text "T{" <+> go PP.empty x <+> PP.text "}"
+    where
+      go _   TRecEmpty          = PP.empty
+      go sep (TRecVar tv)       = sep <> pPrint tv <> PP.text "..."
+      go sep (TRecExtend f t r) = sep <> pPrint f <+> PP.text ":" <+> pPrint t <> go (PP.text ", ") r

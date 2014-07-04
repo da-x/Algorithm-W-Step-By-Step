@@ -1,10 +1,12 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Lamdu.Infer.Constraints
   ( Constraints(..), applySubst
   ) where
 
 import Data.Map (Map)
+import Data.Monoid (Monoid(..))
 import Data.Set (Set)
-import Lamdu.Pretty ()
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
@@ -17,7 +19,12 @@ data Constraints = Constraints
   { forbiddenRecordFields :: Map E.RecordTypeVar (Set E.Tag)
   }
 
-applySubst :: FreeTypeVars.Subst -> Constraints -> Either String Constraints
+instance Monoid Constraints where
+  mempty = Constraints Map.empty
+  mappend (Constraints x) (Constraints y) = Constraints $ Map.unionWith mappend x y
+
+applySubst ::
+  FreeTypeVars.Subst -> Constraints -> Either String Constraints
 applySubst (FreeTypeVars.Subst _ recordSubsts) (Constraints c) =
   fmap (Constraints . Map.fromList . concat) $ mapM onConstraint $ Map.toList c
   where

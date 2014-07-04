@@ -16,9 +16,6 @@ import qualified Lamdu.Expr as E
 import qualified Text.PrettyPrint as PP
 
 instance Pretty E.ValVar        where pPrint = PP.text . BS.unpack . E.vvName
-instance Pretty E.TypeVar       where pPrint = PP.text . BS.unpack . E.tvName
-instance Pretty E.Tag           where pPrint = PP.text . BS.unpack . E.tagName
-instance Pretty E.RecordTypeVar where pPrint = PP.text . BS.unpack . E.rtvName
 
 instance Pretty Scheme where
   pPrintPrec lvl prec (Scheme (TypeVars tv rv) t)  =
@@ -68,24 +65,3 @@ flatRecordValue (E.Val _ (E.VRecExtend field val body)) =
   & _1 %~ ((field, val):)
 flatRecordValue (E.Val _ (E.VLeaf E.VRecEmpty)) = ([], Nothing)
 flatRecordValue other = ([], Just other)
-
-instance Pretty E.Type where
-  pPrintPrec lvl prec typ =
-    case typ of
-    E.TVar n -> pPrint n
-    E.TCon s -> PP.text s
-    E.TFun t s ->
-      prettyParen (8 < prec) $
-      pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
-    E.TApp t s ->
-      prettyParen (10 < prec) $
-      pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
-    E.TRecord r -> pPrint r
-
-instance Pretty E.RecordType where
-  pPrint x =
-    PP.text "T{" <+> go PP.empty x <+> PP.text "}"
-    where
-      go _   E.TRecEmpty          = PP.empty
-      go sep (E.TRecVar tv)       = sep <> pPrint tv <> PP.text "..."
-      go sep (E.TRecExtend f t r) = sep <> pPrint f <+> PP.text ":" <+> pPrint t <> go (PP.text ", ") r

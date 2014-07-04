@@ -21,18 +21,20 @@ import Lamdu.Pretty ()
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
-import qualified Control.Monad.Writer as Writer
 import qualified Data.Map as M
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
-import qualified Lamdu.Infer.Internal.Monad as InferMonad
+import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Scheme as Scheme
 import qualified Lamdu.Infer.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
+
+withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)
+withSubst x = M.listen x <&> _2 %~ M.subst
 
 unifyRecToPartial ::
   (Map E.Tag E.Type, E.RecordTypeVar) -> Map E.Tag E.Type ->
@@ -53,9 +55,9 @@ unifyRecPartials ::
   (Map E.Tag E.Type, E.RecordTypeVar) -> (Map E.Tag E.Type, E.RecordTypeVar) ->
   Infer ()
 unifyRecPartials (tfields, tname) (ufields, uname) =
-  do  restTv <- InferMonad.newInferredVar "r"
+  do  restTv <- M.newInferredVar "r"
       ((), s1) <-
-        Writer.listen $ varBind tname $
+        withSubst $ varBind tname $
         Map.foldWithKey E.TRecExtend restTv uniqueUFields
       varBind uname $ FreeTypeVars.applySubst s1 $
         Map.foldWithKey E.TRecExtend restTv uniqueTFields
@@ -79,7 +81,7 @@ unifyRecs (FlatRecordType tfields tvar)
           (FlatRecordType ufields uvar) =
   do  let unifyField t u =
               do  old <- State.get
-                  ((), s) <- lift $ Writer.listen $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
+                  ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
                   State.put (old `mappend` s)
       (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
       case (tvar, uvar) of
@@ -112,13 +114,13 @@ checkOccurs var typ act
 instance Unify E.Type where
   unify (E.TFun l r) (E.TFun l' r') =
     do
-      ((), s1) <- Writer.listen $ unify l l'
+      ((), s1) <- withSubst $ unify l l'
       unify
         (FreeTypeVars.applySubst s1 r)
         (FreeTypeVars.applySubst s1 r')
   unify (E.TApp l r) (E.TApp l' r') =
     do
-      ((), s1) <- Writer.listen $ unify l l'
+      ((), s1) <- withSubst $ unify l l'
       unify
         (FreeTypeVars.applySubst s1 r)
         (FreeTypeVars.applySubst s1 r')
@@ -132,7 +134,9 @@ instance Unify E.Type where
   varBind u (E.TVar t) | t == u = return ()
   varBind u t =
     checkOccurs u t $
-    Writer.tell $ FreeTypeVars.Subst (Map.singleton u t) mempty
+    M.tell $ M.emptyResults
+      { M.subst = FreeTypeVars.Subst (Map.singleton u t) mempty
+      }
 
 instance Unify E.RecordType where
   unify E.TRecEmpty E.TRecEmpty =  return ()
@@ -147,12 +151,14 @@ instance Unify E.RecordType where
   varBind u (E.TRecVar t) | t == u = return ()
   varBind u t =
     checkOccurs u t $
-    Writer.tell $ FreeTypeVars.Subst mempty (Map.singleton u t)
+    M.tell $ M.emptyResults
+      { M.subst = FreeTypeVars.Subst mempty (Map.singleton u t)
+      }
 
 typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (E.Val (E.Type, a))
 typeInference globals rootVal =
-    do  ((_, t), s) <- InferMonad.run $ infer (,) globals Scope.empty rootVal
-        return (t & mapped . _1 %~ FreeTypeVars.applySubst s)
+    do  ((_, t), s) <- M.run $ infer (,) globals Scope.empty rootVal
+        return (t & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
 
 hasField :: E.Tag -> E.RecordType -> Either E.RecordTypeVar Bool
 hasField _ E.TRecEmpty   = Right False
@@ -169,7 +175,7 @@ infer f globals = go
       E.VLeaf leaf ->
         mkResult (E.VLeaf leaf) <$>
         case leaf of
-        E.VHole -> InferMonad.newInferredVar "h"
+        E.VHole -> M.newInferredVar "h"
         E.VVar n ->
             case Scope.lookupTypeOf n locals of
                Nothing      -> throwError $ show $
@@ -183,20 +189,20 @@ infer f globals = go
         E.VLiteralInteger _ -> return (E.TCon "Int")
         E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
       E.VAbs (E.Lam n e) ->
-        do  tv <- InferMonad.newInferredVar "a"
+        do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n (Scheme.specific tv) locals
-            ((t1, e'), s1) <- Writer.listen $ go locals' e
+            ((t1, e'), s1) <- withSubst $ go locals' e
             return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
       E.VApp (E.Apply e1 e2) ->
-        do  tv <- InferMonad.newInferredVar "a"
-            ((t1, e1'), s1) <- Writer.listen $ go locals e1
-            ((t2, e2'), s2) <- Writer.listen $ go (FreeTypeVars.applySubst s1 locals) e2
-            ((), s3) <- Writer.listen $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
+        do  tv <- M.newInferredVar "a"
+            ((t1, e1'), s1) <- withSubst $ go locals e1
+            ((t2, e2'), s2) <- withSubst $ go (FreeTypeVars.applySubst s1 locals) e2
+            ((), s3) <- withSubst $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
             return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
         `catchError`
         \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
       E.VLet x e1 e2 ->
-        do  ((t1, e1'), s1) <- Writer.listen $ go locals e1
+        do  ((t1, e1'), s1) <- withSubst $ go locals e1
             -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 locals)) makes no sense performance-wise
             -- improve it
             let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 locals)) t1
@@ -204,14 +210,14 @@ infer f globals = go
             (t2, e2') <- go (FreeTypeVars.applySubst s1 locals') e2
             return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->
-        do  tv <- InferMonad.newInferredVar "a"
-            tvRec <- InferMonad.newInferredVar "r"
-            ((t, e'), s) <- Writer.listen $ go locals e
-            ((), su) <- Writer.listen $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
+        do  tv <- M.newInferredVar "a"
+            tvRec <- M.newInferredVar "r"
+            ((t, e'), s) <- withSubst $ go locals e
+            ((), su) <- withSubst $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
       E.VRecExtend name e1 e2 ->
-        do  ((t1, e1'), s1) <- Writer.listen $ go locals e1
-            ((t2, e2'), _) <- Writer.listen $ go (FreeTypeVars.applySubst s1 locals) e2
+        do  ((t1, e1'), s1) <- withSubst $ go locals e1
+            ((t2, e2'), _) <- withSubst $ go (FreeTypeVars.applySubst s1 locals) e2
             rest <-
               case t2 of
               E.TRecord x ->
@@ -227,8 +233,8 @@ infer f globals = go
                   pPrint x
                 _ -> return x
               _ -> do
-                tv <- InferMonad.newInferredVar "r"
-                ((), s) <- Writer.listen $ unify t2 $ E.TRecord tv
+                tv <- M.newInferredVar "r"
+                ((), s) <- withSubst $ unify t2 $ E.TRecord tv
                 return $ FreeTypeVars.applySubst s tv
             return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest
       where

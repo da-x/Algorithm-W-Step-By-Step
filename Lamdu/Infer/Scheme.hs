@@ -18,7 +18,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
-import qualified Lamdu.Infer.Internal.Monad as InferMonad
+import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.TypeVars as TypeVars
 
 data Scheme = Scheme TypeVars E.Type
@@ -43,7 +43,7 @@ mkInstantiateSubstPart prefix =
   where
     f oldVar =
       do
-        newVarExpr <- InferMonad.newInferredVar prefix
+        newVarExpr <- M.newInferredVar prefix
         return (oldVar, newVarExpr)
 
 instantiate :: Scheme -> Infer E.Type

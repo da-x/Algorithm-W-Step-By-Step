@@ -4,6 +4,7 @@ synopsis:            Type inference, extending AlgorithmW step-by-step
 license:             GPL-3
 license-file:        LICENSE
 author:              Eyal Lotem
+                     Yair Chuchem
 maintainer:          eyal.lotem@gmail.com
 category:            Development
 build-type:          Simple

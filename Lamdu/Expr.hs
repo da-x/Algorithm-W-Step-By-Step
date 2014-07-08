@@ -6,7 +6,7 @@ module Lamdu.Expr
   , ValVar(..)
   , RecordType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
-  , eLet, eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
+  , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , Tag(..)
   , TypePart(..)
   ) where
@@ -77,7 +77,6 @@ instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 data ValBody exp
   =  VApp {-# UNPACK #-}!(Apply exp)
   |  VAbs {-# UNPACK #-}!(Lam exp)
-  |  VLet ValVar exp exp
   |  VGetField {-# UNPACK #-}!(GetField exp)
   |  VRecExtend Tag exp exp
   |  VLeaf ValLeaf
@@ -116,9 +115,6 @@ instance TypePart Type where
 instance TypePart RecordType where
   type VarOf RecordType = RecordTypeVar
   liftVar = TRecVar
-
-eLet :: ValVar -> Val () -> Val () -> Val ()
-eLet name e1 e2 = Val () $ VLet name e1 e2
 
 eAbs :: ValVar -> Val () -> Val ()
 eAbs name body = Val () $ VAbs $ Lam name body

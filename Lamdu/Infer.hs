@@ -202,11 +202,6 @@ infer f globals = go
             return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
         `catchError`
         \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
-      E.VLet x e1 e2 ->
-        do  (locals', t1, e1') <- Scheme.generalize locals $ go locals e1
-            let locals'' = Scope.insertTypeOf x t1 locals'
-            (t2, e2') <- go locals'' e2
-            return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"

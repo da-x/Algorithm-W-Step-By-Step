@@ -8,7 +8,7 @@ import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.Scheme
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
-import Text.PrettyPrint ((<+>), (<>), ($$))
+import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
@@ -39,11 +39,6 @@ instance Pretty (E.Val ()) where
     E.VLeaf (E.VGlobal tag)       -> pPrint tag
     E.VLeaf (E.VLiteralInteger i) -> pPrint i
     E.VLeaf E.VHole               -> PP.text "?"
-    E.VLet x b body               -> prettyParen (1 < prec) $
-                                     PP.text "let" <+>
-                                     pPrint x <+> PP.text "=" <+>
-                                     pPrint b <+> PP.text "in" $$
-                                     PP.nest 2 (pPrint body)
     E.VApp (E.Apply e1 e2)        -> prettyParen (10 < prec) $
                                      pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
     E.VAbs (E.Lam n e)            -> prettyParen (0 < prec) $

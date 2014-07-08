@@ -4,6 +4,7 @@ module Lamdu.Infer.Internal.Constraints
   , constraintDeleteVars
   ) where
 
+import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
@@ -59,7 +60,8 @@ applyRenames renames (Constraints m) =
 applySubst ::
   FreeTypeVars.Subst -> Constraints -> Either String Constraints
 applySubst (FreeTypeVars.Subst _ recordSubsts) (Constraints c) =
-  fmap (Constraints . Map.fromList . concat) $ mapM onConstraint $ Map.toList c
+  Constraints . Map.fromListWith Set.union . concat <$>
+  mapM onConstraint (Map.toList c)
   where
     onConstraint (var, forbidden) =
       case Map.lookup var recordSubsts of

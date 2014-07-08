@@ -209,9 +209,12 @@ infer f globals = go
             return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"
-            tvRec <- M.newInferredVar "r"
+            tvRecName <- M.newInferredVarName "r"
+            M.tellConstraint tvRecName name
             ((t, e'), s) <- withSubst $ go locals e
-            ((), su) <- withSubst $ unify (FreeTypeVars.applySubst s t) $ E.TRecord $ E.TRecExtend name tv tvRec
+            ((), su) <-
+              withSubst $ unify (FreeTypeVars.applySubst s t) $
+              E.TRecord $ E.TRecExtend name tv $ E.liftVar tvRecName
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
       E.VRecExtend name e1 e2 ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1

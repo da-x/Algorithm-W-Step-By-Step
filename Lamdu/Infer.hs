@@ -181,7 +181,7 @@ infer f globals = go
             case Scope.lookupTypeOf n locals of
                Nothing      -> throwError $ show $
                                PP.text "unbound variable:" <+> pPrint n
-               Just sigma   -> Scheme.instantiate sigma
+               Just t       -> return t
         E.VGlobal n ->
             case M.lookup n globals of
                Nothing      -> throwError $ show $
@@ -191,7 +191,7 @@ infer f globals = go
         E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
       E.VAbs (E.Lam n e) ->
         do  tv <- M.newInferredVar "a"
-            let locals' = Scope.insertTypeOf n (Scheme.specific tv) locals
+            let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- withSubst $ go locals' e
             return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
       E.VApp (E.Apply e1 e2) ->

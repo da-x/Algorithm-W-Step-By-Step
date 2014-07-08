@@ -3,14 +3,12 @@ module Lamdu.Infer.Internal.Scheme
   ( Scheme(..)
   , generalize
   , instantiate
-  , specific
   ) where
 
 import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
-import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Data.String (IsString(..))
 import GHC.Generics (Generic)
@@ -40,9 +38,6 @@ instance FreeTypeVars Scheme where
       freeTypeVars t `TypeVars.difference` vars
     applySubst s (Scheme vars constraints t) =
       Scheme vars constraints $ applySubst (FreeTypeVars.substDeleteVars vars s) t
-
-specific :: E.Type -> Scheme
-specific = Scheme mempty mempty
 
 -- outside represents all outside types
 generalize :: FreeTypeVars o => o -> Infer (E.Type, a) -> Infer (o, Scheme, a)

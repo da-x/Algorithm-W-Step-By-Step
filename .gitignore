@@ -1,1 +1,5 @@
-dist/
+/dist/
+/benches
+/.cabal-sandbox
+/cabal.sandbox.config
+/TAGS

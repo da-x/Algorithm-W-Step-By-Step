@@ -1,10 +1,7 @@
 {-# OPTIONS -fno-warn-orphans #-}
 module Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated) where
 
-import Control.Applicative ((<$>), (<$))
-import Control.Lens.Operators
-import Control.Lens.Tuple
-import Data.List (intersperse)
+import Control.Applicative ((<$))
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.Scheme
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
@@ -67,24 +64,11 @@ pPrintPrecBody lvl prec body =
                                    pPrint e
   E.VGetField (E.GetField e n)  -> prettyParen (12 < prec) $
                                    pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-  E.VLeaf E.VRecEmpty           -> PP.text "{}"
-  E.VRecExtend {}               ->
-      PP.text "V{" <+>
-          mconcat (intersperse (PP.text ", ")
-            (map prField fields)) <>
-          moreFields <+>
-      PP.text "}"
+  E.VLeaf E.VRecEmpty           -> PP.text "V{}"
+  E.VRecExtend tag val rest     -> PP.text "{" <+>
+                                     prField <>
+                                     PP.comma <+>
+                                     pPrint rest <+>
+                                   PP.text "}"
     where
-      prField (field, val) = pPrint field <+> PP.text "=" <+> pPrint val
-      moreFields =
-        case mRest of
-        Nothing -> PP.empty
-        Just rest -> PP.comma <+> PP.text "{" <+> pPrint rest <+> PP.text "}"
-      (fields, mRest) = flatRecordValue $ E.Val EmptyDoc $ (EmptyDoc <$) <$> body
-
-flatRecordValue :: E.Val a -> ([(E.Tag, E.Val a)], Maybe (E.Val a))
-flatRecordValue (E.Val _ (E.VRecExtend field val body)) =
-  flatRecordValue body
-  & _1 %~ ((field, val):)
-flatRecordValue (E.Val _ (E.VLeaf E.VRecEmpty)) = ([], Nothing)
-flatRecordValue other = ([], Just other)
+      prField = pPrint tag <+> PP.text "=" <+> pPrint val

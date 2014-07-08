@@ -158,8 +158,9 @@ instance Pretty Type where
     TRecord r -> pPrint r
 
 instance Pretty RecordType where
+  pPrint TRecEmpty = PP.text "T{}"
   pPrint x =
-    PP.text "T{" <+> go PP.empty x <+> PP.text "}"
+    PP.text "{" <+> go PP.empty x <+> PP.text "}"
     where
       go _   TRecEmpty          = PP.empty
       go sep (TRecVar tv)       = sep <> pPrint tv <> PP.text "..."

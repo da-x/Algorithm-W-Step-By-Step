@@ -88,7 +88,7 @@ test e =
         Left err ->
           putStrLn $ show (pPrintPureVal e) ++ "\n " ++ err
         Right (scheme, val) -> do
-          putStrLn $ show (pPrint scheme)
+          putStrLn $ show (pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme)
           let next = modify' (+1) >> get
               tag x =
                 do  n <- zoom _1 next

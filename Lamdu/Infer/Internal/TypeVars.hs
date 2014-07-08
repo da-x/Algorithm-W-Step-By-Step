@@ -1,16 +1,22 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , Var(..)
   , difference
   ) where
 
+import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Generics (genericRnf)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
+import GHC.Generics (Generic)
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 
 data TypeVars = TypeVars (Set E.TypeVar) (Set E.RecordTypeVar)
-  deriving (Eq)
+  deriving (Eq, Generic)
+instance NFData TypeVars where
+  rnf = genericRnf
 instance Monoid TypeVars where
   mempty = TypeVars mempty mempty
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =

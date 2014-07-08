@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scheme
   ( Scheme(..)
   , generalize
@@ -7,10 +7,13 @@ module Lamdu.Infer.Internal.Scheme
   ) where
 
 import Control.Applicative ((<$>))
+import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Data.String (IsString(..))
+import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
@@ -27,7 +30,10 @@ data Scheme = Scheme
   { schemeForAll :: TypeVars
   , schemeConstraints :: Constraints
   , schemeType :: E.Type
-  }
+  } deriving (Generic)
+
+instance NFData Scheme where
+  rnf = genericRnf
 
 instance FreeTypeVars Scheme where
     freeTypeVars (Scheme vars _ t) =

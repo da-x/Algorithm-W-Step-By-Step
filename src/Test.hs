@@ -82,8 +82,8 @@ test e =
     case typeInference M.empty e of
         Left err ->
           putStrLn $ show (pPrint e) ++ "\n " ++ err ++ "\n"
-        Right (E.Val (t, _) _) ->
-          putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint t) ++ "\n"
+        Right (scheme, _) ->
+          putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint scheme) ++ "\n"
 
 main :: IO ()
 main =

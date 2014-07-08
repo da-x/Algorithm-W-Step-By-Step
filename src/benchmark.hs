@@ -192,9 +192,9 @@ infer :: E.Val () -> IO String
 infer e =
     case typeInference env e of
     Left err ->  fail $ "error: " ++ err
-    Right eTyped ->
-      do  _ <- evaluate $ rnf $ eTyped ^.. folded . _1
-          return $ show $ pPrint e <+> PP.text "::" <+> pPrint (eTyped ^. E.expPayload . _1)
+    Right (eScheme, eTyped) ->
+      do  _ <- evaluate $ rnf (eTyped ^.. folded . _1, eScheme)
+          return $ show $ pPrint e <+> PP.text "::" <+> pPrint eScheme
 
 benches :: [(String, IO String)]
 benches =

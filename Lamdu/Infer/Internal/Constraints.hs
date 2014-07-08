@@ -1,13 +1,16 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric, FlexibleContexts #-}
 module Lamdu.Infer.Internal.Constraints
   ( Constraints(..), applySubst, applyRenames
   , constraintDeleteVars
   ) where
 
+import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
+import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -20,7 +23,10 @@ import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
   { forbiddenRecordFields :: Map E.RecordTypeVar (Set E.Tag)
-  } deriving (Eq)
+  } deriving (Generic, Eq)
+
+instance NFData Constraints where
+  rnf = genericRnf
 
 instance Monoid Constraints where
   mempty = Constraints Map.empty

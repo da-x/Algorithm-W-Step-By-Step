@@ -149,10 +149,11 @@ instance Unify E.RecordType where
   varBind u (E.TRecVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (E.Val (E.Type, a))
+typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (Scheme, E.Val (E.Type, a))
 typeInference globals rootVal =
-    do  ((_, t), s) <- M.run $ infer (,) globals Scope.empty rootVal
-        return (t & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
+  do  ((_, topScheme, val), s) <-
+        M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
+      return (topScheme, val & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
 
 data RecordHasField = HasField | DoesNotHaveField | MayHaveField E.RecordTypeVar
 

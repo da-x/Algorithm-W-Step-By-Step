@@ -10,6 +10,7 @@ import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 
 data TypeVars = TypeVars (Set E.TypeVar) (Set E.RecordTypeVar)
+  deriving (Eq)
 instance Monoid TypeVars where
   mempty = TypeVars mempty mempty
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =

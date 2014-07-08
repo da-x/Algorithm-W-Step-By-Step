@@ -7,6 +7,7 @@ import Control.Lens.Tuple
 import Control.Monad ((<=<))
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
+import Data.Monoid (Monoid(..))
 import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -60,7 +61,8 @@ boolType :: E.Type
 boolType = E.TCon "Bool"
 
 forAll :: [E.TypeVar] -> ([E.Type] -> E.Type) -> Scheme
-forAll tvs mkType = Scheme (TypeVars (Set.fromList tvs) Set.empty) $ mkType $ map E.TVar tvs
+forAll tvs mkType =
+  Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map E.TVar tvs
 
 listOf :: E.Type -> E.Type
 listOf = E.TApp (E.TCon "List")

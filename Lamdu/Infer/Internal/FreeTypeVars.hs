@@ -1,16 +1,16 @@
 module Lamdu.Infer.Internal.FreeTypeVars
-  ( Subst(..), substDelete
+  ( Subst(..), substDeleteVars
   , FreeTypeVars(..), NewSubst(..)
   ) where
 
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
-import Data.Set (Set)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
+import qualified Data.Map.Utils as MapU
 
 data Subst = Subst
   { substTypes :: Map E.TypeVar E.Type
@@ -35,12 +35,9 @@ instance Monoid Subst where
     (t1 `Map.union` Map.map (applySubst s1) t0)
     (r1 `Map.union` Map.map (applySubst s1) r0)
 
-mapSetDifference :: Ord k => Set k -> Map k v -> Map k v
-mapSetDifference s m = Set.foldr Map.delete m s
-
-substDelete :: TypeVars -> Subst -> Subst
-substDelete (TypeVars t r) (Subst st sr) =
-  Subst (mapSetDifference t st) (mapSetDifference r sr)
+substDeleteVars :: TypeVars -> Subst -> Subst
+substDeleteVars (TypeVars t r) (Subst st sr) =
+  Subst (MapU.deleteKeySet t st) (MapU.deleteKeySet r sr)
 
 class FreeTypeVars a where
   freeTypeVars :: a -> TypeVars

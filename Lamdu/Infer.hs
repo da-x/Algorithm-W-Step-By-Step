@@ -198,10 +198,8 @@ infer f globals = go
         `catchError`
         \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
       E.VLet x e1 e2 ->
-        do  ((t1, e1'), s1) <- withSubst $ go locals e1
-            let locals' = FreeTypeVars.applySubst s1 locals
-                t' = Scheme.generalize (freeTypeVars locals') t1
-                locals'' = Scope.insertTypeOf x (FreeTypeVars.applySubst s1 t') locals'
+        do  (locals', t1, e1') <- Scheme.generalize locals $ go locals e1
+            let locals'' = Scope.insertTypeOf x t1 locals'
             (t2, e2') <- go locals'' e2
             return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->

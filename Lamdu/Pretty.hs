@@ -18,11 +18,19 @@ import qualified Text.PrettyPrint as PP
 instance Pretty E.ValVar        where pPrint = PP.text . BS.unpack . E.vvName
 
 instance Pretty Scheme where
-  pPrintPrec lvl prec (Scheme (TypeVars tv rv) t)  =
+  pPrintPrec lvl prec (Scheme vars@(TypeVars tv rv) constraints t)  =
     prettyParen (0 < prec) $
-    PP.text "All" <+>
-    PP.hcat (PP.punctuate PP.comma (map pPrint (Set.toList tv) ++ map pPrint (Set.toList rv))) <>
-    PP.text "." <+> pPrintPrec lvl 0 t
+    forallStr <+> constraintsStr <+> pPrintPrec lvl 0 t
+    where
+      forallStr
+        | mempty == vars = mempty
+        | otherwise =
+          PP.text "forall" <+>
+          PP.hsep (map pPrint (Set.toList tv) ++ map pPrint (Set.toList rv)) <>
+          PP.text "."
+      constraintsStr
+        | mempty == constraints = mempty
+        | otherwise = pPrint constraints <+> PP.text "=>"
 
 instance Pretty (E.Val ()) where
   pPrintPrec lvl prec expr =

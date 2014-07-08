@@ -14,7 +14,8 @@ library
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Infer
                  ,     Lamdu.Pretty
-  other-modules:       Lamdu.Infer.Internal.Constraints
+  other-modules:       Data.Map.Utils
+               ,       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatRecordType
                ,       Lamdu.Infer.Internal.FreeTypeVars
                ,       Lamdu.Infer.Internal.Monad

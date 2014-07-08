@@ -79,18 +79,19 @@ unifyRecFulls tfields ufields
   | otherwise = return mempty
 
 unifyFlattenedRecs :: FlatRecordType -> FlatRecordType -> Infer ()
-unifyFlattenedRecs (FlatRecordType tfields tvar)
-          (FlatRecordType ufields uvar) =
-  do  let unifyField t u =
-              do  old <- State.get
-                  ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
-                  State.put (old `mappend` s)
-      (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
-      case (tvar, uvar) of
-          (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
-          (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
-          (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
-          (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
+unifyFlattenedRecs
+  (FlatRecordType tfields tvar)
+  (FlatRecordType ufields uvar) =
+    do  let unifyField t u =
+                do  old <- State.get
+                    ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
+                    State.put (old `mappend` s)
+        (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
+        case (tvar, uvar) of
+            (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
+            (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
+            (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
+            (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
 
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =

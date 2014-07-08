@@ -199,11 +199,10 @@ infer f globals = go
         \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
       E.VLet x e1 e2 ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1
-            -- TODO: (freeTypeVars (FreeTypeVars.applySubst s1 locals)) makes no sense performance-wise
-            -- improve it
-            let t' = Scheme.generalize (freeTypeVars (FreeTypeVars.applySubst s1 locals)) t1
-                locals' = Scope.insertTypeOf x t' locals
-            (t2, e2') <- go (FreeTypeVars.applySubst s1 locals') e2
+            let locals' = FreeTypeVars.applySubst s1 locals
+                t' = Scheme.generalize (freeTypeVars locals') t1
+                locals'' = Scope.insertTypeOf x (FreeTypeVars.applySubst s1 t') locals'
+            (t2, e2') <- go locals'' e2
             return $ mkResult (E.VLet x e1' e2') t2
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"

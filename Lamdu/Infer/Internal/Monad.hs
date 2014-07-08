@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns #-}
 module Lamdu.Infer.Internal.Monad
   ( Results(..), emptyResults
   , deleteResultsVars
@@ -49,19 +49,17 @@ deleteResultsVars vs (Results s c) =
   (FreeTypeVars.substDeleteVars vs s)
   (Constraints.constraintDeleteVars vs c)
 
-newtype Infer a = Infer { runInfer :: InferState -> Either String (a, Results, InferState) }
+newtype Infer a = Infer { runInfer :: Results -> InferState -> Either String (a, Results, InferState) }
   deriving Functor
 
 instance Monad Infer where
-  return x = Infer $ \s -> Right (x, emptyResults, s)
+  return x = Infer $ \w s -> Right (x, w, s)
   {-# INLINE return #-}
   Infer x >>= f =
-    Infer $ \s ->
+    Infer $ \w s ->
     do
-      (y, w0, s0) <- x s
-      (z, w1, s1) <- runInfer (f y) s0
-      w <- appendResults w0 w1
-      Right (z, w, s1)
+      (y, w0, s0) <- x w s
+      runInfer (f y) w0 s0
   {-# INLINE (>>=) #-}
 
 instance Applicative Infer where
@@ -71,25 +69,29 @@ instance Applicative Infer where
   {-# INLINE (<*>) #-}
 
 instance MonadState InferState Infer where
-  get = Infer $ \s -> Right (s, emptyResults, s)
-  put s = Infer $ const $ Right ((), emptyResults, s)
+  get = Infer $ \w s -> Right (s, w, s)
+  put s = Infer $ \w _ -> Right ((), w, s)
 
 instance MonadError [Char] Infer where
-  throwError = Infer . const . Left
+  throwError err = Infer $ \_ _ -> Left err
   catchError (Infer x) f =
-    Infer $ \s ->
-    case x s of
-    Left e -> runInfer (f e) s
+    Infer $ \w s ->
+    case x w s of
+    Left e -> runInfer (f e) w s
     Right r -> Right r
 
 run :: Infer a -> Either String (a, Results)
 run (Infer t) =
   do
-    (r, w, _) <- t InferState{inferSupply = 0}
+    (r, w, _) <- t emptyResults InferState{inferSupply = 0}
     Right (r, w)
 
 tell :: Results -> Infer ()
-tell w = Infer $ \s -> Right ((), w, s)
+tell w =
+  Infer $ \w0 s ->
+  do
+    !w1 <- appendResults w0 w
+    Right ((), w1, s)
 {-# INLINE tell #-}
 
 tellSubst :: FreeTypeVars.NewSubst t => E.VarOf t -> t -> Infer ()
@@ -105,20 +107,21 @@ tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.sing
 
 listen :: Infer a -> Infer (a, Results)
 listen (Infer act) =
-  Infer $ \s0 ->
+  Infer $ \w0 s0 ->
   do
-    (y, w, s1) <- act s0
-    Right ((y, w), w, s1)
+    (y, w, s1) <- act emptyResults s0
+    !w1 <- appendResults w0 w
+    Right ((y, w), w1, s1)
 {-# INLINE listen #-}
 
 -- Duplicate of listen because building one on top of the other has a
 -- large (~15%) performance penalty.
 listenNoTell :: Infer a -> Infer (a, Results)
 listenNoTell (Infer act) =
-  Infer $ \s0 ->
+  Infer $ \w0 s0 ->
   do
-    (y, w, s1) <- act s0
-    Right ((y, w), emptyResults, s1)
+    (y, w, s1) <- act emptyResults s0
+    Right ((y, w), w0, s1)
 {-# INLINE listenNoTell #-}
 
 newInferredVarName :: IsString v => String -> Infer v

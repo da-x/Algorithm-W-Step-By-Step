@@ -33,12 +33,6 @@ data Scheme = Scheme
 instance NFData Scheme where
   rnf = genericRnf
 
-instance FreeTypeVars Scheme where
-    freeTypeVars (Scheme vars _ t) =
-      freeTypeVars t `TypeVars.difference` vars
-    applySubst s (Scheme vars constraints t) =
-      Scheme vars constraints $ applySubst (FreeTypeVars.substDeleteVars vars s) t
-
 -- outside represents all outside types
 generalize :: FreeTypeVars o => o -> Infer (E.Type, a) -> Infer (o, Scheme, a)
 generalize outside mkType = do

@@ -10,63 +10,76 @@ import qualified Data.Map as M
 import qualified Lamdu.Expr as E
 import qualified Text.PrettyPrint as PP
 
-eLet :: E.ValVar -> E.Val () -> E.Val () -> E.Val ()
-eLet name val body = E.eApp (E.eAbs name body) val
+eLet :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
+eLet name val mkBody = E.eApp (E.eAbs name body) val
+  where
+    body = mkBody $ E.eVar name
+
+lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
+lambda name mkBody = E.eAbs name $ mkBody $ E.eVar name
+
+int :: Integer -> E.Val ()
+int = E.eLitInt
+
+emptyRec :: E.Val ()
+emptyRec = E.eRecEmpty
+
+infixl 4 $$
+($$) :: E.Val () -> E.Val () -> E.Val ()
+($$) = E.eApp
+
+infixl 9 $.
+($.) :: E.Val () -> E.Tag -> E.Val ()
+($.) = E.eGetField
+
+infixl 3 $=
+($=) :: E.Tag -> E.Val () -> E.Val () -> E.Val ()
+($=) = E.eRecExtend
 
 exps :: [E.Val ()]
 exps =
-  [ eLet "id" (E.eAbs "x" (E.eVar "x")) $ E.eVar "id"
+  [ eLet "id" (lambda "x" id) $ id
 
-  , eLet "id" (E.eAbs "x" (E.eVar "x")) $
-    E.eApp (E.eVar "id") (E.eVar "id")
+  , eLet "id" (lambda "x" id) $ \id' -> id' $$ id'
 
-  , eLet "id" (E.eAbs "x" (eLet "y" (E.eVar "x") (E.eVar "y"))) $
-    E.eApp (E.eVar "id") (E.eVar "id")
+  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id'
 
-  , eLet "id" (E.eAbs "x" (eLet "y" (E.eVar "x") (E.eVar "y"))) $
-    E.eApp (E.eApp (E.eVar "id") (E.eVar "id")) $ E.eLitInt 2
+  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id' $$ int 2
 
-  , eLet "id" (E.eAbs "x" (E.eApp (E.eVar "x") (E.eVar "x"))) $ E.eVar "id"
+  , eLet "id" (lambda "x" (\x -> x $$ x)) id
 
-  , E.eAbs "m" $
-    eLet "y" (E.eVar "m") $
-    eLet "x" (E.eApp (E.eVar "y") (E.eLitInt 3)) $
-    E.eVar "x"
+  , lambda "m" $ \m ->
+    eLet "y" m $ \y ->
+    eLet "x" (y $$ int 3) id
 
-  , E.eApp (E.eLitInt 2) $ E.eLitInt 2
+  , int 2 $$ int 2
 
-  , E.eAbs "a" $
+  , lambda "a" $ \a ->
     eLet "x"
-    ( E.eAbs "b" (eLet "y" (E.eAbs "c" (E.eApp (E.eVar "a") (E.eLitInt 1)))
-      (E.eApp (E.eVar "y") (E.eLitInt 2)))
-    ) $ E.eApp (E.eVar "x") $ E.eLitInt 3
+    ( lambda "b"
+      ( \_ -> eLet "y" (lambda "c" (\_ -> a $$ int 1))
+        (\y -> y $$ int 2) )
+    ) $ \x -> x $$ int 3
 
-  , E.eAbs "a" $ E.eAbs "b" $ E.eApp (E.eVar "b") $ E.eApp (E.eVar "a") $
-    E.eApp (E.eVar "a") $ E.eVar "b"
+  , lambda "a" $ \a -> lambda "b" $ \b -> b $$ (a $$ (a $$ b))
 
-  , E.eAbs "vec" $
-    E.eRecExtend "newX" (E.eGetField (E.eVar "vec") "x") $
-    E.eRecExtend "newY" (E.eGetField (E.eVar "vec") "y") E.eRecEmpty
+  , lambda "vec" $ \vec ->
+    "newX" $= (vec $. "x") $
+    "newY" $= (vec $. "y") $
+    emptyRec
 
-  , eLet "vec"
-    ( E.eRecExtend "x" (E.eLitInt 5) $
-      E.eRecExtend "y" (E.eLitInt 7) E.eRecEmpty ) $
-    E.eGetField (E.eVar "vec") "x"
+  , eLet "vec" ("x" $= int 5 $ "y" $= int 7 $ emptyRec) ($. "x")
 
-  , eLet "vec"
-    ( E.eRecExtend "x" (E.eLitInt 5) $
-      E.eRecExtend "y" (E.eLitInt 7) E.eRecEmpty ) $
-    E.eGetField (E.eVar "vec") "z"
+  , eLet "vec" ("x" $= int 5 $ "y" $= int 7 $ emptyRec) ($. "z")
 
-  , E.eAbs "x" $ E.eRecExtend "prev" (E.eGetField (E.eVar "x") "cur") $ E.eVar "x"
+  , lambda "x" $ \x -> "prev" $= (x $. "cur") $ x
 
-  , E.eRecExtend "x" (E.eLitInt 2) $ E.eRecExtend "x" (E.eLitInt 3) $ E.eRecEmpty
+  , "x" $= int 2 $ "x" $= int 3 $ emptyRec
 
-  , E.eApp (E.eAbs "r" (E.eRecExtend "x" (E.eLitInt 2) (E.eVar "r"))) $
-    E.eRecExtend "x" (E.eLitInt 3) $ E.eRecEmpty
+  , (lambda "r" ("x" $= int 2)) $$ ("x" $= int 3) emptyRec
 
-  , eLet "f" (E.eAbs "r" (E.eRecExtend "x" (E.eLitInt 3) (E.eVar "r"))) $
-    E.eApp (E.eVar "f") (E.eRecExtend "x" (E.eLitInt 2) E.eRecEmpty)
+  , eLet "f" (lambda "r" ("x" $= int 3)) $
+    \f -> f $$ ("x" $= int 2) emptyRec
   ]
 
 test :: E.Val () -> IO ()

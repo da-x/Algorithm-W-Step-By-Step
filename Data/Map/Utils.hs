@@ -6,4 +6,4 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 deleteKeySet :: Ord k => Set k -> Map k v -> Map k v
-deleteKeySet s m = Set.foldr Map.delete m s
+deleteKeySet s m = Set.foldl' (flip Map.delete) m s

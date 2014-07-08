@@ -78,8 +78,8 @@ unifyRecFulls tfields ufields
     pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
   | otherwise = return mempty
 
-unifyRecs :: FlatRecordType -> FlatRecordType -> Infer ()
-unifyRecs (FlatRecordType tfields tvar)
+unifyFlattenedRecs :: FlatRecordType -> FlatRecordType -> Infer ()
+unifyFlattenedRecs (FlatRecordType tfields tvar)
           (FlatRecordType ufields uvar) =
   do  let unifyField t u =
               do  old <- State.get
@@ -140,8 +140,11 @@ instance Unify E.RecordType where
   unify E.TRecEmpty E.TRecEmpty =  return ()
   unify (E.TRecVar u) t         =  varBind u t
   unify t (E.TRecVar u)         =  varBind u t
-  unify t@E.TRecExtend {}
-        u@E.TRecExtend {}       =  unifyRecs
+  unify t@(E.TRecExtend f0 t0 r0)
+        u@(E.TRecExtend f1 t1 r1)
+        | f0 == f1              =  do  unify t0 t1
+                                       unify r0 r1
+        | otherwise             =  unifyFlattenedRecs
                                    (FlatRecordType.from t)
                                    (FlatRecordType.from u)
   unify t1 t2                   =  dontUnify t1 t2

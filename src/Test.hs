@@ -4,6 +4,8 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
 
+-- TODO: Convert to list:
+
 exp0 :: E.Val ()
 exp0  =  E.eLet "id" (E.eAbs "x" (E.eVar "x"))
           (E.eVar "id")
@@ -71,6 +73,10 @@ exp14  =  E.eApp (E.eAbs "r" (E.eRecExtend "x" (E.eLitInt 2) (E.eVar "r"))) $
           E.eRecExtend "x" (E.eLitInt 3) $
           E.eRecEmpty
 
+exp15 :: E.Val ()
+exp15  =  E.eLet "f" (E.eAbs "r" (E.eRecExtend "x" (E.eLitInt 3) (E.eVar "r"))) $
+          E.eApp (E.eVar "f") (E.eRecExtend "x" (E.eLitInt 2) E.eRecEmpty)
+
 test :: E.Val () -> IO ()
 test e =
     case typeInference M.empty e of
@@ -97,4 +103,5 @@ main =
   , exp12
   , exp13
   , exp14
+  , exp15
   ]

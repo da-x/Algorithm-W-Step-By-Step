@@ -6,8 +6,8 @@ import Control.Lens.Operators
 import Control.Lens.Tuple
 import Data.List (intersperse)
 import Data.Monoid (Monoid(..))
-import Lamdu.Infer.Scheme
-import Lamdu.Infer.TypeVars (TypeVars(..))
+import Lamdu.Infer.Internal.Scheme
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>), ($$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.ByteString.Char8 as BS

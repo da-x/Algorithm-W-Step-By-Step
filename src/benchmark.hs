@@ -7,9 +7,7 @@ import Control.Lens.Tuple
 import Control.Monad ((<=<))
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
-import Lamdu.Infer (typeInference)
-import Lamdu.Infer.Scheme (Scheme(..))
-import Lamdu.Infer.TypeVars (TypeVars(..))
+import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map

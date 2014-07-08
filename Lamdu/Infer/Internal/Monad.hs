@@ -12,13 +12,13 @@ import Control.Monad.Except (MonadError(..))
 import Control.Monad.State (MonadState(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
-import Lamdu.Infer.Constraints (Constraints(..))
+import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import qualified Control.Monad as Monad
 import qualified Control.Monad.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Constraints as Constraints
+import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 
 data InferState = InferState { inferSupply :: Int }

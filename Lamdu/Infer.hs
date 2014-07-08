@@ -1,5 +1,5 @@
 module Lamdu.Infer
-  ( typeInference
+  ( Constraints(..), Scheme(..), TypeVars(..), typeInference
   ) where
 
 import Control.Applicative ((<$), (<$>))
@@ -12,11 +12,13 @@ import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
+import Lamdu.Infer.Internal.Scheme (Scheme)
 import Lamdu.Infer.Internal.Scope (Scope)
-import Lamdu.Infer.Scheme (Scheme)
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Lamdu.Pretty ()
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -28,9 +30,9 @@ import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
+import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import qualified Lamdu.Infer.Internal.Scope as Scope
-import qualified Lamdu.Infer.Scheme as Scheme
-import qualified Lamdu.Infer.TypeVars as TypeVars
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)

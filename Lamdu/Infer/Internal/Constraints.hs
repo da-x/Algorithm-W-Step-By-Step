@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-
-module Lamdu.Infer.Constraints
+module Lamdu.Infer.Internal.Constraints
   ( Constraints(..), applySubst
   ) where
 

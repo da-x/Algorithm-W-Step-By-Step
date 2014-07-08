@@ -1,4 +1,4 @@
-module Lamdu.Infer.TypeVars
+module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , Var(..)
   , difference

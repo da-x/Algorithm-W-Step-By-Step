@@ -20,7 +20,10 @@ import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
-data Scheme = Scheme TypeVars E.Type
+data Scheme = Scheme
+  { schemeForAll :: TypeVars
+  , schemeType :: E.Type
+  }
 
 instance FreeTypeVars Scheme where
     freeTypeVars (Scheme vars t) = freeTypeVars t `TypeVars.difference` vars

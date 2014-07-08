@@ -58,5 +58,8 @@ executable AlgoW
   build-depends:       AlgoW
                ,       base
                ,       containers
+               ,       pretty
                ,       prettyclass
+               ,       lens
+               ,       mtl
   default-language:    Haskell2010

@@ -1,8 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Control.Lens (zoom)
+import Control.Lens.Tuple
+import Control.Monad.State (runState, modify', get)
+import Data.Traversable (traverse)
 import Lamdu.Infer
+import Text.PrettyPrint ((<>), (<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
+import qualified Text.PrettyPrint as PP
 
 eLet :: E.ValVar -> E.Val () -> E.Val () -> E.Val ()
 eLet name val body = E.eApp (E.eAbs name body) val
@@ -67,9 +73,18 @@ test :: E.Val () -> IO ()
 test e =
     case typeInference M.empty e of
         Left err ->
-          putStrLn $ show (pPrint e) ++ "\n " ++ err ++ "\n"
-        Right (scheme, _) ->
-          putStrLn $ show (pPrint e) ++ " :: " ++ show (pPrint scheme) ++ "\n"
+          putStrLn $ show (pPrintPureVal e) ++ "\n " ++ err
+        Right (scheme, val) -> do
+          putStrLn $ show (pPrint scheme)
+          let next = modify' (+1) >> get
+              tag x =
+                do  n <- zoom _1 next
+                    zoom _2 $ modify' $ M.insert n x
+                    return n
+          let (taggedVal, (_, types)) = runState (traverse (tag . fst) val) (0::Int, M.empty)
+          print $ pPrint taggedVal
+          let indent = PP.hcat $ replicate 4 PP.space
+          mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
 
 main :: IO ()
 main = mapM_ test exps

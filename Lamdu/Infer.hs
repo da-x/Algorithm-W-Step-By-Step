@@ -1,12 +1,12 @@
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
+  , pPrintPureVal, pPrintValUnannotated
   ) where
 
 import Control.Applicative ((<$), (<$>))
 import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad (void)
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (lift)
@@ -19,7 +19,7 @@ import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Scheme (Scheme)
 import Lamdu.Infer.Internal.Scope (Scope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
-import Lamdu.Pretty ()
+import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
@@ -201,7 +201,7 @@ infer f globals = go
             ((), s3) <- withSubst $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
             return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
         `catchError`
-        \e -> throwError $ e ++ "\n in " ++ show (pPrint (void expr))
+        \e -> throwError $ e ++ "\n in " ++ show (pPrintValUnannotated expr)
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"

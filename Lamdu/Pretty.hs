@@ -65,10 +65,11 @@ pPrintPrecBody lvl prec body =
   E.VGetField (E.GetField e n)  -> prettyParen (12 < prec) $
                                    pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
   E.VLeaf E.VRecEmpty           -> PP.text "V{}"
-  E.VRecExtend tag val rest     -> PP.text "{" <+>
-                                     prField <>
-                                     PP.comma <+>
-                                     pPrint rest <+>
+  E.VRecExtend
+    (E.RecExtend tag val rest)  -> PP.text "{" <+>
+                                   prField <>
+                                   PP.comma <+>
+                                   pPrint rest <+>
                                    PP.text "}"
     where
       prField = pPrint tag <+> PP.text "=" <+> pPrint val

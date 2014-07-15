@@ -211,7 +211,7 @@ infer f globals = go
               withSubst $ unify (FreeTypeVars.applySubst s t) $
               E.TRecord $ E.TRecExtend name tv $ E.liftVar tvRecName
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
-      E.VRecExtend name e1 e2 ->
+      E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1
             ((t2, e2'), _) <- withSubst $ go (FreeTypeVars.applySubst s1 locals) e2
             rest <-
@@ -235,6 +235,7 @@ infer f globals = go
                 let tve = E.liftVar tv
                 ((), s) <- withSubst $ unify t2 $ E.TRecord tve
                 return $ FreeTypeVars.applySubst s tve
-            return $ mkResult (E.VRecExtend name e1' e2') $ E.TRecord $ E.TRecExtend name t1 rest
+            return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
+              E.TRecord $ E.TRecExtend name t1 rest
       where
         mkResult body' typ = (typ, E.Val (f typ pl) body')

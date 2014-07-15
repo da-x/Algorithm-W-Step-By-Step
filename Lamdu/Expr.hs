@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, TypeFamilies #-}
 module Lamdu.Expr
   ( ValLeaf(..)
-  , ValBody(..), Apply(..), GetField(..), Lam(..)
+  , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
   , Val(..), expPayload
   , ValVar(..)
   , RecordType(..), RecordTypeVar(..)
@@ -74,11 +74,18 @@ data Lam expr = Lam
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 
+data RecExtend expr = RecExtend
+  { _recTag :: Tag
+  , _recFieldVal :: expr
+  , _recRest :: expr
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
+instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
+
 data ValBody exp
   =  VApp {-# UNPACK #-}!(Apply exp)
   |  VAbs {-# UNPACK #-}!(Lam exp)
   |  VGetField {-# UNPACK #-}!(GetField exp)
-  |  VRecExtend Tag exp exp
+  |  VRecExtend {-# UNPACK #-}!(RecExtend exp)
   |  VLeaf ValLeaf
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
@@ -135,7 +142,7 @@ eApp :: Val () -> Val () -> Val ()
 eApp f x = Val () $ VApp $ Apply f x
 
 eRecExtend :: Tag -> Val () -> Val () -> Val ()
-eRecExtend name typ rest = Val () $ VRecExtend name typ rest
+eRecExtend name typ rest = Val () $ VRecExtend $ RecExtend name typ rest
 
 eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n

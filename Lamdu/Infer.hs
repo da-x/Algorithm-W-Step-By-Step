@@ -1,5 +1,4 @@
-{-# LANGUAGE EmptyCase, EmptyDataDecls, FlexibleContexts, FlexibleInstances, OverloadedStrings #-}
--- TODO: remove FlexibleInstances?
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings #-}
 
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference

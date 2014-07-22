@@ -38,7 +38,7 @@ infixl 3 $=
 
 exps :: [E.Val ()]
 exps =
-  [ eLet "id" (lambda "x" id) $ id
+  [ eLet "id" (lambda "x" id) id
 
   , eLet "id" (lambda "x" id) $ \id' -> id' $$ id'
 
@@ -76,7 +76,7 @@ exps =
 
   , "x" $= int 2 $ "x" $= int 3 $ emptyRec
 
-  , (lambda "r" ("x" $= int 2)) $$ ("x" $= int 3) emptyRec
+  , lambda "r" ("x" $= int 2) $$ ("x" $= int 3) emptyRec
 
   , eLet "f" (lambda "r" ("x" $= int 3)) $
     \f -> f $$ ("x" $= int 2) emptyRec
@@ -88,7 +88,7 @@ test e =
         Left err ->
           putStrLn $ show (pPrintPureVal e) ++ "\n " ++ err
         Right (scheme, val) -> do
-          putStrLn $ show (pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme)
+          print $ pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme
           let next = modify' (+1) >> get
               tag x =
                 do  n <- zoom _1 next

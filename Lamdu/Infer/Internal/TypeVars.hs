@@ -65,8 +65,8 @@ class CompositeHasVar p where
 
 instance CompositeHasVar E.Product where
   compositeGetVars (TypeVars _ vs) = vs
-  compositeNewVars vs = TypeVars mempty vs
-  compositeNewSubst m = Subst mempty m
+  compositeNewVars = TypeVars mempty
+  compositeNewSubst = Subst mempty
   {-# INLINE compositeNewSubst #-}
   compositeGetSubst = substRecordTypes
 

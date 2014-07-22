@@ -47,13 +47,13 @@ class FreeTypeVars a where
   applySubst   :: Subst -> a -> a
 
 instance FreeTypeVars (E.CompositeType E.RecordTypeVar) where
-  freeTypeVars E.TRecEmpty          = mempty
-  freeTypeVars (E.TRecVar n)        = TypeVars mempty (Set.singleton n)
-  freeTypeVars (E.TRecExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
+  freeTypeVars E.CEmpty          = mempty
+  freeTypeVars (E.CVar n)        = TypeVars mempty (Set.singleton n)
+  freeTypeVars (E.CExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
 
-  applySubst _ E.TRecEmpty          = E.TRecEmpty
-  applySubst s (E.TRecVar n)        = fromMaybe (E.TRecVar n) $ Map.lookup n (substRecordTypes s)
-  applySubst s (E.TRecExtend n t r) = E.TRecExtend n (applySubst s t) (applySubst s r)
+  applySubst _ E.CEmpty          = E.CEmpty
+  applySubst s (E.CVar n)        = fromMaybe (E.CVar n) $ Map.lookup n (substRecordTypes s)
+  applySubst s (E.CExtend n t r) = E.CExtend n (applySubst s t) (applySubst s r)
 
 instance FreeTypeVars E.Type where
   freeTypeVars (E.TVar n)      =  TypeVars (Set.singleton n) mempty

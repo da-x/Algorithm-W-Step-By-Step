@@ -69,9 +69,9 @@ applySubst (FreeTypeVars.Subst _ recordSubsts) (Constraints c) =
       Just recType ->
         go recType
         where
-          go E.TRecEmpty             = Right []
-          go (E.TRecVar newVar)      = Right [(newVar, forbidden)]
-          go (E.TRecExtend f _ rest)
+          go E.CEmpty             = Right []
+          go (E.CVar newVar)      = Right [(newVar, forbidden)]
+          go (E.CExtend f _ rest)
             | Set.member f forbidden = Left $
                                        show $
                                        PP.text "Field forbidden:" <+>

@@ -73,9 +73,9 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
   do  restTv <- M.newInferredVar "r"
       ((), s1) <-
         withSubst $ varBind tname $
-        Map.foldWithKey E.TRecExtend restTv uniqueUFields
+        Map.foldWithKey E.CExtend restTv uniqueUFields
       varBind uname $ FreeTypeVars.applySubst s1 $
-        Map.foldWithKey E.TRecExtend restTv uniqueTFields
+        Map.foldWithKey E.CExtend restTv uniqueTFields
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -150,11 +150,11 @@ instance Unify E.Type where
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
 instance Unify (E.CompositeType E.RecordTypeVar) where
-  unify E.TRecEmpty E.TRecEmpty =  return ()
-  unify (E.TRecVar u) t         =  varBind u t
-  unify t (E.TRecVar u)         =  varBind u t
-  unify t@(E.TRecExtend f0 t0 r0)
-        u@(E.TRecExtend f1 t1 r1)
+  unify E.CEmpty E.CEmpty       =  return ()
+  unify (E.CVar u) t            =  varBind u t
+  unify t (E.CVar u)            =  varBind u t
+  unify t@(E.CExtend f0 t0 r0)
+        u@(E.CExtend f1 t1 r1)
         | f0 == f1              =  do  ((), s) <- withSubst $ unify t0 t1
                                        unify (FreeTypeVars.applySubst s r0)
                                              (FreeTypeVars.applySubst s r1)
@@ -163,7 +163,7 @@ instance Unify (E.CompositeType E.RecordTypeVar) where
                                    (FlatComposite.from u)
   unify t1 t2                   =  dontUnify t1 t2
 
-  varBind u (E.TRecVar t) | t == u = return ()
+  varBind u (E.CVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
 typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (E.Type, a))
@@ -175,9 +175,9 @@ typeInference globals rootVal =
 data CompositeHasTag v = HasTag | DoesNotHaveTag | MayHaveTag v
 
 hasTag :: E.Tag -> E.CompositeType v -> CompositeHasTag v
-hasTag _ E.TRecEmpty   = DoesNotHaveTag
-hasTag _ (E.TRecVar v) = MayHaveTag v
-hasTag tag (E.TRecExtend t _ r)
+hasTag _ E.CEmpty   = DoesNotHaveTag
+hasTag _ (E.CVar v) = MayHaveTag v
+hasTag tag (E.CExtend t _ r)
   | tag == t  = HasTag
   | otherwise = hasTag tag r
 
@@ -201,7 +201,7 @@ infer f globals = go
                                PP.text "missing global:" <+> pPrint n
                Just sigma   -> Scheme.instantiate sigma
         E.VLiteralInteger _ -> return (E.TInst "Int" mempty)
-        E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
+        E.VRecEmpty -> return $ E.TRecord E.CEmpty
       E.VAbs (E.Lam n e) ->
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
@@ -222,7 +222,7 @@ infer f globals = go
             ((t, e'), s) <- withSubst $ go locals e
             ((), su) <-
               withSubst $ unify (FreeTypeVars.applySubst s t) $
-              E.TRecord $ E.TRecExtend name tv $ E.liftVar tvRecName
+              E.TRecord $ E.CExtend name tv $ E.liftVar tvRecName
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
       E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1
@@ -249,6 +249,6 @@ infer f globals = go
                 ((), s) <- withSubst $ unify t2 $ E.TRecord tve
                 return $ FreeTypeVars.applySubst s tve
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
-              E.TRecord $ E.TRecExtend name t1 rest
+              E.TRecord $ E.CExtend name t1 rest
       where
         mkResult body' typ = (typ, E.Val (f typ pl) body')

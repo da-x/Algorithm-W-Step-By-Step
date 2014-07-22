@@ -31,7 +31,7 @@ whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(E.Tag, E.Type)] -> E.Type
-record = E.TRecord . foldr (uncurry E.TRecExtend) E.TRecEmpty
+record = E.TRecord . foldr (uncurry E.CExtend) E.CEmpty
 
 eRecord :: [(E.Tag, E.Val ())] -> E.Val ()
 eRecord = foldr (uncurry E.eRecExtend) E.eRecEmpty

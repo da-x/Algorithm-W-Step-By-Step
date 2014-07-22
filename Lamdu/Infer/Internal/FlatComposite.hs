@@ -21,10 +21,10 @@ fields f (FlatComposite fs ext) = (`FlatComposite` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
 from :: E.CompositeType v -> FlatComposite v
-from (E.TRecExtend name typ rest) = from rest & fields %~ Map.insert name typ
-from E.TRecEmpty                  = FlatComposite Map.empty Nothing
-from (E.TRecVar name)             = FlatComposite Map.empty (Just name)
+from (E.CExtend name typ rest) = from rest & fields %~ Map.insert name typ
+from E.CEmpty                  = FlatComposite Map.empty Nothing
+from (E.CVar name)             = FlatComposite Map.empty (Just name)
 
 toRecordType :: FlatComposite v -> E.CompositeType v
 toRecordType (FlatComposite fs ext) =
-  Map.foldWithKey E.TRecExtend (maybe E.TRecEmpty E.TRecVar ext) fs
+  Map.foldWithKey E.CExtend (maybe E.CEmpty E.CVar ext) fs

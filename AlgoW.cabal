@@ -18,7 +18,7 @@ library
                  ,     Lamdu.Pretty
   other-modules:       Data.Map.Utils
                ,       Lamdu.Infer.Internal.Constraints
-               ,       Lamdu.Infer.Internal.FlatRecordType
+               ,       Lamdu.Infer.Internal.FlatComposite
                ,       Lamdu.Infer.Internal.FreeTypeVars
                ,       Lamdu.Infer.Internal.Monad
                ,       Lamdu.Infer.Internal.Scheme

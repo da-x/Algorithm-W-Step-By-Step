@@ -1,5 +1,5 @@
-module Lamdu.Infer.Internal.FlatRecordType
-  ( FlatRecordType(..)
+module Lamdu.Infer.Internal.FlatComposite
+  ( FlatComposite(..)
   , from
   , toRecordType
   ) where
@@ -11,20 +11,20 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 
-data FlatRecordType = FlatRecordType
+data FlatComposite = FlatComposite
   { _fields :: Map E.Tag E.Type
   , _extension :: Maybe E.RecordTypeVar -- TyVar of more possible fields
   } deriving (Show)
 
-fields :: Lens' FlatRecordType (Map E.Tag E.Type)
-fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
+fields :: Lens' FlatComposite (Map E.Tag E.Type)
+fields f (FlatComposite fs ext) = (`FlatComposite` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
-from :: E.CompositeType E.RecordTypeVar -> FlatRecordType
+from :: E.CompositeType E.RecordTypeVar -> FlatComposite
 from (E.TRecExtend name typ rest) = from rest & fields %~ Map.insert name typ
-from E.TRecEmpty                  = FlatRecordType Map.empty Nothing
-from (E.TRecVar name)             = FlatRecordType Map.empty (Just name)
+from E.TRecEmpty                  = FlatComposite Map.empty Nothing
+from (E.TRecVar name)             = FlatComposite Map.empty (Just name)
 
-toRecordType :: FlatRecordType -> E.CompositeType E.RecordTypeVar
-toRecordType (FlatRecordType fs ext) =
+toRecordType :: FlatComposite -> E.CompositeType E.RecordTypeVar
+toRecordType (FlatComposite fs ext) =
   Map.foldWithKey E.TRecExtend (maybe E.TRecEmpty E.TRecVar ext) fs

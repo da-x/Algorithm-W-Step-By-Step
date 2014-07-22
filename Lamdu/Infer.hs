@@ -16,7 +16,7 @@ import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.FlatRecordType (FlatRecordType(..))
+import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Scheme (Scheme)
@@ -31,7 +31,7 @@ import qualified Data.Map as M
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Internal.FlatRecordType as FlatRecordType
+import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
 import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
@@ -49,10 +49,10 @@ unifyRecToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    pPrint (FlatRecordType.toRecordType (FlatRecordType tfields (Just tname))) <+>
+    pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))) <+>
     PP.text " vs. " <+>
-    pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
-  | otherwise = varBind tname $ FlatRecordType.toRecordType $ FlatRecordType uniqueUFields Nothing
+    pPrint (FlatComposite.toRecordType (FlatComposite ufields Nothing))
+  | otherwise = varBind tname $ FlatComposite.toRecordType $ FlatComposite uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -77,9 +77,9 @@ unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    pPrint (FlatRecordType.toRecordType (FlatRecordType tfields Nothing)) <+>
+    pPrint (FlatComposite.toRecordType (FlatComposite tfields Nothing)) <+>
     PP.text "vs." <+>
-    pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
+    pPrint (FlatComposite.toRecordType (FlatComposite ufields Nothing))
   | otherwise = return mempty
 
 unifyChild :: Unify t => t -> t -> StateT FreeTypeVars.Subst Infer ()
@@ -88,10 +88,10 @@ unifyChild t u =
         ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
         State.put (old `mappend` s)
 
-unifyFlattenedRecs :: FlatRecordType -> FlatRecordType -> Infer ()
+unifyFlattenedRecs :: FlatComposite -> FlatComposite -> Infer ()
 unifyFlattenedRecs
-  (FlatRecordType tfields tvar)
-  (FlatRecordType ufields uvar) =
+  (FlatComposite tfields tvar)
+  (FlatComposite ufields uvar) =
     do
         (`evalStateT` mempty) . Foldable.sequence_ $ Map.intersectionWith unifyChild tfields ufields
         case (tvar, uvar) of
@@ -150,8 +150,8 @@ instance Unify (E.CompositeType E.RecordTypeVar) where
                                        unify (FreeTypeVars.applySubst s r0)
                                              (FreeTypeVars.applySubst s r1)
         | otherwise             =  unifyFlattenedRecs
-                                   (FlatRecordType.from t)
-                                   (FlatRecordType.from u)
+                                   (FlatComposite.from t)
+                                   (FlatComposite.from u)
   unify t1 t2                   =  dontUnify t1 t2
 
   varBind u (E.TRecVar t) | t == u = return ()

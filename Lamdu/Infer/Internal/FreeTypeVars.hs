@@ -3,6 +3,7 @@ module Lamdu.Infer.Internal.FreeTypeVars
   , FreeTypeVars(..), NewSubst(..)
   ) where
 
+import Control.Applicative ((<$>))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
@@ -54,13 +55,11 @@ instance FreeTypeVars E.RecordType where
 
 instance FreeTypeVars E.Type where
   freeTypeVars (E.TVar n)      =  TypeVars (Set.singleton n) mempty
-  freeTypeVars (E.TCon _)      =  mempty
+  freeTypeVars (E.TInst _ p)   =  mconcat $ map freeTypeVars $ Map.elems p
   freeTypeVars (E.TFun t1 t2)  =  freeTypeVars t1 `mappend` freeTypeVars t2
-  freeTypeVars (E.TApp t1 t2)  =  freeTypeVars t1 `mappend` freeTypeVars t2
   freeTypeVars (E.TRecord r)   =  freeTypeVars r
 
   applySubst s (E.TVar n)      = fromMaybe (E.TVar n) $ Map.lookup n (substTypes s)
+  applySubst s (E.TInst n p)   = E.TInst n $ applySubst s <$> p
   applySubst s (E.TFun t1 t2)  = E.TFun (applySubst s t1) (applySubst s t2)
-  applySubst s (E.TApp t1 t2)  = E.TApp (applySubst s t1) (applySubst s t2)
-  applySubst _ (E.TCon t)      = E.TCon t
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r

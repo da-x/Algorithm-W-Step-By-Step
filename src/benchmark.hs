@@ -55,17 +55,17 @@ literalInteger :: Integer -> E.Val ()
 literalInteger = E.eLitInt
 
 integerType :: E.Type
-integerType = E.TCon "Int"
+integerType = E.TInst "Int" Map.empty
 
 boolType :: E.Type
-boolType = E.TCon "Bool"
+boolType = E.TInst "Bool" Map.empty
 
 forAll :: [E.TypeVar] -> ([E.Type] -> E.Type) -> Scheme
 forAll tvs mkType =
   Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map E.TVar tvs
 
 listOf :: E.Type -> E.Type
-listOf = E.TApp (E.TCon "List")
+listOf = E.TInst "List" . Map.singleton "elem"
 
 infixType :: E.Type -> E.Type -> E.Type -> E.Type
 infixType a b c = record [("l", a), ("r", b)] ~> c

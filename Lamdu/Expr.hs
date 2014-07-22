@@ -7,7 +7,8 @@ module Lamdu.Expr
   , RecordType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
-  , Tag(..), GlobalId(..)
+  , GlobalId(..), TypeId(..)
+  , Tag(..), TypeParamId(..)
   , TypePart(..)
   ) where
 
@@ -17,12 +18,15 @@ import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.ByteString (ByteString)
 import Data.Foldable (Foldable)
+import Data.Map (Map)
 import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.List as List
+import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
 type Identifier = ByteString
@@ -47,11 +51,20 @@ newtype GlobalId = GlobalId { globalId :: Identifier }
 instance NFData GlobalId where rnf = genericRnf
 instance IsString GlobalId where fromString = GlobalId . fromString
 
+newtype TypeId = TypeId { typeId :: Identifier }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData TypeId where rnf = genericRnf
+instance IsString TypeId where fromString = TypeId . fromString
+
 newtype Tag = Tag { tagName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
-
 instance NFData Tag where rnf = genericRnf
 instance IsString Tag where fromString = Tag . fromString
+
+newtype TypeParamId = TypeParamId { typeParamId :: Identifier }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData TypeParamId where rnf = genericRnf
+instance IsString TypeParamId where fromString = TypeParamId . fromString
 
 data ValLeaf
   =  VVar ValVar
@@ -113,8 +126,7 @@ instance NFData RecordType where rnf = genericRnf
 
 data Type    =  TVar TypeVar
              |  TFun Type Type
-             |  TCon String
-             |  TApp Type Type
+             |  TInst TypeId (Map TypeParamId Type)
              |  TRecord RecordType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
@@ -155,20 +167,27 @@ eGetField r n = Val () $ VGetField $ GetField r n
 
 instance Pretty RecordTypeVar where pPrint = PP.text . BS.unpack . rtvName
 instance Pretty TypeVar       where pPrint = PP.text . BS.unpack . tvName
-instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
 instance Pretty GlobalId      where pPrint = PP.text . BS.unpack . globalId
+instance Pretty TypeId        where pPrint = PP.text . BS.unpack . typeId
+instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
+instance Pretty TypeParamId   where pPrint = PP.text . BS.unpack . typeParamId
 
 instance Pretty Type where
   pPrintPrec lvl prec typ =
     case typ of
     TVar n -> pPrint n
-    TCon s -> PP.text s
     TFun t s ->
       prettyParen (8 < prec) $
       pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
-    TApp t s ->
-      prettyParen (10 < prec) $
-      pPrintPrec lvl 10 t <+> pPrintPrec lvl 11 s
+    TInst n ps ->
+      pPrint n <>
+      if Map.null ps then PP.empty
+      else
+        PP.text "<" <>
+        PP.hsep (List.intersperse PP.comma (map showParam (Map.toList ps))) <>
+        PP.text ">"
+      where
+        showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
     TRecord r -> pPrint r
 
 instance Pretty RecordType where

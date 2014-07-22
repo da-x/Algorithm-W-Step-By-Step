@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
   , pPrintPureVal, pPrintValUnannotated
@@ -124,16 +126,12 @@ instance Unify E.Type where
       unify
         (FreeTypeVars.applySubst s1 r)
         (FreeTypeVars.applySubst s1 r')
-  unify (E.TApp l r) (E.TApp l' r') =
-    do
-      ((), s1) <- withSubst $ unify l l'
-      unify
-        (FreeTypeVars.applySubst s1 r)
-        (FreeTypeVars.applySubst s1 r')
+  unify (E.TInst c0 p0) (E.TInst c1 p1)
+    | c0 == c1
+      && Map.keys p0 == Map.keys p1 = (`evalStateT` mempty) . sequence_ . Map.elems $
+                                      Map.intersectionWith unifyChild p0 p1
   unify (E.TVar u) t                =  varBind u t
   unify t (E.TVar u)                =  varBind u t
-  unify (E.TCon t) (E.TCon u)
-    | t == u                        =  return ()
   unify (E.TRecord x) (E.TRecord y) =  unify x y
   unify t1 t2                       =  dontUnify t1 t2
 
@@ -191,7 +189,7 @@ infer f globals = go
                Nothing      -> throwError $ show $
                                PP.text "missing global:" <+> pPrint n
                Just sigma   -> Scheme.instantiate sigma
-        E.VLiteralInteger _ -> return (E.TCon "Int")
+        E.VLiteralInteger _ -> return (E.TInst "Int" mempty)
         E.VRecEmpty -> return $ E.TRecord E.TRecEmpty
       E.VAbs (E.Lam n e) ->
         do  tv <- M.newInferredVar "a"

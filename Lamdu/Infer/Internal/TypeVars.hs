@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , HasVar(..)
@@ -30,9 +30,17 @@ instance HasVar E.Type where
   getVars (TypeVars vs _) = vs
   newVars vs = TypeVars vs mempty
 
-instance HasVar E.ProductType where
-  getVars (TypeVars _ vs) = vs
-  newVars vs = TypeVars mempty vs
+class CompositeHasVar p where
+  compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
+  compositeNewVars :: Set (E.TypeVar (E.CompositeType p)) -> TypeVars
+
+instance CompositeHasVar E.Product where
+  compositeGetVars (TypeVars _ vs) = vs
+  compositeNewVars vs = TypeVars mempty vs
+
+instance CompositeHasVar p => HasVar (E.CompositeType p) where
+  getVars = compositeGetVars
+  newVars = compositeNewVars
 
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =

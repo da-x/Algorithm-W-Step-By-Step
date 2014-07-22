@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr
   ( ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
@@ -29,37 +29,29 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
-type Identifier = ByteString
+newtype Identifier = Identifier ByteString
+  deriving (Eq, Ord, Generic, Show)
+instance NFData Identifier    where rnf = genericRnf
+instance IsString Identifier  where fromString = Identifier . fromString
+instance Pretty Identifier    where pPrint (Identifier x) = PP.text $ BS.unpack x
 
 newtype ValVar = ValVar { vvName :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData ValVar where rnf = genericRnf
-instance IsString ValVar where fromString = ValVar . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 newtype TypeVar t = TypeVar { tvName :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData (TypeVar t) where rnf = genericRnf
-instance IsString (TypeVar t) where fromString = TypeVar . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 newtype GlobalId = GlobalId { globalId :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData GlobalId where rnf = genericRnf
-instance IsString GlobalId where fromString = GlobalId . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 newtype TypeId = TypeId { typeId :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData TypeId where rnf = genericRnf
-instance IsString TypeId where fromString = TypeId . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 newtype Tag = Tag { tagName :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData Tag where rnf = genericRnf
-instance IsString Tag where fromString = Tag . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 newtype TypeParamId = TypeParamId { typeParamId :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData TypeParamId where rnf = genericRnf
-instance IsString TypeParamId where fromString = TypeParamId . fromString
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
 
 data ValLeaf
   =  VVar ValVar
@@ -161,12 +153,6 @@ eRecExtend name typ rest = Val () $ VRecExtend $ RecExtend name typ rest
 
 eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n
-
-instance Pretty (TypeVar t)   where pPrint = PP.text . BS.unpack . tvName
-instance Pretty GlobalId      where pPrint = PP.text . BS.unpack . globalId
-instance Pretty TypeId        where pPrint = PP.text . BS.unpack . typeId
-instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
-instance Pretty TypeParamId   where pPrint = PP.text . BS.unpack . typeParamId
 
 instance Pretty Type where
   pPrintPrec lvl prec typ =

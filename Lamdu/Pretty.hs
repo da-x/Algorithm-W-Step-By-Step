@@ -7,12 +7,9 @@ import Lamdu.Infer.Internal.Scheme
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Text.PrettyPrint as PP
-
-instance Pretty E.ValVar        where pPrint = PP.text . BS.unpack . E.vvName
 
 instance Pretty Scheme where
   pPrintPrec lvl prec (Scheme vars@(TypeVars tv rv) constraints t)  =

@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
-
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
   , Payload(..), plType
@@ -14,7 +13,7 @@ import Control.Lens.Operators
 import Control.Monad.Except (catchError, throwError)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..), (<>))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
@@ -36,17 +35,20 @@ import qualified Text.PrettyPrint as PP
 
 data Payload a = Payload
   { _plType :: E.Type
+  , _plScope :: Scope
   , _plData :: a
   } deriving (Generic, Show, Functor, Foldable, Traversable)
 instance NFData a => NFData (Payload a) where rnf = genericRnf
 
 plType :: Lens' (Payload a) E.Type
-plType f (Payload t d) = (`Payload` d) <$> f t
+plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)
 {-# INLINE plType #-}
 
 instance TypeVars.FreeTypeVars (Payload a) where
-  freeTypeVars (Payload typ _dat) = TypeVars.freeTypeVars typ
-  applySubst s = plType %~ TypeVars.applySubst s
+  freeTypeVars (Payload typ scope _dat) =
+    TypeVars.freeTypeVars typ <> TypeVars.freeTypeVars scope
+  applySubst s (Payload typ scope dat) =
+    Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
 
 typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
@@ -64,7 +66,7 @@ hasTag tag (E.CExtend t _ r)
   | otherwise = hasTag tag r
 
 infer ::
-  (E.Type -> a -> b) ->
+  (E.Type -> Scope -> a -> b) ->
   Map E.GlobalId Scheme -> Scope -> E.Val a ->
   Infer (E.Type, E.Val b)
 infer f globals = go
@@ -136,4 +138,4 @@ infer f globals = go
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
               E.TRecord $ E.CExtend name t1 rest
       where
-        mkResult body' typ = (typ, E.Val (f typ pl) body')
+        mkResult body' typ = (typ, E.Val (f typ locals pl) body')

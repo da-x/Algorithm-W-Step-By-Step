@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scope
   ( Scope, empty
   , fromTypeMap
@@ -5,13 +6,18 @@ module Lamdu.Infer.Internal.Scope
   , lookupTypeOf
   ) where
 
+import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 
 newtype Scope = Scope { typeOfVar :: Map E.ValVar E.Type }
+  deriving (Generic, Show)
+instance NFData Scope where rnf = genericRnf
 instance FreeTypeVars Scope where
     freeTypeVars (Scope env) =  mconcat $ map freeTypeVars $ Map.elems env
     applySubst s (Scope env) =  Scope $ Map.map (applySubst s) env

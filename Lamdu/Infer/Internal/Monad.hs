@@ -31,8 +31,13 @@ import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 data InferState = InferState { inferSupply :: Int }
 
 data Results = Results
-  { subst :: TypeVars.Subst
-  , constraints :: Constraints
+  { subst :: {-# UNPACK #-} !TypeVars.Subst
+  , constraints :: !Constraints
+  }
+
+data Context = Context
+  { ctxResults :: {-# UNPACK #-} !Results
+  , ctxState :: {-# UNPACK #-} !InferState
   }
 
 emptyResults :: Results
@@ -52,17 +57,17 @@ deleteResultsVars vs (Results s c) =
   (TypeVars.substDeleteVars vs s)
   (Constraints.constraintDeleteVars vs c)
 
-newtype Infer a = Infer { runInfer :: Results -> InferState -> Either String (a, Results, InferState) }
+newtype Infer a = Infer { runInfer :: Context -> Either String (a, Context) }
   deriving Functor
 
 instance Monad Infer where
-  return x = Infer $ \w s -> Right (x, w, s)
+  return x = Infer $ \c -> Right (x, c)
   {-# INLINE return #-}
   Infer x >>= f =
-    Infer $ \w s ->
+    Infer $ \c0 ->
     do
-      (y, w0, s0) <- x w s
-      runInfer (f y) w0 s0
+      (y, c1) <- x c0
+      runInfer (f y) c1
   {-# INLINE (>>=) #-}
 
 instance Applicative Infer where
@@ -72,29 +77,29 @@ instance Applicative Infer where
   {-# INLINE (<*>) #-}
 
 instance MonadState InferState Infer where
-  get = Infer $ \w s -> Right (s, w, s)
-  put s = Infer $ \w _ -> Right ((), w, s)
+  get = Infer $ \c -> Right (ctxState c, c)
+  put s = Infer $ \c -> Right ((), c { ctxState = s })
 
 instance MonadError [Char] Infer where
-  throwError err = Infer $ \_ _ -> Left err
+  throwError err = Infer $ \_ -> Left err
   catchError (Infer x) f =
-    Infer $ \w s ->
-    case x w s of
-    Left e -> runInfer (f e) w s
+    Infer $ \c ->
+    case x c of
+    Left e -> runInfer (f e) c
     Right r -> Right r
 
 run :: Infer a -> Either String (a, Results)
 run (Infer t) =
   do
-    (r, w, _) <- t emptyResults InferState{inferSupply = 0}
-    Right (r, w)
+    (r, c) <- t $ Context emptyResults InferState{inferSupply = 0}
+    Right (r, ctxResults c)
 
 tell :: Results -> Infer ()
 tell w =
-  Infer $ \w0 s ->
+  Infer $ \c ->
   do
-    !w1 <- appendResults w0 w
-    Right ((), w1, s)
+    !newRes <- appendResults (ctxResults c) w
+    Right ((), c { ctxResults = newRes} )
 {-# INLINE tell #-}
 
 tellSubst :: TypeVars.HasVar t => E.TypeVar t -> t -> Infer ()
@@ -110,21 +115,21 @@ tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.sing
 
 listen :: Infer a -> Infer (a, Results)
 listen (Infer act) =
-  Infer $ \w0 s0 ->
+  Infer $ \c0 ->
   do
-    (y, w, s1) <- act emptyResults s0
-    !w1 <- appendResults w0 w
-    Right ((y, w), w1, s1)
+    (y, c1) <- act c0 { ctxResults = emptyResults }
+    !w <- appendResults (ctxResults c0) (ctxResults c1)
+    Right ((y, w), c1 { ctxResults = w} )
 {-# INLINE listen #-}
 
 -- Duplicate of listen because building one on top of the other has a
 -- large (~15%) performance penalty.
 listenNoTell :: Infer a -> Infer (a, Results)
 listenNoTell (Infer act) =
-  Infer $ \w0 s0 ->
+  Infer $ \c0 ->
   do
-    (y, w, s1) <- act emptyResults s0
-    Right ((y, w), w0, s1)
+    (y, c1) <- act c0 { ctxResults = emptyResults }
+    Right ((y, ctxResults c1), c1 { ctxResults = ctxResults c0} )
 {-# INLINE listenNoTell #-}
 
 newInferredVarName :: IsString v => String -> Infer v

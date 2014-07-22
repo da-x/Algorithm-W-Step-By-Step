@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE EmptyCase, EmptyDataDecls, FlexibleInstances, OverloadedStrings #-}
 -- TODO: remove FlexibleInstances?
 
 module Lamdu.Infer
@@ -39,6 +39,15 @@ import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
+data Void
+absurd :: Void -> a
+absurd x = case x of
+instance Pretty Void where
+  pPrint = absurd
+
+closedRecord :: Map E.Tag E.Type -> E.CompositeType Void
+closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
+
 withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)
 withSubst x = M.listen x <&> _2 %~ M.subst
 
@@ -51,7 +60,7 @@ unifyRecToPartial (tfields, tname) ufields
     PP.text "Incompatible record types:" <+>
     pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))) <+>
     PP.text " vs. " <+>
-    pPrint (FlatComposite.toRecordType (FlatComposite ufields Nothing))
+    pPrint (closedRecord ufields)
   | otherwise = varBind tname $ FlatComposite.toRecordType $ FlatComposite uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -77,9 +86,9 @@ unifyRecFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
-    pPrint (FlatComposite.toRecordType (FlatComposite tfields Nothing)) <+>
+    pPrint (closedRecord tfields) <+>
     PP.text "vs." <+>
-    pPrint (FlatComposite.toRecordType (FlatComposite ufields Nothing))
+    pPrint (closedRecord ufields)
   | otherwise = return mempty
 
 unifyChild :: Unify t => t -> t -> StateT FreeTypeVars.Subst Infer ()
@@ -88,7 +97,7 @@ unifyChild t u =
         ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
         State.put (old `mappend` s)
 
-unifyFlattenedRecs :: FlatComposite -> FlatComposite -> Infer ()
+unifyFlattenedRecs :: FlatComposite E.RecordTypeVar -> FlatComposite E.RecordTypeVar -> Infer ()
 unifyFlattenedRecs
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =

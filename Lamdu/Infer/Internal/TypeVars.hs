@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
-  , HasVar(..)
+  , HasVar(..), CompositeHasVar
   , difference
   ) where
 
@@ -25,10 +25,12 @@ instance Monoid TypeVars where
 class HasVar t where
   getVars :: TypeVars -> Set (E.TypeVar t)
   newVars :: Set (E.TypeVar t) -> TypeVars
+  liftVar :: E.TypeVar t -> t
 
 instance HasVar E.Type where
   getVars (TypeVars vs _) = vs
   newVars vs = TypeVars vs mempty
+  liftVar = E.TVar
 
 class CompositeHasVar p where
   compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
@@ -41,6 +43,7 @@ instance CompositeHasVar E.Product where
 instance CompositeHasVar p => HasVar (E.CompositeType p) where
   getVars = compositeGetVars
   newVars = compositeNewVars
+  liftVar = E.CVar
 
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =

@@ -9,7 +9,6 @@ module Lamdu.Expr
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
-  , TypePart(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -121,14 +120,6 @@ data Type    =  TVar (TypeVar Type)
              |  TRecord ProductType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
-
-class TypePart t where
-  liftVar :: TypeVar t -> t
-
-instance TypePart Type where
-  liftVar = TVar
-instance TypePart (CompositeType p) where
-  liftVar = CVar
 
 eAbs :: ValVar -> Val () -> Val ()
 eAbs name body = Val () $ VAbs $ Lam name body

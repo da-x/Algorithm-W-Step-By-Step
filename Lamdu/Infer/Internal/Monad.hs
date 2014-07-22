@@ -16,7 +16,7 @@ import Control.Monad.State (MonadState(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.TypeVars (TypeVars)
+import Lamdu.Infer.Internal.TypeVars (TypeVars, HasVar(..))
 import qualified Control.Monad as Monad
 import qualified Control.Monad.State as State
 import qualified Data.Map as Map
@@ -130,5 +130,5 @@ newInferredVarName prefix =
       State.put s{inferSupply = inferSupply s + 1}
       return $ fromString $ prefix ++ show (inferSupply s)
 
-newInferredVar :: E.TypePart t => String -> Infer t
-newInferredVar = fmap E.liftVar . newInferredVarName
+newInferredVar :: HasVar t => String -> Infer t
+newInferredVar = fmap liftVar . newInferredVarName

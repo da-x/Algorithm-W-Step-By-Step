@@ -21,7 +21,7 @@ import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Scheme (Scheme)
 import Lamdu.Infer.Internal.Scope (Scope)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..), CompositeHasVar)
 import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -62,7 +62,7 @@ unifyFlatToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyFlatPartials ::
-  Unify (E.CompositeType p) =>
+  (CompositeHasVar p, Unify (E.CompositeType p)) =>
   (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
   (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
   Infer ()
@@ -95,7 +95,7 @@ unifyChild t u =
         State.put (old `mappend` s)
 
 unifyFlattened ::
-  Unify (E.CompositeType p) =>
+  (CompositeHasVar p, Unify (E.CompositeType p)) =>
   FlatComposite p -> FlatComposite p -> Infer ()
 unifyFlattened
   (FlatComposite tfields tvar)
@@ -221,7 +221,7 @@ infer f globals = go
             ((t, e'), s) <- withSubst $ go locals e
             ((), su) <-
               withSubst $ unify (FreeTypeVars.applySubst s t) $
-              E.TRecord $ E.CExtend name tv $ E.liftVar tvRecName
+              E.TRecord $ E.CExtend name tv $ liftVar tvRecName
             return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
       E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1
@@ -244,7 +244,7 @@ infer f globals = go
               _ -> do
                 tv <- M.newInferredVarName "r"
                 M.tellConstraint tv name
-                let tve = E.liftVar tv
+                let tve = liftVar tv
                 ((), s) <- withSubst $ unify t2 $ E.TRecord tve
                 return $ FreeTypeVars.applySubst s tve
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $

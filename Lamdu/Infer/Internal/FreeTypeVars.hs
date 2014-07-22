@@ -58,7 +58,7 @@ instance FreeTypeVars E.Type where
   applySubst s (E.TFun t1 t2)  = E.TFun (applySubst s t1) (applySubst s t2)
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r
 
-class (E.TypePart t, FreeTypeVars t) => NewSubst t where
+class FreeTypeVars t => NewSubst t where
   newSubst :: E.TypeVar t -> t -> Subst
 
 instance NewSubst E.Type          where

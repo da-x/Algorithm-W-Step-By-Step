@@ -60,7 +60,7 @@ integerType = E.TInst "Int" Map.empty
 boolType :: E.Type
 boolType = E.TInst "Bool" Map.empty
 
-forAll :: [E.TypeVar] -> ([E.Type] -> E.Type) -> Scheme
+forAll :: [E.TypeVar E.Type] -> ([E.Type] -> E.Type) -> Scheme
 forAll tvs mkType =
   Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map E.TVar tvs
 

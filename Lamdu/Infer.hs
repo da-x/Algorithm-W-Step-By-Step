@@ -15,7 +15,6 @@ import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
@@ -40,21 +39,15 @@ import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
-data Void
-absurd :: Void -> a
-absurd x = case x of
-instance Pretty Void where
-  pPrint = absurd
-
-closedRecord :: Map E.Tag E.Type -> E.CompositeType Void
+closedRecord :: Map E.Tag E.Type -> E.CompositeType p
 closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
 
 withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)
 withSubst x = M.listen x <&> _2 %~ M.subst
 
 unifyFlatToPartial ::
-  (Pretty v, Unify (E.CompositeType v)) =>
-  (Map E.Tag E.Type, v) -> Map E.Tag E.Type ->
+  Unify (E.CompositeType p) =>
+  (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) -> Map E.Tag E.Type ->
   Infer ()
 unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -69,8 +62,9 @@ unifyFlatToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyFlatPartials ::
-  (IsString v, Unify (E.CompositeType v)) =>
-  (Map E.Tag E.Type, v) -> (Map E.Tag E.Type, v) ->
+  Unify (E.CompositeType p) =>
+  (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
+  (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
   Infer ()
 unifyFlatPartials (tfields, tname) (ufields, uname) =
   do  restTv <- M.newInferredVar "r"
@@ -101,8 +95,8 @@ unifyChild t u =
         State.put (old `mappend` s)
 
 unifyFlattened ::
-  (IsString v, Pretty v, Unify (E.CompositeType v)) =>
-  FlatComposite v -> FlatComposite v -> Infer ()
+  Unify (E.CompositeType p) =>
+  FlatComposite p -> FlatComposite p -> Infer ()
 unifyFlattened
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =
@@ -122,11 +116,11 @@ dontUnify x y =
 
 class FreeTypeVars t => Unify t where
   unify :: t -> t -> Infer ()
-  varBind :: E.VarOf t -> t -> Infer ()
+  varBind :: E.TypeVar t -> t -> Infer ()
 
 checkOccurs ::
-  (Pretty v, Pretty t, Ord v, TypeVars.Var v, FreeTypeVars t) =>
-  v -> t -> Infer () -> Infer ()
+  (Pretty t, TypeVars.Var t, FreeTypeVars t) =>
+  E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (freeTypeVars typ) =
     throwError $ show $
@@ -154,7 +148,7 @@ instance Unify E.Type where
   varBind u (E.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-instance Unify (E.CompositeType E.RecordTypeVar) where
+instance Unify E.ProductType where
   unify E.CEmpty E.CEmpty       =  return ()
   unify (E.CVar u) t            =  varBind u t
   unify t (E.CVar u)            =  varBind u t
@@ -177,9 +171,9 @@ typeInference globals rootVal =
         M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
       return (topScheme, val & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
 
-data CompositeHasTag v = HasTag | DoesNotHaveTag | MayHaveTag v
+data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
-hasTag :: E.Tag -> E.CompositeType v -> CompositeHasTag v
+hasTag :: E.Tag -> E.CompositeType p -> CompositeHasTag p
 hasTag _ E.CEmpty   = DoesNotHaveTag
 hasTag _ (E.CVar v) = MayHaveTag v
 hasTag tag (E.CExtend t _ r)

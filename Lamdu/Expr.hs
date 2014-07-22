@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls #-}
 module Lamdu.Expr
   ( ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
   , Val(..), expPayload
   , ValVar(..)
-  , CompositeType(..), RecordTypeVar(..)
-  , Type(..), TypeVar(..)
+  , CompositeType(..), ProductType
+  , Type(..), TypeVar(..), Product
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
@@ -36,15 +36,10 @@ newtype ValVar = ValVar { vvName :: Identifier }
 instance NFData ValVar where rnf = genericRnf
 instance IsString ValVar where fromString = ValVar . fromString
 
-newtype TypeVar = TypeVar { tvName :: Identifier }
+newtype TypeVar t = TypeVar { tvName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
-instance NFData TypeVar where rnf = genericRnf
-instance IsString TypeVar where fromString = TypeVar . fromString
-
-newtype RecordTypeVar = RecordTypeVar { rtvName :: Identifier }
-  deriving (Eq, Ord, Generic, Show)
-instance NFData RecordTypeVar where rnf = genericRnf
-instance IsString RecordTypeVar where fromString = RecordTypeVar . fromString
+instance NFData (TypeVar t) where rnf = genericRnf
+instance IsString (TypeVar t) where fromString = TypeVar . fromString
 
 newtype GlobalId = GlobalId { globalId :: Identifier }
   deriving (Eq, Ord, Generic, Show)
@@ -118,27 +113,29 @@ instance NFData a => NFData (Val a) where rnf = genericRnf
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
-data CompositeType v = CExtend Tag Type (CompositeType v)
-                     | CEmpty
-                     | CVar v
-  deriving (Generic, Show)
-instance NFData v => NFData (CompositeType v) where rnf = genericRnf
+data Product
 
-data Type    =  TVar TypeVar
+data CompositeType p = CExtend Tag Type (CompositeType p)
+                     | CEmpty
+                     | CVar (TypeVar (CompositeType p))
+  deriving (Generic, Show)
+instance NFData (CompositeType v) where rnf = genericRnf
+
+type ProductType = CompositeType Product
+
+data Type    =  TVar (TypeVar Type)
              |  TFun Type Type
              |  TInst TypeId (Map TypeParamId Type)
-             |  TRecord (CompositeType RecordTypeVar)
+             |  TRecord ProductType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
-class IsString (VarOf t) => TypePart t where
-  type family VarOf t
-  liftVar :: VarOf t -> t
+class TypePart t where
+  liftVar :: TypeVar t -> t
+
 instance TypePart Type where
-  type VarOf Type = TypeVar
   liftVar = TVar
-instance IsString v => TypePart (CompositeType v) where
-  type VarOf (CompositeType v) = v
+instance TypePart (CompositeType p) where
   liftVar = CVar
 
 eAbs :: ValVar -> Val () -> Val ()
@@ -165,8 +162,7 @@ eRecExtend name typ rest = Val () $ VRecExtend $ RecExtend name typ rest
 eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n
 
-instance Pretty RecordTypeVar where pPrint = PP.text . BS.unpack . rtvName
-instance Pretty TypeVar       where pPrint = PP.text . BS.unpack . tvName
+instance Pretty (TypeVar t)   where pPrint = PP.text . BS.unpack . tvName
 instance Pretty GlobalId      where pPrint = PP.text . BS.unpack . globalId
 instance Pretty TypeId        where pPrint = PP.text . BS.unpack . typeId
 instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
@@ -190,7 +186,7 @@ instance Pretty Type where
         showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
     TRecord r -> pPrint r
 
-instance Pretty v => Pretty (CompositeType v) where
+instance Pretty (CompositeType p) where
   pPrint CEmpty = PP.text "T{}"
   pPrint x =
     PP.text "{" <+> go PP.empty x <+> PP.text "}"

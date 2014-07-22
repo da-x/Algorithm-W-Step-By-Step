@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, FlexibleInstances #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , Var(..)
@@ -13,7 +13,7 @@ import GHC.Generics (Generic)
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 
-data TypeVars = TypeVars (Set E.TypeVar) (Set E.RecordTypeVar)
+data TypeVars = TypeVars (Set (E.TypeVar E.Type)) (Set (E.TypeVar E.ProductType))
   deriving (Eq, Generic)
 instance NFData TypeVars where
   rnf = genericRnf
@@ -22,13 +22,13 @@ instance Monoid TypeVars where
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
-class Var v where
-  getVars :: TypeVars -> Set v
+class Var t where
+  getVars :: TypeVars -> Set (E.TypeVar t)
 
-instance Var E.TypeVar where
+instance Var E.Type where
   getVars (TypeVars vs _) = vs
 
-instance Var E.RecordTypeVar where
+instance Var E.ProductType where
   getVars (TypeVars _ vs) = vs
 
 difference :: TypeVars -> TypeVars -> TypeVars

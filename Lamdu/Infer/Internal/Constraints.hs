@@ -23,7 +23,7 @@ import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
-  { forbiddenRecordFields :: Map E.RecordTypeVar (Set E.Tag)
+  { forbiddenRecordFields :: Map (E.TypeVar E.ProductType) (Set E.Tag)
   } deriving (Generic, Eq)
 
 instance NFData Constraints where
@@ -44,14 +44,14 @@ constraintDeleteVars :: TypeVars -> Constraints -> Constraints
 constraintDeleteVars (TypeVars _ rvs) (Constraints m) =
   Constraints $ MapU.deleteKeySet rvs m
 
-pPrintConstraint :: E.RecordTypeVar -> Set E.Tag -> PP.Doc
+pPrintConstraint :: E.TypeVar E.ProductType -> Set E.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =
   PP.text "{" <>
   (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
   PP.text "}" <+>
   PP.text "∉" <+> pPrint tv
 
-applyRenames :: Map E.RecordTypeVar E.RecordTypeVar -> Constraints -> Constraints
+applyRenames :: Map (E.TypeVar E.ProductType) (E.TypeVar E.ProductType) -> Constraints -> Constraints
 applyRenames renames (Constraints m) =
   Constraints $ Map.mapKeys rename m
   where

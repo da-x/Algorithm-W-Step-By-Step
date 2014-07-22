@@ -94,7 +94,7 @@ tell w =
     Right ((), w1, s)
 {-# INLINE tell #-}
 
-tellSubst :: FreeTypeVars.NewSubst t => E.VarOf t -> t -> Infer ()
+tellSubst :: FreeTypeVars.NewSubst t => E.TypeVar t -> t -> Infer ()
 tellSubst v t =
   tell $ emptyResults
   { subst = FreeTypeVars.newSubst v t }
@@ -102,7 +102,7 @@ tellSubst v t =
 tellConstraints :: Constraints -> Infer ()
 tellConstraints x = tell $ emptyResults { constraints = x }
 
-tellConstraint :: E.RecordTypeVar -> E.Tag -> Infer ()
+tellConstraint :: E.TypeVar E.ProductType -> E.Tag -> Infer ()
 tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.singleton tag)
 
 listen :: Infer a -> Infer (a, Results)

@@ -15,9 +15,11 @@ import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Data.Map.Utils as MapU
 
+type SubSubst t = Map (E.TypeVar t) t
+
 data Subst = Subst
-  { substTypes :: Map E.TypeVar E.Type
-  , substRecordTypes :: Map E.RecordTypeVar (E.CompositeType E.RecordTypeVar)
+  { substTypes :: SubSubst E.Type
+  , substRecordTypes :: SubSubst E.ProductType
   }
 
 instance Monoid Subst where
@@ -35,7 +37,7 @@ class FreeTypeVars a where
   freeTypeVars :: a -> TypeVars
   applySubst   :: Subst -> a -> a
 
-instance FreeTypeVars (E.CompositeType E.RecordTypeVar) where
+instance FreeTypeVars E.ProductType where
   freeTypeVars E.CEmpty          = mempty
   freeTypeVars (E.CVar n)        = TypeVars mempty (Set.singleton n)
   freeTypeVars (E.CExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
@@ -56,12 +58,12 @@ instance FreeTypeVars E.Type where
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r
 
 class (E.TypePart t, FreeTypeVars t) => NewSubst t where
-  newSubst :: E.VarOf t -> t -> Subst
+  newSubst :: E.TypeVar t -> t -> Subst
 
 instance NewSubst E.Type          where
   newSubst tv t = Subst (Map.singleton tv t) mempty
   {-# INLINE newSubst #-}
 
-instance NewSubst (E.CompositeType E.RecordTypeVar) where
+instance NewSubst E.ProductType where
   newSubst tv t = Subst mempty (Map.singleton tv t)
   {-# INLINE newSubst #-}

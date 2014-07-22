@@ -163,14 +163,14 @@ typeInference globals rootVal =
         M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
       return (topScheme, val & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
 
-data RecordHasField = HasField | DoesNotHaveField | MayHaveField E.RecordTypeVar
+data CompositeHasTag v = HasTag | DoesNotHaveTag | MayHaveTag v
 
-hasField :: E.Tag -> E.CompositeType E.RecordTypeVar -> RecordHasField
-hasField _ E.TRecEmpty   = DoesNotHaveField
-hasField _ (E.TRecVar v) = MayHaveField v
-hasField tag (E.TRecExtend t _ r)
-  | tag == t  = HasField
-  | otherwise = hasField tag r
+hasTag :: E.Tag -> E.CompositeType v -> CompositeHasTag v
+hasTag _ E.TRecEmpty   = DoesNotHaveTag
+hasTag _ (E.TRecVar v) = MayHaveTag v
+hasTag tag (E.TRecExtend t _ r)
+  | tag == t  = HasTag
+  | otherwise = hasTag tag r
 
 infer :: (E.Type -> a -> b) -> Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
 infer f globals = go
@@ -224,15 +224,15 @@ infer f globals = go
                 -- In case t2 is already inferred as a TRecord,
                 -- verify it doesn't already have this field,
                 -- and avoid unnecessary unify from other case
-                case hasField name x of
-                HasField ->
+                case hasTag name x of
+                HasTag ->
                   throwError $ show $
                   PP.text "Added field already in record:" <+>
                   pPrint name <+>
                   PP.text " added to " <+>
                   pPrint x
-                DoesNotHaveField -> return x
-                MayHaveField var -> x <$ M.tellConstraint var name
+                DoesNotHaveTag -> return x
+                MayHaveTag var -> x <$ M.tellConstraint var name
               _ -> do
                 tv <- M.newInferredVarName "r"
                 M.tellConstraint tv name

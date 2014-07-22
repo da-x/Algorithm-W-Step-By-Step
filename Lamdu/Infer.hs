@@ -143,8 +143,9 @@ instance Unify E.RecordType where
   unify t (E.TRecVar u)         =  varBind u t
   unify t@(E.TRecExtend f0 t0 r0)
         u@(E.TRecExtend f1 t1 r1)
-        | f0 == f1              =  do  unify t0 t1
-                                       unify r0 r1
+        | f0 == f1              =  do  ((), s) <- withSubst $ unify t0 t1
+                                       unify (FreeTypeVars.applySubst s r0)
+                                             (FreeTypeVars.applySubst s r1)
         | otherwise             =  unifyFlattenedRecs
                                    (FlatRecordType.from t)
                                    (FlatRecordType.from u)

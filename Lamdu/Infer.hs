@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
@@ -43,7 +43,7 @@ withSubst :: Infer a -> Infer (a, TypeVars.Subst)
 withSubst x = M.listen x <&> _2 %~ M.subst
 
 unifyFlatToPartial ::
-  Unify (E.CompositeType p) =>
+  CompositeHasVar p =>
   (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) -> Map E.Tag E.Type ->
   Infer ()
 unifyFlatToPartial (tfields, tname) ufields
@@ -59,7 +59,7 @@ unifyFlatToPartial (tfields, tname) ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyFlatPartials ::
-  (CompositeHasVar p, Unify (E.CompositeType p)) =>
+  CompositeHasVar p =>
   (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
   (Map E.Tag E.Type, E.TypeVar (E.CompositeType p)) ->
   Infer ()
@@ -92,8 +92,7 @@ unifyChild t u =
         State.put (old `mappend` s)
 
 unifyFlattened ::
-  (CompositeHasVar p, Unify (E.CompositeType p)) =>
-  FlatComposite p -> FlatComposite p -> Infer ()
+  CompositeHasVar p => FlatComposite p -> FlatComposite p -> Infer ()
 unifyFlattened
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =

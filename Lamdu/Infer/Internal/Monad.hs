@@ -8,9 +8,12 @@ module Lamdu.Infer.Internal.Monad
   , tell, tellSubst, tellConstraint, tellConstraints
   , listen, listenNoTell
   , newInferredVar, newInferredVarName
+  , listenSubst
   ) where
 
 import Control.Applicative (Applicative(..))
+import Control.Lens.Operators
+import Control.Lens.Tuple
 import Control.Monad.Except (MonadError(..))
 import Control.Monad.State (MonadState(..))
 import Data.Monoid (Monoid(..))
@@ -132,3 +135,6 @@ newInferredVarName prefix =
 
 newInferredVar :: HasVar t => String -> Infer t
 newInferredVar = fmap liftVar . newInferredVarName
+
+listenSubst :: Infer a -> Infer (a, TypeVars.Subst)
+listenSubst x = listen x <&> _2 %~ subst

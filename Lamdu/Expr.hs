@@ -7,7 +7,7 @@ module Lamdu.Expr
   , RecordType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
-  , Tag(..)
+  , Tag(..), GlobalId(..)
   , TypePart(..)
   ) where
 
@@ -42,14 +42,20 @@ newtype RecordTypeVar = RecordTypeVar { rtvName :: Identifier }
 instance NFData RecordTypeVar where rnf = genericRnf
 instance IsString RecordTypeVar where fromString = RecordTypeVar . fromString
 
+newtype GlobalId = GlobalId { globalId :: Identifier }
+  deriving (Eq, Ord, Generic, Show)
+instance NFData GlobalId where rnf = genericRnf
+instance IsString GlobalId where fromString = GlobalId . fromString
+
 newtype Tag = Tag { tagName :: Identifier }
   deriving (Eq, Ord, Generic, Show)
+
 instance NFData Tag where rnf = genericRnf
 instance IsString Tag where fromString = Tag . fromString
 
 data ValLeaf
   =  VVar ValVar
-  |  VGlobal Tag
+  |  VGlobal GlobalId
   |  VHole
   |  VLiteralInteger Integer
   |  VRecEmpty
@@ -129,7 +135,7 @@ eAbs name body = Val () $ VAbs $ Lam name body
 eVar :: ValVar -> Val ()
 eVar = Val () . VLeaf . VVar
 
-eGlobal :: Tag -> Val ()
+eGlobal :: GlobalId -> Val ()
 eGlobal = Val () . VLeaf . VGlobal
 
 eLitInt :: Integer -> Val ()
@@ -148,8 +154,9 @@ eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n
 
 instance Pretty RecordTypeVar where pPrint = PP.text . BS.unpack . rtvName
-instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
 instance Pretty TypeVar       where pPrint = PP.text . BS.unpack . tvName
+instance Pretty Tag           where pPrint = PP.text . BS.unpack . tagName
+instance Pretty GlobalId      where pPrint = PP.text . BS.unpack . globalId
 
 instance Pretty Type where
   pPrintPrec lvl prec typ =

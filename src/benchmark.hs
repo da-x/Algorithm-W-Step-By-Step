@@ -48,7 +48,7 @@ infixr 4 ~>
 (~>) :: E.Type -> E.Type -> E.Type
 (~>) = E.TFun
 
-getDef :: E.Tag -> E.Val ()
+getDef :: E.GlobalId -> E.Val ()
 getDef = E.eGlobal
 
 literalInteger :: Integer -> E.Val ()
@@ -73,7 +73,7 @@ infixType a b c = record [("l", a), ("r", b)] ~> c
 infixArgs :: E.Val () -> E.Val () -> E.Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
-env :: Map E.Tag Scheme
+env :: Map E.GlobalId Scheme
 env = Map.fromList
   [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
   , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)

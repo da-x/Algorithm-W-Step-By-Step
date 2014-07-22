@@ -153,7 +153,7 @@ instance Unify E.RecordType where
   varBind u (E.TRecVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-typeInference :: Map E.Tag Scheme -> E.Val a -> Either String (Scheme, E.Val (E.Type, a))
+typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (E.Type, a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
         M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
@@ -168,7 +168,7 @@ hasField tag (E.TRecExtend t _ r)
   | tag == t  = HasField
   | otherwise = hasField tag r
 
-infer :: (E.Type -> a -> b) -> Map E.Tag Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
+infer :: (E.Type -> a -> b) -> Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
 infer f globals = go
   where
     go locals expr@(E.Val pl body) =

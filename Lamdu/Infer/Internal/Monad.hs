@@ -94,7 +94,7 @@ tell w =
     Right ((), w1, s)
 {-# INLINE tell #-}
 
-tellSubst :: TypeVars.NewSubst t => E.TypeVar t -> t -> Infer ()
+tellSubst :: TypeVars.HasVar t => E.TypeVar t -> t -> Infer ()
 tellSubst v t =
   tell $ emptyResults
   { subst = TypeVars.newSubst v t }

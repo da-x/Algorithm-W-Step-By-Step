@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveGeneric, FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , HasVar(..), CompositeHasVar
   , difference
   , Subst(..), substDeleteVars
-  , FreeTypeVars(..), NewSubst(..)
+  , FreeTypeVars(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -29,33 +29,6 @@ instance Monoid TypeVars where
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
-class HasVar t where
-  getVars :: TypeVars -> Set (E.TypeVar t)
-  newVars :: Set (E.TypeVar t) -> TypeVars
-  liftVar :: E.TypeVar t -> t
-
-instance HasVar E.Type where
-  getVars (TypeVars vs _) = vs
-  newVars vs = TypeVars vs mempty
-  liftVar = E.TVar
-
-class CompositeHasVar p where
-  compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
-  compositeNewVars :: Set (E.TypeVar (E.CompositeType p)) -> TypeVars
-
-instance CompositeHasVar E.Product where
-  compositeGetVars (TypeVars _ vs) = vs
-  compositeNewVars vs = TypeVars mempty vs
-
-instance CompositeHasVar p => HasVar (E.CompositeType p) where
-  getVars = compositeGetVars
-  newVars = compositeNewVars
-  liftVar = E.CVar
-
-difference :: TypeVars -> TypeVars -> TypeVars
-difference (TypeVars t0 r0) (TypeVars t1 r1) =
-  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
-
 type SubSubst t = Map (E.TypeVar t) t
 
 data Subst = Subst
@@ -70,6 +43,44 @@ instance Monoid Subst where
     (t1 `Map.union` Map.map (applySubst s1) t0)
     (r1 `Map.union` Map.map (applySubst s1) r0)
 
+
+class FreeTypeVars t => HasVar t where
+  getVars :: TypeVars -> Set (E.TypeVar t)
+  newVars :: Set (E.TypeVar t) -> TypeVars
+  liftVar :: E.TypeVar t -> t
+  newSubst :: E.TypeVar t -> t -> Subst
+
+instance HasVar E.Type where
+  getVars (TypeVars vs _) = vs
+  newVars vs = TypeVars vs mempty
+  liftVar = E.TVar
+  newSubst tv t = Subst (Map.singleton tv t) mempty
+  {-# INLINE newSubst #-}
+
+class CompositeHasVar p where
+  compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
+  compositeNewVars :: Set (E.TypeVar (E.CompositeType p)) -> TypeVars
+  compositeGetSubst :: Subst -> SubSubst (E.CompositeType p)
+  compositeNewSubst :: SubSubst (E.CompositeType p) -> Subst
+
+instance CompositeHasVar E.Product where
+  compositeGetVars (TypeVars _ vs) = vs
+  compositeNewVars vs = TypeVars mempty vs
+  compositeNewSubst m = Subst mempty m
+  {-# INLINE compositeNewSubst #-}
+  compositeGetSubst = substRecordTypes
+
+instance CompositeHasVar p => HasVar (E.CompositeType p) where
+  getVars = compositeGetVars
+  newVars = compositeNewVars
+  newSubst tv t = compositeNewSubst $ Map.singleton tv t
+  {-# INLINE newSubst #-}
+  liftVar = E.CVar
+
+difference :: TypeVars -> TypeVars -> TypeVars
+difference (TypeVars t0 r0) (TypeVars t1 r1) =
+  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
+
 substDeleteVars :: TypeVars -> Subst -> Subst
 substDeleteVars (TypeVars t r) (Subst st sr) =
   Subst (MapU.deleteKeySet t st) (MapU.deleteKeySet r sr)
@@ -78,13 +89,13 @@ class FreeTypeVars a where
   freeTypeVars :: a -> TypeVars
   applySubst   :: Subst -> a -> a
 
-instance FreeTypeVars (E.CompositeType E.Product) where
+instance CompositeHasVar p => FreeTypeVars (E.CompositeType p) where
   freeTypeVars E.CEmpty          = mempty
   freeTypeVars (E.CVar n)        = newVars (Set.singleton n)
   freeTypeVars (E.CExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
 
   applySubst _ E.CEmpty          = E.CEmpty
-  applySubst s (E.CVar n)        = fromMaybe (E.CVar n) $ Map.lookup n (substRecordTypes s)
+  applySubst s (E.CVar n)        = fromMaybe (E.CVar n) $ Map.lookup n (compositeGetSubst s)
   applySubst s (E.CExtend n t r) = E.CExtend n (applySubst s t) (applySubst s r)
 
 instance FreeTypeVars E.Type where
@@ -97,14 +108,3 @@ instance FreeTypeVars E.Type where
   applySubst s (E.TInst n p)   = E.TInst n $ applySubst s <$> p
   applySubst s (E.TFun t1 t2)  = E.TFun (applySubst s t1) (applySubst s t2)
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r
-
-class FreeTypeVars t => NewSubst t where
-  newSubst :: E.TypeVar t -> t -> Subst
-
-instance NewSubst E.Type          where
-  newSubst tv t = Subst (Map.singleton tv t) mempty
-  {-# INLINE newSubst #-}
-
-instance NewSubst E.ProductType where
-  newSubst tv t = Subst mempty (Map.singleton tv t)
-  {-# INLINE newSubst #-}

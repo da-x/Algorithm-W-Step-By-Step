@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Constraints
   ( Constraints(..), applySubst, applyRenames
   , constraintDeleteVars

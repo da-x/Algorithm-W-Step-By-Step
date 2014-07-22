@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
 
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
@@ -15,8 +15,10 @@ import Control.Lens.Tuple
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (lift)
+import Data.Foldable (Foldable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
@@ -168,8 +170,7 @@ instance TypeVars.CompositeHasVar p => Unify (E.CompositeType p) where
 data Payload a = Payload
   { _plType :: E.Type
   , _plData :: a
-  }
-  deriving (Generic, Show)
+  } deriving (Generic, Show, Functor, Foldable, Traversable)
 instance NFData a => NFData (Payload a) where rnf = genericRnf
 
 plType :: Lens' (Payload a) E.Type

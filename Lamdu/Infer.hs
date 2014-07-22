@@ -8,7 +8,7 @@ import Control.Lens (mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad.Except (catchError, throwError)
-import Control.Monad.State (evalStateT)
+import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
@@ -78,15 +78,18 @@ unifyRecFulls tfields ufields
     pPrint (FlatRecordType.toRecordType (FlatRecordType ufields Nothing))
   | otherwise = return mempty
 
+unifyChild :: Unify t => t -> t -> StateT FreeTypeVars.Subst Infer ()
+unifyChild t u =
+    do  old <- State.get
+        ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
+        State.put (old `mappend` s)
+
 unifyFlattenedRecs :: FlatRecordType -> FlatRecordType -> Infer ()
 unifyFlattenedRecs
   (FlatRecordType tfields tvar)
   (FlatRecordType ufields uvar) =
-    do  let unifyField t u =
-                do  old <- State.get
-                    ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
-                    State.put (old `mappend` s)
-        (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyField tfields ufields
+    do
+        (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyChild tfields ufields
         case (tvar, uvar) of
             (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
             (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
@@ -99,7 +102,7 @@ dontUnify x y =
   PP.text "types do not unify: " <+> pPrint x <+>
   PP.text "vs." <+> pPrint y
 
-class Unify t where
+class FreeTypeVars t => Unify t where
   unify :: t -> t -> Infer ()
   varBind :: E.VarOf t -> t -> Infer ()
 

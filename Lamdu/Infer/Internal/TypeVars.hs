@@ -24,12 +24,15 @@ instance Monoid TypeVars where
 
 class Var t where
   getVars :: TypeVars -> Set (E.TypeVar t)
+  newVars :: Set (E.TypeVar t) -> TypeVars
 
 instance Var E.Type where
   getVars (TypeVars vs _) = vs
+  newVars vs = TypeVars vs mempty
 
 instance Var E.ProductType where
   getVars (TypeVars _ vs) = vs
+  newVars vs = TypeVars mempty vs
 
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =

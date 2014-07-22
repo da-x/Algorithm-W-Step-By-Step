@@ -11,9 +11,10 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
+import qualified Data.Map.Utils as MapU
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Data.Map.Utils as MapU
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
 type SubSubst t = Map (E.TypeVar t) t
 
@@ -39,7 +40,7 @@ class FreeTypeVars a where
 
 instance FreeTypeVars E.ProductType where
   freeTypeVars E.CEmpty          = mempty
-  freeTypeVars (E.CVar n)        = TypeVars mempty (Set.singleton n)
+  freeTypeVars (E.CVar n)        = TypeVars.newVars (Set.singleton n)
   freeTypeVars (E.CExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
 
   applySubst _ E.CEmpty          = E.CEmpty
@@ -47,7 +48,7 @@ instance FreeTypeVars E.ProductType where
   applySubst s (E.CExtend n t r) = E.CExtend n (applySubst s t) (applySubst s r)
 
 instance FreeTypeVars E.Type where
-  freeTypeVars (E.TVar n)      =  TypeVars (Set.singleton n) mempty
+  freeTypeVars (E.TVar n)      =  TypeVars.newVars (Set.singleton n)
   freeTypeVars (E.TInst _ p)   =  mconcat $ map freeTypeVars $ Map.elems p
   freeTypeVars (E.TFun t1 t2)  =  freeTypeVars t1 `mappend` freeTypeVars t2
   freeTypeVars (E.TRecord r)   =  freeTypeVars r

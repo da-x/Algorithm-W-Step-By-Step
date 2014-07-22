@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
@@ -145,7 +145,7 @@ instance Unify E.Type where
   varBind u (E.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-instance Unify E.ProductType where
+instance TypeVars.CompositeHasVar p => Unify (E.CompositeType p) where
   unify E.CEmpty E.CEmpty       =  return ()
   unify (E.CVar u) t            =  varBind u t
   unify t (E.CVar u)            =  varBind u t

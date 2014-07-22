@@ -25,6 +25,7 @@ import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
+import qualified Data.Foldable as Foldable
 import qualified Data.Map as M
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -91,7 +92,7 @@ unifyFlattenedRecs
   (FlatRecordType tfields tvar)
   (FlatRecordType ufields uvar) =
     do
-        (`evalStateT` mempty) . sequence_ . Map.elems $ Map.intersectionWith unifyChild tfields ufields
+        (`evalStateT` mempty) . Foldable.sequence_ $ Map.intersectionWith unifyChild tfields ufields
         case (tvar, uvar) of
             (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
             (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
@@ -128,7 +129,7 @@ instance Unify E.Type where
         (FreeTypeVars.applySubst s1 r')
   unify (E.TInst c0 p0) (E.TInst c1 p1)
     | c0 == c1
-      && Map.keys p0 == Map.keys p1 = (`evalStateT` mempty) . sequence_ . Map.elems $
+      && Map.keys p0 == Map.keys p1 = (`evalStateT` mempty) . Foldable.sequence_ $
                                       Map.intersectionWith unifyChild p0 p1
   unify (E.TVar u) t                =  varBind u t
   unify t (E.TVar u)                =  varBind u t

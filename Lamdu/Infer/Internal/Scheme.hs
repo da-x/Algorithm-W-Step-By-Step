@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scheme
   ( Scheme(..)
   , generalize

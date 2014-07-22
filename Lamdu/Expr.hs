@@ -4,7 +4,7 @@ module Lamdu.Expr
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
   , Val(..), expPayload
   , ValVar(..)
-  , RecordType(..), RecordTypeVar(..)
+  , CompositeType(..), RecordTypeVar(..)
   , Type(..), TypeVar(..)
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , GlobalId(..), TypeId(..)
@@ -118,16 +118,16 @@ instance NFData a => NFData (Val a) where rnf = genericRnf
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
-data RecordType = TRecExtend Tag Type RecordType
-                | TRecEmpty
-                | TRecVar RecordTypeVar
+data CompositeType = TRecExtend Tag Type CompositeType
+                   | TRecEmpty
+                   | TRecVar RecordTypeVar
   deriving (Generic, Show)
-instance NFData RecordType where rnf = genericRnf
+instance NFData CompositeType where rnf = genericRnf
 
 data Type    =  TVar TypeVar
              |  TFun Type Type
              |  TInst TypeId (Map TypeParamId Type)
-             |  TRecord RecordType
+             |  TRecord CompositeType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
@@ -137,8 +137,8 @@ class IsString (VarOf t) => TypePart t where
 instance TypePart Type where
   type VarOf Type = TypeVar
   liftVar = TVar
-instance TypePart RecordType where
-  type VarOf RecordType = RecordTypeVar
+instance TypePart CompositeType where
+  type VarOf CompositeType = RecordTypeVar
   liftVar = TRecVar
 
 eAbs :: ValVar -> Val () -> Val ()
@@ -190,7 +190,7 @@ instance Pretty Type where
         showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
     TRecord r -> pPrint r
 
-instance Pretty RecordType where
+instance Pretty CompositeType where
   pPrint TRecEmpty = PP.text "T{}"
   pPrint x =
     PP.text "{" <+> go PP.empty x <+> PP.text "}"

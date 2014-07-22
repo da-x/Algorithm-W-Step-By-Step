@@ -138,7 +138,7 @@ instance Unify E.Type where
   varBind u (E.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-instance Unify E.RecordType where
+instance Unify E.CompositeType where
   unify E.TRecEmpty E.TRecEmpty =  return ()
   unify (E.TRecVar u) t         =  varBind u t
   unify t (E.TRecVar u)         =  varBind u t
@@ -163,7 +163,7 @@ typeInference globals rootVal =
 
 data RecordHasField = HasField | DoesNotHaveField | MayHaveField E.RecordTypeVar
 
-hasField :: E.Tag -> E.RecordType -> RecordHasField
+hasField :: E.Tag -> E.CompositeType -> RecordHasField
 hasField _ E.TRecEmpty   = DoesNotHaveField
 hasField _ (E.TRecVar v) = MayHaveField v
 hasField tag (E.TRecExtend t _ r)

@@ -19,7 +19,7 @@ import qualified Data.Map as Map
 import qualified Data.Map.Utils as MapU
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
@@ -58,8 +58,8 @@ applyRenames renames (Constraints m) =
     rename x = fromMaybe x $ Map.lookup x renames
 
 applySubst ::
-  FreeTypeVars.Subst -> Constraints -> Either String Constraints
-applySubst (FreeTypeVars.Subst _ recordSubsts) (Constraints c) =
+  TypeVars.Subst -> Constraints -> Either String Constraints
+applySubst (TypeVars.Subst _ recordSubsts) (Constraints c) =
   Constraints . Map.fromListWith Set.union . concat <$>
   mapM onConstraint (Map.toList c)
   where

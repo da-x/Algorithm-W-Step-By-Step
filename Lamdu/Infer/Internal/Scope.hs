@@ -7,7 +7,7 @@ module Lamdu.Infer.Internal.Scope
 
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
+import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 

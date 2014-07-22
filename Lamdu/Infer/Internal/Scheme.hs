@@ -13,14 +13,12 @@ import Data.Set (Set)
 import Data.String (IsString(..))
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..), TypeVars(..), HasVar(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
-import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
@@ -56,7 +54,7 @@ instantiate (Scheme (TypeVars tv rv) constraints t) =
   do
     recordSubsts <- mkInstantiateSubstPart "k" rv
     subst <-
-      (`FreeTypeVars.Subst` fmap liftVar recordSubsts) .
+      (`TypeVars.Subst` fmap liftVar recordSubsts) .
       fmap liftVar
       <$> mkInstantiateSubstPart "i" tv
     M.tellConstraints $ Constraints.applyRenames recordSubsts constraints

@@ -23,12 +23,12 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
-import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
 data InferState = InferState { inferSupply :: Int }
 
 data Results = Results
-  { subst :: FreeTypeVars.Subst
+  { subst :: TypeVars.Subst
   , constraints :: Constraints
   }
 
@@ -46,7 +46,7 @@ appendResults (Results s0 c0) (Results s1 c1) =
 deleteResultsVars :: TypeVars -> Results -> Results
 deleteResultsVars vs (Results s c) =
   Results
-  (FreeTypeVars.substDeleteVars vs s)
+  (TypeVars.substDeleteVars vs s)
   (Constraints.constraintDeleteVars vs c)
 
 newtype Infer a = Infer { runInfer :: Results -> InferState -> Either String (a, Results, InferState) }
@@ -94,10 +94,10 @@ tell w =
     Right ((), w1, s)
 {-# INLINE tell #-}
 
-tellSubst :: FreeTypeVars.NewSubst t => E.TypeVar t -> t -> Infer ()
+tellSubst :: TypeVars.NewSubst t => E.TypeVar t -> t -> Infer ()
 tellSubst v t =
   tell $ emptyResults
-  { subst = FreeTypeVars.newSubst v t }
+  { subst = TypeVars.newSubst v t }
 
 tellConstraints :: Constraints -> Infer ()
 tellConstraints x = tell $ emptyResults { constraints = x }

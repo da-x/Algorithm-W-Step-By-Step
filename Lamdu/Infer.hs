@@ -17,11 +17,10 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
-import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Scheme (Scheme)
 import Lamdu.Infer.Internal.Scope (Scope)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..), CompositeHasVar)
+import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..), FreeTypeVars(..), CompositeHasVar)
 import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -32,7 +31,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
-import qualified Lamdu.Infer.Internal.FreeTypeVars as FreeTypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import qualified Lamdu.Infer.Internal.Scope as Scope
@@ -42,7 +40,7 @@ import qualified Text.PrettyPrint as PP
 closedRecord :: Map E.Tag E.Type -> E.CompositeType p
 closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
 
-withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)
+withSubst :: Infer a -> Infer (a, TypeVars.Subst)
 withSubst x = M.listen x <&> _2 %~ M.subst
 
 unifyFlatToPartial ::
@@ -71,7 +69,7 @@ unifyFlatPartials (tfields, tname) (ufields, uname) =
       ((), s1) <-
         withSubst $ varBind tname $
         Map.foldWithKey E.CExtend restTv uniqueUFields
-      varBind uname $ FreeTypeVars.applySubst s1 $
+      varBind uname $ TypeVars.applySubst s1 $
         Map.foldWithKey E.CExtend restTv uniqueTFields
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -88,10 +86,10 @@ unifyFlatFulls tfields ufields
     pPrint (closedRecord ufields)
   | otherwise = return mempty
 
-unifyChild :: Unify t => t -> t -> StateT FreeTypeVars.Subst Infer ()
+unifyChild :: Unify t => t -> t -> StateT TypeVars.Subst Infer ()
 unifyChild t u =
     do  old <- State.get
-        ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
+        ((), s) <- lift $ withSubst $ unify (TypeVars.applySubst old t) (TypeVars.applySubst old u)
         State.put (old `mappend` s)
 
 unifyFlattened ::
@@ -134,8 +132,8 @@ instance Unify E.Type where
     do
       ((), s1) <- withSubst $ unify l l'
       unify
-        (FreeTypeVars.applySubst s1 r)
-        (FreeTypeVars.applySubst s1 r')
+        (TypeVars.applySubst s1 r)
+        (TypeVars.applySubst s1 r')
   unify (E.TInst c0 p0) (E.TInst c1 p1)
     | c0 == c1
       && Map.keys p0 == Map.keys p1 = (`evalStateT` mempty) . Foldable.sequence_ $
@@ -155,8 +153,8 @@ instance Unify E.ProductType where
   unify t@(E.CExtend f0 t0 r0)
         u@(E.CExtend f1 t1 r1)
         | f0 == f1              =  do  ((), s) <- withSubst $ unify t0 t1
-                                       unify (FreeTypeVars.applySubst s r0)
-                                             (FreeTypeVars.applySubst s r1)
+                                       unify (TypeVars.applySubst s r0)
+                                             (TypeVars.applySubst s r1)
         | otherwise             =  unifyFlattened
                                    (FlatComposite.from t)
                                    (FlatComposite.from u)
@@ -169,7 +167,7 @@ typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Va
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
         M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
-      return (topScheme, val & mapped . _1 %~ FreeTypeVars.applySubst (M.subst s))
+      return (topScheme, val & mapped . _1 %~ TypeVars.applySubst (M.subst s))
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
@@ -205,13 +203,13 @@ infer f globals = go
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- withSubst $ go locals' e
-            return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (FreeTypeVars.applySubst s1 tv) t1
+            return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (TypeVars.applySubst s1 tv) t1
       E.VApp (E.Apply e1 e2) ->
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- withSubst $ go locals e1
-            ((t2, e2'), s2) <- withSubst $ go (FreeTypeVars.applySubst s1 locals) e2
-            ((), s3) <- withSubst $ unify (FreeTypeVars.applySubst s2 t1) (E.TFun t2 tv)
-            return $ mkResult (E.VApp (E.Apply e1' e2')) $ FreeTypeVars.applySubst s3 tv
+            ((t2, e2'), s2) <- withSubst $ go (TypeVars.applySubst s1 locals) e2
+            ((), s3) <- withSubst $ unify (TypeVars.applySubst s2 t1) (E.TFun t2 tv)
+            return $ mkResult (E.VApp (E.Apply e1' e2')) $ TypeVars.applySubst s3 tv
         `catchError`
         \e -> throwError $ e ++ "\n in " ++ show (pPrintValUnannotated expr)
       E.VGetField (E.GetField e name) ->
@@ -220,12 +218,12 @@ infer f globals = go
             M.tellConstraint tvRecName name
             ((t, e'), s) <- withSubst $ go locals e
             ((), su) <-
-              withSubst $ unify (FreeTypeVars.applySubst s t) $
+              withSubst $ unify (TypeVars.applySubst s t) $
               E.TRecord $ E.CExtend name tv $ liftVar tvRecName
-            return $ mkResult (E.VGetField (E.GetField e' name)) $ FreeTypeVars.applySubst su tv
+            return $ mkResult (E.VGetField (E.GetField e' name)) $ TypeVars.applySubst su tv
       E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- withSubst $ go locals e1
-            ((t2, e2'), _) <- withSubst $ go (FreeTypeVars.applySubst s1 locals) e2
+            ((t2, e2'), _) <- withSubst $ go (TypeVars.applySubst s1 locals) e2
             rest <-
               case t2 of
               E.TRecord x ->
@@ -246,7 +244,7 @@ infer f globals = go
                 M.tellConstraint tv name
                 let tve = liftVar tv
                 ((), s) <- withSubst $ unify t2 $ E.TRecord tve
-                return $ FreeTypeVars.applySubst s tve
+                return $ TypeVars.applySubst s tve
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
               E.TRecord $ E.CExtend name t1 rest
       where

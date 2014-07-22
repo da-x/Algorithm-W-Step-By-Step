@@ -20,17 +20,6 @@ data Subst = Subst
   , substRecordTypes :: Map E.RecordTypeVar (E.CompositeType E.RecordTypeVar)
   }
 
-class E.TypePart t => NewSubst t where
-  newSubst :: E.VarOf t -> t -> Subst
-
-instance NewSubst E.Type          where
-  newSubst tv t = Subst (Map.singleton tv t) mempty
-  {-# INLINE newSubst #-}
-
-instance NewSubst (E.CompositeType E.RecordTypeVar) where
-  newSubst tv t = Subst mempty (Map.singleton tv t)
-  {-# INLINE newSubst #-}
-
 instance Monoid Subst where
   mempty = Subst Map.empty Map.empty
   mappend (Subst t0 r0) s1@(Subst t1 r1) =
@@ -65,3 +54,14 @@ instance FreeTypeVars E.Type where
   applySubst s (E.TInst n p)   = E.TInst n $ applySubst s <$> p
   applySubst s (E.TFun t1 t2)  = E.TFun (applySubst s t1) (applySubst s t2)
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r
+
+class (E.TypePart t, FreeTypeVars t) => NewSubst t where
+  newSubst :: E.VarOf t -> t -> Subst
+
+instance NewSubst E.Type          where
+  newSubst tv t = Subst (Map.singleton tv t) mempty
+  {-# INLINE newSubst #-}
+
+instance NewSubst (E.CompositeType E.RecordTypeVar) where
+  newSubst tv t = Subst mempty (Map.singleton tv t)
+  {-# INLINE newSubst #-}

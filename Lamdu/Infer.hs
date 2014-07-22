@@ -1,4 +1,4 @@
-{-# LANGUAGE EmptyCase, EmptyDataDecls, FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE EmptyCase, EmptyDataDecls, FlexibleContexts, FlexibleInstances, OverloadedStrings #-}
 -- TODO: remove FlexibleInstances?
 
 module Lamdu.Infer
@@ -15,6 +15,7 @@ import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.FreeTypeVars (FreeTypeVars(..))
@@ -51,10 +52,11 @@ closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
 withSubst :: Infer a -> Infer (a, FreeTypeVars.Subst)
 withSubst x = M.listen x <&> _2 %~ M.subst
 
-unifyRecToPartial ::
-  (Map E.Tag E.Type, E.RecordTypeVar) -> Map E.Tag E.Type ->
+unifyFlatToPartial ::
+  (Pretty v, Unify (E.CompositeType v)) =>
+  (Map E.Tag E.Type, v) -> Map E.Tag E.Type ->
   Infer ()
-unifyRecToPartial (tfields, tname) ufields
+unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
@@ -66,10 +68,11 @@ unifyRecToPartial (tfields, tname) ufields
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
-unifyRecPartials ::
-  (Map E.Tag E.Type, E.RecordTypeVar) -> (Map E.Tag E.Type, E.RecordTypeVar) ->
+unifyFlatPartials ::
+  (IsString v, Unify (E.CompositeType v)) =>
+  (Map E.Tag E.Type, v) -> (Map E.Tag E.Type, v) ->
   Infer ()
-unifyRecPartials (tfields, tname) (ufields, uname) =
+unifyFlatPartials (tfields, tname) (ufields, uname) =
   do  restTv <- M.newInferredVar "r"
       ((), s1) <-
         withSubst $ varBind tname $
@@ -80,9 +83,9 @@ unifyRecPartials (tfields, tname) (ufields, uname) =
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
-unifyRecFulls ::
+unifyFlatFulls ::
   Map E.Tag E.Type -> Map E.Tag E.Type -> Infer ()
-unifyRecFulls tfields ufields
+unifyFlatFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     throwError $ show $
     PP.text "Incompatible record types:" <+>
@@ -97,17 +100,19 @@ unifyChild t u =
         ((), s) <- lift $ withSubst $ unify (FreeTypeVars.applySubst old t) (FreeTypeVars.applySubst old u)
         State.put (old `mappend` s)
 
-unifyFlattenedRecs :: FlatComposite E.RecordTypeVar -> FlatComposite E.RecordTypeVar -> Infer ()
-unifyFlattenedRecs
+unifyFlattened ::
+  (IsString v, Pretty v, Unify (E.CompositeType v)) =>
+  FlatComposite v -> FlatComposite v -> Infer ()
+unifyFlattened
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =
     do
         (`evalStateT` mempty) . Foldable.sequence_ $ Map.intersectionWith unifyChild tfields ufields
         case (tvar, uvar) of
-            (Nothing   , Nothing   ) -> unifyRecFulls tfields ufields
-            (Just tname, Just uname) -> unifyRecPartials (tfields, tname) (ufields, uname)
-            (Just tname, Nothing   ) -> unifyRecToPartial (tfields, tname) ufields
-            (Nothing   , Just uname) -> unifyRecToPartial (ufields, uname) tfields
+            (Nothing   , Nothing   ) -> unifyFlatFulls tfields ufields
+            (Just tname, Just uname) -> unifyFlatPartials (tfields, tname) (ufields, uname)
+            (Just tname, Nothing   ) -> unifyFlatToPartial (tfields, tname) ufields
+            (Nothing   , Just uname) -> unifyFlatToPartial (ufields, uname) tfields
 
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
@@ -158,7 +163,7 @@ instance Unify (E.CompositeType E.RecordTypeVar) where
         | f0 == f1              =  do  ((), s) <- withSubst $ unify t0 t1
                                        unify (FreeTypeVars.applySubst s r0)
                                              (FreeTypeVars.applySubst s r1)
-        | otherwise             =  unifyFlattenedRecs
+        | otherwise             =  unifyFlattened
                                    (FlatComposite.from t)
                                    (FlatComposite.from u)
   unify t1 t2                   =  dontUnify t1 t2

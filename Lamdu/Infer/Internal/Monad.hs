@@ -2,7 +2,7 @@
 module Lamdu.Infer.Internal.Monad
   ( Results(..), emptyResults
   , deleteResultsVars
-  , Context(..), emptyContext
+  , Context(..), initialContext
   , InferState(..)
   , Infer, run
   , tell, tellSubst, tellConstraint, tellConstraints
@@ -15,7 +15,7 @@ import Control.Applicative (Applicative(..))
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad.Except (MonadError(..))
-import Control.Monad.State (MonadState(..))
+import Control.Monad.State (StateT(..), MonadState(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
@@ -57,8 +57,8 @@ data Context = Context
   , ctxState :: {-# UNPACK #-} !InferState
   }
 
-emptyContext :: Context
-emptyContext =
+initialContext :: Context
+initialContext =
   Context
   { ctxResults = emptyResults
   , ctxState = InferState { inferSupply = 0 }
@@ -95,8 +95,8 @@ instance MonadError [Char] Infer where
     Left e -> runInfer (f e) c
     Right r -> Right r
 
-run :: Context -> Infer a -> Either String (a, Context)
-run ctx (Infer t) = t ctx
+run :: Infer a -> StateT Context (Either String) a
+run (Infer t) = StateT t
 
 tell :: Results -> Infer ()
 tell w =

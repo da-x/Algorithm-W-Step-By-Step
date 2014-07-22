@@ -11,6 +11,7 @@ import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Control.Lens.Operators
 import Control.Monad.Except (catchError, throwError)
+import Control.Monad.State (StateT(..))
 import Data.Foldable (Foldable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
@@ -53,7 +54,7 @@ instance TypeVars.FreeTypeVars (Payload a) where
 typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
-        M.run M.emptyContext $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
+        (`runStateT` M.initialContext) $ M.run $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
       return (topScheme, val <&> TypeVars.applySubst (M.subst (M.ctxResults s)))
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))

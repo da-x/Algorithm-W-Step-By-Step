@@ -9,7 +9,7 @@ module Lamdu.Infer
 import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens', mapped)
+import Control.Lens (Lens')
 import Control.Lens.Operators
 import Control.Monad.Except (catchError, throwError)
 import Data.Foldable (Foldable)
@@ -42,12 +42,17 @@ instance NFData a => NFData (Payload a) where rnf = genericRnf
 
 plType :: Lens' (Payload a) E.Type
 plType f (Payload t d) = (`Payload` d) <$> f t
+{-# INLINE plType #-}
+
+instance TypeVars.FreeTypeVars (Payload a) where
+  freeTypeVars (Payload typ _dat) = TypeVars.freeTypeVars typ
+  applySubst s = plType %~ TypeVars.applySubst s
 
 typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
         M.run $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
-      return (topScheme, val & mapped . plType %~ TypeVars.applySubst (M.subst s))
+      return (topScheme, val <&> TypeVars.applySubst (M.subst s))
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

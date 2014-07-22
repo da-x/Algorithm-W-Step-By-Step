@@ -119,7 +119,7 @@ class FreeTypeVars t => Unify t where
   varBind :: E.TypeVar t -> t -> Infer ()
 
 checkOccurs ::
-  (Pretty t, TypeVars.Var t, FreeTypeVars t) =>
+  (Pretty t, TypeVars.HasVar t, FreeTypeVars t) =>
   E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (freeTypeVars typ) =

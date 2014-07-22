@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric, FlexibleInstances #-}
 module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
-  , Var(..)
+  , HasVar(..)
   , difference
   ) where
 
@@ -22,15 +22,15 @@ instance Monoid TypeVars where
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
-class Var t where
+class HasVar t where
   getVars :: TypeVars -> Set (E.TypeVar t)
   newVars :: Set (E.TypeVar t) -> TypeVars
 
-instance Var E.Type where
+instance HasVar E.Type where
   getVars (TypeVars vs _) = vs
   newVars vs = TypeVars vs mempty
 
-instance Var E.ProductType where
+instance HasVar E.ProductType where
   getVars (TypeVars _ vs) = vs
   newVars vs = TypeVars mempty vs
 

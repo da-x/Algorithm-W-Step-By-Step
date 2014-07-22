@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Lamdu.Infer.Internal.FreeTypeVars
   ( Subst(..), substDeleteVars
   , FreeTypeVars(..), NewSubst(..)
@@ -15,7 +17,7 @@ import qualified Data.Map.Utils as MapU
 
 data Subst = Subst
   { substTypes :: Map E.TypeVar E.Type
-  , substRecordTypes :: Map E.RecordTypeVar E.CompositeType
+  , substRecordTypes :: Map E.RecordTypeVar (E.CompositeType E.RecordTypeVar)
   }
 
 class E.TypePart t => NewSubst t where
@@ -25,7 +27,7 @@ instance NewSubst E.Type          where
   newSubst tv t = Subst (Map.singleton tv t) mempty
   {-# INLINE newSubst #-}
 
-instance NewSubst E.CompositeType where
+instance NewSubst (E.CompositeType E.RecordTypeVar) where
   newSubst tv t = Subst mempty (Map.singleton tv t)
   {-# INLINE newSubst #-}
 
@@ -44,7 +46,7 @@ class FreeTypeVars a where
   freeTypeVars :: a -> TypeVars
   applySubst   :: Subst -> a -> a
 
-instance FreeTypeVars E.CompositeType where
+instance FreeTypeVars (E.CompositeType E.RecordTypeVar) where
   freeTypeVars E.TRecEmpty          = mempty
   freeTypeVars (E.TRecVar n)        = TypeVars mempty (Set.singleton n)
   freeTypeVars (E.TRecExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r

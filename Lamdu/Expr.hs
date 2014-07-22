@@ -118,16 +118,16 @@ instance NFData a => NFData (Val a) where rnf = genericRnf
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
-data CompositeType = TRecExtend Tag Type CompositeType
-                   | TRecEmpty
-                   | TRecVar RecordTypeVar
+data CompositeType v = TRecExtend Tag Type (CompositeType v)
+                     | TRecEmpty
+                     | TRecVar v
   deriving (Generic, Show)
-instance NFData CompositeType where rnf = genericRnf
+instance NFData v => NFData (CompositeType v) where rnf = genericRnf
 
 data Type    =  TVar TypeVar
              |  TFun Type Type
              |  TInst TypeId (Map TypeParamId Type)
-             |  TRecord CompositeType
+             |  TRecord (CompositeType RecordTypeVar)
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
@@ -137,8 +137,8 @@ class IsString (VarOf t) => TypePart t where
 instance TypePart Type where
   type VarOf Type = TypeVar
   liftVar = TVar
-instance TypePart CompositeType where
-  type VarOf CompositeType = RecordTypeVar
+instance IsString v => TypePart (CompositeType v) where
+  type VarOf (CompositeType v) = v
   liftVar = TRecVar
 
 eAbs :: ValVar -> Val () -> Val ()
@@ -190,7 +190,7 @@ instance Pretty Type where
         showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
     TRecord r -> pPrint r
 
-instance Pretty CompositeType where
+instance Pretty v => Pretty (CompositeType v) where
   pPrint TRecEmpty = PP.text "T{}"
   pPrint x =
     PP.text "{" <+> go PP.empty x <+> PP.text "}"

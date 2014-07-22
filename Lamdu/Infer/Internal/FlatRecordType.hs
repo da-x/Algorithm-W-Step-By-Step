@@ -20,11 +20,11 @@ fields :: Lens' FlatRecordType (Map E.Tag E.Type)
 fields f (FlatRecordType fs ext) = (`FlatRecordType` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
-from :: E.CompositeType -> FlatRecordType
+from :: E.CompositeType E.RecordTypeVar -> FlatRecordType
 from (E.TRecExtend name typ rest) = from rest & fields %~ Map.insert name typ
 from E.TRecEmpty                  = FlatRecordType Map.empty Nothing
 from (E.TRecVar name)             = FlatRecordType Map.empty (Just name)
 
-toRecordType :: FlatRecordType -> E.CompositeType
+toRecordType :: FlatRecordType -> E.CompositeType E.RecordTypeVar
 toRecordType (FlatRecordType fs ext) =
   Map.foldWithKey E.TRecExtend (maybe E.TRecEmpty E.TRecVar ext) fs

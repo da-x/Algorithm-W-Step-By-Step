@@ -53,8 +53,8 @@ instance TypeVars.FreeTypeVars (Payload a) where
 typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
-        M.run $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
-      return (topScheme, val <&> TypeVars.applySubst (M.subst s))
+        M.run M.emptyContext $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
+      return (topScheme, val <&> TypeVars.applySubst (M.subst (M.ctxResults s)))
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

@@ -2,7 +2,7 @@
 module Lamdu.Infer.Internal.Monad
   ( Results(..), emptyResults
   , deleteResultsVars
-
+  , Context(..), emptyContext
   , InferState(..)
   , Infer, run
   , tell, tellSubst, tellConstraint, tellConstraints
@@ -35,11 +35,6 @@ data Results = Results
   , constraints :: !Constraints
   }
 
-data Context = Context
-  { ctxResults :: {-# UNPACK #-} !Results
-  , ctxState :: {-# UNPACK #-} !InferState
-  }
-
 emptyResults :: Results
 emptyResults = Results mempty mempty
 {-# INLINE emptyResults #-}
@@ -56,6 +51,18 @@ deleteResultsVars vs (Results s c) =
   Results
   (TypeVars.substDeleteVars vs s)
   (Constraints.constraintDeleteVars vs c)
+
+data Context = Context
+  { ctxResults :: {-# UNPACK #-} !Results
+  , ctxState :: {-# UNPACK #-} !InferState
+  }
+
+emptyContext :: Context
+emptyContext =
+  Context
+  { ctxResults = emptyResults
+  , ctxState = InferState { inferSupply = 0 }
+  }
 
 newtype Infer a = Infer { runInfer :: Context -> Either String (a, Context) }
   deriving Functor
@@ -88,11 +95,8 @@ instance MonadError [Char] Infer where
     Left e -> runInfer (f e) c
     Right r -> Right r
 
-run :: Infer a -> Either String (a, Results)
-run (Infer t) =
-  do
-    (r, c) <- t $ Context emptyResults InferState{inferSupply = 0}
-    Right (r, ctxResults c)
+run :: Context -> Infer a -> Either String (a, Context)
+run ctx (Infer t) = t ctx
 
 tell :: Results -> Infer ()
 tell w =

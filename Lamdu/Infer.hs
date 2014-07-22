@@ -1,12 +1,15 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
+  , Payload(..), plType
   , pPrintPureVal, pPrintValUnannotated
   ) where
 
 import Control.Applicative ((<$), (<$>))
-import Control.Lens (mapped)
+import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Generics (genericRnf)
+import Control.Lens (Lens', mapped)
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad.Except (catchError, throwError)
@@ -14,6 +17,7 @@ import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (lift)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
+import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
@@ -161,11 +165,21 @@ instance TypeVars.CompositeHasVar p => Unify (E.CompositeType p) where
   varBind u (E.CVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (E.Type, a))
+data Payload a = Payload
+  { _plType :: E.Type
+  , _plData :: a
+  }
+  deriving (Generic, Show)
+instance NFData a => NFData (Payload a) where rnf = genericRnf
+
+plType :: Lens' (Payload a) E.Type
+plType f (Payload t d) = (`Payload` d) <$> f t
+
+typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
-        M.run $ Scheme.generalize Scope.empty $ infer (,) globals Scope.empty rootVal
-      return (topScheme, val & mapped . _1 %~ TypeVars.applySubst (M.subst s))
+        M.run $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
+      return (topScheme, val & mapped . plType %~ TypeVars.applySubst (M.subst s))
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
@@ -176,7 +190,10 @@ hasTag tag (E.CExtend t _ r)
   | tag == t  = HasTag
   | otherwise = hasTag tag r
 
-infer :: (E.Type -> a -> b) -> Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val b)
+infer ::
+  (E.Type -> a -> b) ->
+  Map E.GlobalId Scheme -> Scope -> E.Val a ->
+  Infer (E.Type, E.Val b)
 infer f globals = go
   where
     go locals expr@(E.Val pl body) =

@@ -94,7 +94,7 @@ test e =
                 do  n <- zoom _1 next
                     zoom _2 $ modify' $ M.insert n x
                     return n
-          let (taggedVal, (_, types)) = runState (traverse (tag . fst) val) (0::Int, M.empty)
+          let (taggedVal, (_, types)) = runState (traverse (tag . _plType) val) (0::Int, M.empty)
           print $ pPrint taggedVal
           let indent = PP.hcat $ replicate 4 PP.space
           mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types

@@ -3,12 +3,11 @@ import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
 import Control.Lens.Operators
-import Control.Lens.Tuple
 import Control.Monad ((<=<))
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference)
+import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference, plType)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
@@ -193,7 +192,7 @@ infer e =
     case typeInference env e of
     Left err ->  fail $ "error: " ++ err
     Right (eScheme, eTyped) ->
-      do  _ <- evaluate $ rnf (eTyped ^.. folded . _1, eScheme)
+      do  _ <- evaluate $ rnf (eTyped ^.. folded . plType, eScheme)
           return $ show $ pPrint e <+> PP.text "::" <+> pPrint eScheme
 
 benches :: [(String, IO String)]

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scope
-  ( Scope, empty
+  ( Scope, emptyScope
   , fromTypeMap
   , insertTypeOf
   , lookupTypeOf
@@ -22,8 +22,8 @@ instance FreeTypeVars Scope where
     freeTypeVars (Scope env) =  mconcat $ map freeTypeVars $ Map.elems env
     applySubst s (Scope env) =  Scope $ Map.map (applySubst s) env
 
-empty :: Scope
-empty = Scope Map.empty
+emptyScope :: Scope
+emptyScope = Scope Map.empty
 
 lookupTypeOf :: E.ValVar -> Scope -> Maybe E.Type
 lookupTypeOf key = Map.lookup key . typeOfVar

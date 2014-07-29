@@ -3,9 +3,11 @@ module Lamdu.Infer
   ( Constraints(..)
   , Scheme(..), makeScheme
   , TypeVars(..), typeInference
+  , Scope, emptyScope
   , Payload(..), plType
   , pPrintPureVal, pPrintValUnannotated
-  , M.Context, M.initialContext, Infer(..)
+  , M.Context, M.initialContext
+  , Infer(..)
   ) where
 
 import Control.Applicative ((<$), (<$>))
@@ -21,7 +23,7 @@ import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (Scheme, makeScheme)
-import Lamdu.Infer.Internal.Scope (Scope)
+import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
 import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
@@ -55,7 +57,7 @@ instance TypeVars.FreeTypeVars (Payload a) where
 typeInference ::
   Map E.GlobalId Scheme -> E.Val a -> Infer (E.Type, E.Val (Payload a))
 typeInference globals rootVal =
-  do  ((topType, val), s) <- M.listenSubst $ infer Payload globals Scope.empty rootVal
+  do  ((topType, val), s) <- M.listenSubst $ infer Payload globals emptyScope rootVal
       return (topType, TypeVars.applySubst s <$> val)
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))

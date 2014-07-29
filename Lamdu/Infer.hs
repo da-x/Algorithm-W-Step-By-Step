@@ -82,7 +82,7 @@ infer ::
   Infer (E.Type, E.Val b)
 infer f globals = go
   where
-    go locals expr@(E.Val pl body) =
+    go locals (E.Val pl body) =
       case body of
       E.VLeaf leaf ->
         mkResult (E.VLeaf leaf) <$>

@@ -12,6 +12,7 @@ module Lamdu.Expr
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Data.Binary (Binary)
 import Data.ByteString (ByteString)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
@@ -27,28 +28,28 @@ import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
 newtype Identifier = Identifier ByteString
-  deriving (Eq, Ord, Generic, Show)
+  deriving (Eq, Ord, Generic, Show, Binary)
 instance NFData Identifier    where rnf = genericRnf
 instance IsString Identifier  where fromString = Identifier . fromString
 instance Pretty Identifier    where pPrint (Identifier x) = PP.text $ BS.unpack x
 
 newtype ValVar = ValVar { vvName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype TypeVar t = TypeVar { tvName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype GlobalId = GlobalId { globalId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype TypeId = TypeId { typeId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype Tag = Tag { tagName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype TypeParamId = TypeParamId { typeParamId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 data ValLeaf
   =  VVar ValVar
@@ -58,24 +59,28 @@ data ValLeaf
   |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)
 instance NFData ValLeaf where rnf = genericRnf
+instance Binary ValLeaf
 
 data Apply expr = Apply
   { _applyFunc :: expr
   , _applyArg :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
+instance Binary exp => Binary (Apply exp)
 
 data GetField expr = GetField
   { _getFieldRecord :: expr
   , _getFieldTag :: Tag
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
+instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
   { _lamParamId :: ValVar
   , _lamResult :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
+instance Binary exp => Binary (Lam exp)
 
 data RecExtend expr = RecExtend
   { _recTag :: Tag
@@ -83,6 +88,7 @@ data RecExtend expr = RecExtend
   , _recRest :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
+instance Binary exp => Binary (RecExtend exp)
 
 data ValBody exp
   =  VApp {-# UNPACK #-}!(Apply exp)
@@ -92,12 +98,14 @@ data ValBody exp
   |  VLeaf ValLeaf
   deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
+instance Binary exp => Binary (ValBody exp)
 
 data Val a = Val
   { valPayload :: a
   , valBody :: !(ValBody (Val a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
+instance Binary a => Binary (Val a)
 
 data Product
 
@@ -105,7 +113,8 @@ data CompositeType p = CExtend Tag Type (CompositeType p)
                      | CEmpty
                      | CVar (TypeVar (CompositeType p))
   deriving (Generic, Show)
-instance NFData (CompositeType v) where rnf = genericRnf
+instance NFData (CompositeType p) where rnf = genericRnf
+instance Binary (CompositeType p)
 
 type ProductType = CompositeType Product
 
@@ -115,6 +124,7 @@ data Type    =  TVar (TypeVar Type)
              |  TRecord ProductType
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
+instance Binary Type
 
 pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> ValBody (Val pl) -> PP.Doc
 pPrintPrecBody lvl prec body =

@@ -3,22 +3,21 @@ module Lamdu.Infer
   ( Constraints(..), Scheme(..), TypeVars(..), typeInference
   , Payload(..), plType
   , pPrintPureVal, pPrintValUnannotated
+  , M.Context, M.initialContext, Infer(..)
   ) where
 
 import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
-import Control.Lens.Operators
 import Control.Monad.Except (catchError, throwError)
-import Control.Monad.State (StateT(..))
 import Data.Foldable (Foldable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.Monad (Infer)
+import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (Scheme)
 import Lamdu.Infer.Internal.Scope (Scope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
@@ -51,11 +50,13 @@ instance TypeVars.FreeTypeVars (Payload a) where
   applySubst s (Payload typ scope dat) =
     Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
 
-typeInference :: Map E.GlobalId Scheme -> E.Val a -> Either String (Scheme, E.Val (Payload a))
+typeInference ::
+  Map E.GlobalId Scheme -> E.Val a -> Infer (Scheme, E.Val (Payload a))
 typeInference globals rootVal =
   do  ((_, topScheme, val), s) <-
-        (`runStateT` M.initialContext) $ M.run $ Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
-      return (topScheme, val <&> TypeVars.applySubst (M.subst (M.ctxResults s)))
+        M.listenSubst $
+        Scheme.generalize Scope.empty $ infer Payload globals Scope.empty rootVal
+      return (topScheme, TypeVars.applySubst s <$> val)
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Control.Lens (zoom)
 import Control.Lens.Tuple
-import Control.Monad.State (runState, modify', get)
+import Control.Monad.State (evalStateT, runState, modify', get)
 import Data.Traversable (traverse)
 import Lamdu.Infer
 import Text.PrettyPrint ((<>), (<+>))
@@ -84,7 +84,7 @@ exps =
 
 test :: E.Val () -> IO ()
 test e =
-    case typeInference M.empty e of
+    case (`evalStateT` initialContext) $ run $ typeInference M.empty e of
         Left err ->
           putStrLn $ show (pPrintPureVal e) ++ "\n " ++ err
         Right (scheme, val) -> do

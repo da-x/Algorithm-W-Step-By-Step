@@ -5,6 +5,7 @@ import Control.Lens.Tuple
 import Control.Monad.State (evalStateT, runState, modify', get)
 import Data.Traversable (traverse)
 import Lamdu.Infer
+import Lamdu.Expr.Pretty
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M

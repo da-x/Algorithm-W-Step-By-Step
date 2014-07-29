@@ -8,10 +8,8 @@ module Lamdu.Expr
   , Type(..), TypeVar(..), Product
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
-  , pPrintValUnannotated
   ) where
 
-import Control.Applicative ((<$))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.ByteString (ByteString)
@@ -118,23 +116,6 @@ data Type    =  TVar (TypeVar Type)
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
--- TODO: To Expr.Pretty
-data EmptyDoc = EmptyDoc
-instance Pretty EmptyDoc where
-  pPrint _ = PP.empty
-
-instance Pretty a => Pretty (Val a) where
-  pPrintPrec lvl prec (Val pl body)
-    | PP.isEmpty plDoc = pPrintPrecBody lvl prec body
-    | otherwise =
-      prettyParen (13 < prec) $ mconcat
-      [ pPrintPrecBody lvl 14 body, PP.text "{", plDoc, PP.text "}" ]
-    where
-      plDoc = pPrintPrec lvl 0 pl
-
-pPrintValUnannotated :: Val a -> PP.Doc
-pPrintValUnannotated = pPrint . (EmptyDoc <$)
-
 pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> ValBody (Val pl) -> PP.Doc
 pPrintPrecBody lvl prec body =
   case body of
@@ -159,6 +140,15 @@ pPrintPrecBody lvl prec body =
                                  PP.text "}"
     where
       prField = pPrint tag <+> PP.text "=" <+> pPrint val
+
+instance Pretty a => Pretty (Val a) where
+  pPrintPrec lvl prec (Val pl body)
+    | PP.isEmpty plDoc = pPrintPrecBody lvl prec body
+    | otherwise =
+      prettyParen (13 < prec) $ mconcat
+      [ pPrintPrecBody lvl 14 body, PP.text "{", plDoc, PP.text "}" ]
+    where
+      plDoc = pPrintPrec lvl 0 pl
 
 instance Pretty Type where
   pPrintPrec lvl prec typ =

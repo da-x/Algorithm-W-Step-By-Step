@@ -15,6 +15,7 @@ library
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Pure
+                 ,     Lamdu.Expr.Pretty
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Suggest

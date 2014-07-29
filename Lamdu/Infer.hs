@@ -5,7 +5,6 @@ module Lamdu.Infer
   , TypeVars(..), typeInference
   , Scope, emptyScope
   , Payload(..), plType
-  , E.pPrintValUnannotated
   , M.Context, M.initialContext
   , Infer(..)
   ) where

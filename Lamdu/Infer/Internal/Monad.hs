@@ -18,6 +18,7 @@ import Control.Monad.Except (MonadError(..))
 import Control.Monad.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
+import Lamdu.Infer.Error (Error)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.TypeVars (TypeVars, HasVar(..))
 import qualified Control.Monad.State as State
@@ -38,7 +39,7 @@ emptyResults :: Results
 emptyResults = Results mempty mempty
 {-# INLINE emptyResults #-}
 
-appendResults :: Results -> Results -> Either String Results
+appendResults :: Results -> Results -> Either Error Results
 appendResults (Results s0 c0) (Results s1 c1) =
   do
     c0' <- Constraints.applySubst s1 c0
@@ -64,8 +65,8 @@ initialContext =
 -- We use StateT, but it is composed of an actual stateful fresh
 -- supply and a component used as a writer avoiding the
 -- associativity/performance issues of WriterT
-newtype Infer a = Infer { run :: StateT Context (Either String) a }
-  deriving (Functor, Applicative, Monad, MonadError String)
+newtype Infer a = Infer { run :: StateT Context (Either Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error)
 
 tell :: Results -> Infer ()
 tell w =

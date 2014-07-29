@@ -191,7 +191,7 @@ solveDepressedQuarticVal =
 infer :: E.Val () -> IO String
 infer e =
     case (`evalStateT` initialContext) $ run $ typeInference env emptyScope e of
-    Left err ->  fail $ "error: " ++ err
+    Left err -> fail $ show $ "error:" <+> pPrint err
     Right (eScheme, eTyped) ->
       do  _ <- evaluate $ rnf (eTyped ^.. folded . plType, eScheme)
           return $ show $ pPrint e <+> PP.text "::" <+> pPrint eScheme

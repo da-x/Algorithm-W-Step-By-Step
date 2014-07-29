@@ -14,7 +14,7 @@ import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
-import Control.Monad.Except (catchError, throwError)
+import Control.Monad.Except (throwError)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
@@ -27,15 +27,13 @@ import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
 import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
-import Text.PrettyPrint ((<+>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
-import qualified Text.PrettyPrint as PP
 
 data Payload a = Payload
   { _plType :: E.Type
@@ -92,13 +90,11 @@ infer f globals = go
         E.VHole -> M.newInferredVar "h"
         E.VVar n ->
             case Scope.lookupTypeOf n locals of
-               Nothing      -> throwError $ show $
-                               PP.text "unbound variable:" <+> pPrint n
+               Nothing      -> throwError $ Err.UnboundVariable n
                Just t       -> return t
         E.VGlobal n ->
             case Map.lookup n globals of
-               Nothing      -> throwError $ show $
-                               PP.text "missing global:" <+> pPrint n
+               Nothing      -> throwError $ Err.MissingGlobal n
                Just sigma   -> Scheme.instantiate sigma
         E.VLiteralInteger _ -> return (E.TInst "Int" mempty)
         E.VRecEmpty -> return $ E.TRecord E.CEmpty
@@ -113,8 +109,6 @@ infer f globals = go
             ((t2, e2'), s2) <- M.listenSubst $ go (TypeVars.applySubst s1 locals) e2
             ((), s3) <- M.listenSubst $ unify (TypeVars.applySubst s2 t1) (E.TFun t2 tv)
             return $ mkResult (E.VApp (E.Apply e1' e2')) $ TypeVars.applySubst s3 tv
-        `catchError`
-        \e -> throwError $ e ++ "\n in " ++ show (pPrintValUnannotated expr)
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"
@@ -134,12 +128,7 @@ infer f globals = go
                 -- verify it doesn't already have this field,
                 -- and avoid unnecessary unify from other case
                 case hasTag name x of
-                HasTag ->
-                  throwError $ show $
-                  PP.text "Added field already in record:" <+>
-                  pPrint name <+>
-                  PP.text " added to " <+>
-                  pPrint x
+                HasTag -> throwError $ Err.FieldAlreadyInRecord name x
                 DoesNotHaveTag -> return x
                 MayHaveTag var -> x <$ M.tellConstraint var name
               _ -> do

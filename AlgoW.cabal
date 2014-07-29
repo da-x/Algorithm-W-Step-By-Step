@@ -15,6 +15,7 @@ library
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Infer
+                 ,     Lamdu.Infer.Error
                  ,     Lamdu.Pretty
   other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatComposite

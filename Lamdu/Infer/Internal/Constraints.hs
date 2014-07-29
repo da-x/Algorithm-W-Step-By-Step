@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
+import Lamdu.Infer.Error (Error(FieldForbidden))
 import Lamdu.Infer.Internal.TypeVars (TypeVars)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -54,7 +55,7 @@ applyRenames renames (Constraints m) =
     rename x = fromMaybe x $ Map.lookup x renames
 
 applySubst ::
-  TypeVars.Subst -> Constraints -> Either String Constraints
+  TypeVars.Subst -> Constraints -> Either Error Constraints
 applySubst (TypeVars.Subst _ recordSubsts) (Constraints c) =
   Constraints . Map.fromListWith Set.union . concat <$>
   mapM onConstraint (Map.toList c)
@@ -68,11 +69,7 @@ applySubst (TypeVars.Subst _ recordSubsts) (Constraints c) =
           go E.CEmpty             = Right []
           go (E.CVar newVar)      = Right [(newVar, forbidden)]
           go (E.CExtend f _ rest)
-            | Set.member f forbidden = Left $
-                                       show $
-                                       PP.text "Field forbidden:" <+>
-                                       pPrint f <+> PP.text "in." <+>
-                                       pPrint recType
+            | Set.member f forbidden = Left $ FieldForbidden f var recType
             | otherwise              = go rest
 
 intersect :: TypeVars -> Constraints -> Constraints

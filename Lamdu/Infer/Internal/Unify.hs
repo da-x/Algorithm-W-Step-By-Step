@@ -10,17 +10,16 @@ import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.TypeVars (CompositeHasVar)
-import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
-import qualified Text.PrettyPrint as PP
 
 class TypeVars.Free t => Unify t where
   unify :: t -> t -> Infer ()
@@ -35,11 +34,10 @@ unifyFlatToPartial ::
   Infer ()
 unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
-    throwError $ show $
-    PP.text "Incompatible record types:" <+>
-    pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))) <+>
-    PP.text " vs. " <+>
-    pPrint (closedRecord ufields)
+    throwError $
+    Err.IncompatibleCompositeTypes
+    (pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))))
+    (pPrint (closedRecord ufields))
   | otherwise = varBind tname $ FlatComposite.toRecordType $ FlatComposite uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -65,11 +63,10 @@ unifyFlatFulls ::
   Map E.Tag E.Type -> Map E.Tag E.Type -> Infer ()
 unifyFlatFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
-    throwError $ show $
-    PP.text "Incompatible record types:" <+>
-    pPrint (closedRecord tfields) <+>
-    PP.text "vs." <+>
-    pPrint (closedRecord ufields)
+    throwError $
+    Err.IncompatibleCompositeTypes
+    (pPrint (closedRecord tfields))
+    (pPrint (closedRecord ufields))
   | otherwise = return mempty
 
 unifyChild :: Unify t => t -> t -> StateT TypeVars.Subst Infer ()
@@ -93,18 +90,14 @@ unifyFlattened
 
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
-  throwError $ show $
-  PP.text "types do not unify: " <+> pPrint x <+>
-  PP.text "vs." <+> pPrint y
+  throwError $ Err.TypesDoNotUnity (pPrint x) (pPrint y)
 
 checkOccurs ::
   (Pretty t, TypeVars.HasVar t, TypeVars.Free t) =>
   E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (TypeVars.free typ) =
-    throwError $ show $
-    PP.text "occurs check fails:" <+>
-    pPrint var <+> PP.text "vs." <+> pPrint typ
+    throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
   | otherwise =
     act
 

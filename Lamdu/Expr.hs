@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr
-  ( ValLeaf(..)
+  ( Identifier(..)
+  , ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
   , Val(..)
   , ValVar(..)

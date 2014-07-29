@@ -17,6 +17,7 @@ library
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Pretty
+                 ,     Lamdu.Suggest
   other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatComposite
                ,       Lamdu.Infer.Internal.Monad
@@ -34,6 +35,7 @@ library
                ,       deepseq-generics >=0.1 && <0.2
                ,       prettyclass >=1.0 && <1.1
                ,       bytestring >=0.10 && <0.11
+               ,       random >=1.0 && <1.1
 
 benchmark bench-builder-all
   type:             exitcode-stdio-1.0

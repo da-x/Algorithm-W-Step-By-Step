@@ -54,10 +54,14 @@ instance TypeVars.FreeTypeVars (Payload a) where
   applySubst s (Payload typ scope dat) =
     Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
 
+-- All accessed global IDs are supposed to be extracted from the
+-- expression to build this global scope. This is slightly hacky but
+-- much faster than a polymorphic monad underlying the Infer monad
+-- allowing global access.
 typeInference ::
-  Map E.GlobalId Scheme -> E.Val a -> Infer (E.Type, E.Val (Payload a))
-typeInference globals rootVal =
-  do  ((topType, val), s) <- M.listenSubst $ infer Payload globals emptyScope rootVal
+  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val (Payload a))
+typeInference globals scope rootVal =
+  do  ((topType, val), s) <- M.listenSubst $ infer Payload globals scope rootVal
       return (topType, TypeVars.applySubst s <$> val)
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))

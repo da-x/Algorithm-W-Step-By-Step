@@ -85,7 +85,7 @@ exps =
 
 test :: E.Val () -> IO ()
 test e =
-    case (`evalStateT` initialContext) $ run $ typeInference M.empty e >>= _1 %%~ makeScheme of
+    case (`evalStateT` initialContext) $ run $ typeInference M.empty emptyScope e >>= _1 %%~ makeScheme of
         Left err ->
           putStrLn $ show (pPrintPureVal e) ++ "\n " ++ err
         Right (scheme, val) -> do

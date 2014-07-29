@@ -8,7 +8,7 @@ import Control.Monad.State (evalStateT)
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
-import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference, plType, initialContext, run)
+import Lamdu.Infer (TypeVars(..), Scheme(..), typeInference, plType, initialContext, run, emptyScope)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
@@ -190,7 +190,7 @@ solveDepressedQuarticVal =
 
 infer :: E.Val () -> IO String
 infer e =
-    case (`evalStateT` initialContext) $ run $ typeInference env e of
+    case (`evalStateT` initialContext) $ run $ typeInference env emptyScope e of
     Left err ->  fail $ "error: " ++ err
     Right (eScheme, eTyped) ->
       do  _ <- evaluate $ rnf (eTyped ^.. folded . plType, eScheme)

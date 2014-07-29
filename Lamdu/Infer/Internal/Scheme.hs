@@ -14,7 +14,7 @@ import Data.String (IsString(..))
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..), TypeVars(..), HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (applySubst, TypeVars(..), HasVar(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
@@ -36,7 +36,7 @@ makeScheme t = do
   c <- M.getConstraints
   return $ Scheme freeVars (Constraints.intersect freeVars c) t
   where
-    freeVars = freeTypeVars t
+    freeVars = TypeVars.free t
 
 mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)
 mkInstantiateSubstPart prefix =

@@ -48,9 +48,9 @@ plType :: Lens' (Payload a) E.Type
 plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)
 {-# INLINE plType #-}
 
-instance TypeVars.FreeTypeVars (Payload a) where
-  freeTypeVars (Payload typ scope _dat) =
-    TypeVars.freeTypeVars typ <> TypeVars.freeTypeVars scope
+instance TypeVars.Free (Payload a) where
+  free (Payload typ scope _dat) =
+    TypeVars.free typ <> TypeVars.free scope
   applySubst s (Payload typ scope dat) =
     Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
 
@@ -65,7 +65,7 @@ typeInference globals scope rootVal =
       ((topType, val), newResults) <-
         M.listenNoTell $ infer Payload globals (TypeVars.applySubst prevSubst scope) rootVal
 
-      M.tell $ M.intersectResults (TypeVars.freeTypeVars scope) newResults
+      M.tell $ M.intersectResults (TypeVars.free scope) newResults
 
       return (topType, TypeVars.applySubst (M.subst newResults) <$> val)
 

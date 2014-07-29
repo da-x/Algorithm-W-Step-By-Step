@@ -11,16 +11,16 @@ import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import GHC.Generics (Generic)
-import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
 newtype Scope = Scope { typeOfVar :: Map E.ValVar E.Type }
   deriving (Generic, Show)
 instance NFData Scope where rnf = genericRnf
-instance FreeTypeVars Scope where
-    freeTypeVars (Scope env) =  mconcat $ map freeTypeVars $ Map.elems env
-    applySubst s (Scope env) =  Scope $ Map.map (applySubst s) env
+instance TypeVars.Free Scope where
+    free (Scope env) =  mconcat $ map TypeVars.free $ Map.elems env
+    applySubst s (Scope env) =  Scope $ Map.map (TypeVars.applySubst s) env
 
 emptyScope :: Scope
 emptyScope = Scope Map.empty

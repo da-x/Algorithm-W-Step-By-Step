@@ -4,7 +4,7 @@ module Lamdu.Infer.Internal.TypeVars
   , HasVar(..), CompositeHasVar
   , difference
   , Subst(..), intersectSubst
-  , FreeTypeVars(..)
+  , Free(..)
   ) where
 
 import Control.Applicative ((<$>))
@@ -49,8 +49,8 @@ intersectSubst :: TypeVars -> Subst -> Subst
 intersectSubst (TypeVars tvs rtvs) (Subst ts rs) =
   Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
 
-class FreeTypeVars a where
-  freeTypeVars :: a -> TypeVars
+class Free a where
+  free :: a -> TypeVars
   applySubst   :: Subst -> a -> a
 
 class CompositeHasVar p where
@@ -59,26 +59,26 @@ class CompositeHasVar p where
   compositeGetSubst :: Subst -> SubSubst (E.CompositeType p)
   compositeNewSubst :: SubSubst (E.CompositeType p) -> Subst
 
-class FreeTypeVars t => HasVar t where
+class Free t => HasVar t where
   getVars :: TypeVars -> Set (E.TypeVar t)
   newVars :: Set (E.TypeVar t) -> TypeVars
   liftVar :: E.TypeVar t -> t
   newSubst :: E.TypeVar t -> t -> Subst
 
-instance CompositeHasVar p => FreeTypeVars (E.CompositeType p) where
-  freeTypeVars E.CEmpty          = mempty
-  freeTypeVars (E.CVar n)        = newVars (Set.singleton n)
-  freeTypeVars (E.CExtend _ t r) = freeTypeVars t `mappend` freeTypeVars r
+instance CompositeHasVar p => Free (E.CompositeType p) where
+  free E.CEmpty          = mempty
+  free (E.CVar n)        = newVars (Set.singleton n)
+  free (E.CExtend _ t r) = free t `mappend` free r
 
   applySubst _ E.CEmpty          = E.CEmpty
   applySubst s (E.CVar n)        = fromMaybe (E.CVar n) $ Map.lookup n (compositeGetSubst s)
   applySubst s (E.CExtend n t r) = E.CExtend n (applySubst s t) (applySubst s r)
 
-instance FreeTypeVars E.Type where
-  freeTypeVars (E.TVar n)      =  newVars (Set.singleton n)
-  freeTypeVars (E.TInst _ p)   =  mconcat $ map freeTypeVars $ Map.elems p
-  freeTypeVars (E.TFun t1 t2)  =  freeTypeVars t1 `mappend` freeTypeVars t2
-  freeTypeVars (E.TRecord r)   =  freeTypeVars r
+instance Free E.Type where
+  free (E.TVar n)      =  newVars (Set.singleton n)
+  free (E.TInst _ p)   =  mconcat $ map free $ Map.elems p
+  free (E.TFun t1 t2)  =  free t1 `mappend` free t2
+  free (E.TRecord r)   =  free r
 
   applySubst s (E.TVar n)      = fromMaybe (E.TVar n) $ Map.lookup n (substTypes s)
   applySubst s (E.TInst n p)   = E.TInst n $ applySubst s <$> p

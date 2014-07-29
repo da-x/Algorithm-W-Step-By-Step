@@ -9,7 +9,7 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (FreeTypeVars(..), CompositeHasVar)
+import Lamdu.Infer.Internal.TypeVars (CompositeHasVar)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.State as State
@@ -22,7 +22,7 @@ import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
-class FreeTypeVars t => Unify t where
+class TypeVars.Free t => Unify t where
   unify :: t -> t -> Infer ()
   varBind :: E.TypeVar t -> t -> Infer ()
 
@@ -98,10 +98,10 @@ dontUnify x y =
   PP.text "vs." <+> pPrint y
 
 checkOccurs ::
-  (Pretty t, TypeVars.HasVar t, FreeTypeVars t) =>
+  (Pretty t, TypeVars.HasVar t, TypeVars.Free t) =>
   E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
-  | var `Set.member` TypeVars.getVars (freeTypeVars typ) =
+  | var `Set.member` TypeVars.getVars (TypeVars.free typ) =
     throwError $ show $
     PP.text "occurs check fails:" <+>
     pPrint var <+> PP.text "vs." <+> pPrint typ

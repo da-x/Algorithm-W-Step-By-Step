@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
-  ( Constraints(..), Scheme(..), TypeVars(..), typeInference
+  ( Constraints(..)
+  , Scheme(..), makeScheme
+  , TypeVars(..), typeInference
   , Payload(..), plType
   , pPrintPureVal, pPrintValUnannotated
   , M.Context, M.initialContext, Infer(..)
@@ -18,7 +20,7 @@ import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
-import Lamdu.Infer.Internal.Scheme (Scheme)
+import Lamdu.Infer.Internal.Scheme (Scheme, makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
@@ -51,14 +53,10 @@ instance TypeVars.FreeTypeVars (Payload a) where
     Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
 
 typeInference ::
-  Map E.GlobalId Scheme -> E.Val a -> Infer (Scheme, E.Val (Payload a))
+  Map E.GlobalId Scheme -> E.Val a -> Infer (E.Type, E.Val (Payload a))
 typeInference globals rootVal =
-  do  ((topScheme, val), s) <-
-        M.listenSubst $ do
-          (topType, val) <- infer Payload globals Scope.empty rootVal
-          topScheme <- Scheme.make topType
-          return (topScheme, val)
-      return (topScheme, TypeVars.applySubst s <$> val)
+  do  ((topType, val), s) <- M.listenSubst $ infer Payload globals Scope.empty rootVal
+      return (topType, TypeVars.applySubst s <$> val)
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

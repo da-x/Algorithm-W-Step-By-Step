@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scheme
   ( Scheme(..)
-  , make
+  , makeScheme
   , instantiate
   ) where
 
@@ -31,8 +31,8 @@ data Scheme = Scheme
 instance NFData Scheme where
   rnf = genericRnf
 
-make :: E.Type -> Infer Scheme
-make t = do
+makeScheme :: E.Type -> Infer Scheme
+makeScheme t = do
   Constraints c <- M.getConstraints
   let c' = Constraints $ Map.filterWithKey inFreeVars c
   return $ Scheme freeVars c' t

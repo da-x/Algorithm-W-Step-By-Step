@@ -14,7 +14,6 @@ import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
-import Control.Monad.Except (throwError)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
@@ -90,11 +89,11 @@ infer f globals = go
         E.VHole -> M.newInferredVar "h"
         E.VVar n ->
             case Scope.lookupTypeOf n locals of
-               Nothing      -> throwError $ Err.UnboundVariable n
+               Nothing      -> M.throwError $ Err.UnboundVariable n
                Just t       -> return t
         E.VGlobal n ->
             case Map.lookup n globals of
-               Nothing      -> throwError $ Err.MissingGlobal n
+               Nothing      -> M.throwError $ Err.MissingGlobal n
                Just sigma   -> Scheme.instantiate sigma
         E.VLiteralInteger _ -> return (E.TInst "Int" mempty)
         E.VRecEmpty -> return $ E.TRecord E.CEmpty
@@ -128,7 +127,7 @@ infer f globals = go
                 -- verify it doesn't already have this field,
                 -- and avoid unnecessary unify from other case
                 case hasTag name x of
-                HasTag -> throwError $ Err.FieldAlreadyInRecord name x
+                HasTag -> M.throwError $ Err.FieldAlreadyInRecord name x
                 DoesNotHaveTag -> return x
                 MayHaveTag var -> x <$ M.tellConstraint var name
               _ -> do

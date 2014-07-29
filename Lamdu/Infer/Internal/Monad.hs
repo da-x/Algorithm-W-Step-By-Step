@@ -4,6 +4,7 @@ module Lamdu.Infer.Internal.Monad
   , Context(..), initialContext
   , InferState(..)
   , Infer(..)
+  , throwError
   , tell, tellSubst, tellConstraint, tellConstraints
   , listen, listenNoTell
   , getConstraints, getSubst
@@ -14,14 +15,13 @@ module Lamdu.Infer.Internal.Monad
 import Control.Applicative (Applicative(..))
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad.Except (MonadError(..))
-import Control.Monad.State (StateT(..))
+import Control.Monad.Trans.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Infer.Error (Error)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.TypeVars (TypeVars, HasVar(..))
-import qualified Control.Monad.State as State
+import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
@@ -66,7 +66,10 @@ initialContext =
 -- supply and a component used as a writer avoiding the
 -- associativity/performance issues of WriterT
 newtype Infer a = Infer { run :: StateT Context (Either Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error)
+  deriving (Functor, Applicative, Monad)
+
+throwError :: Error -> Infer a
+throwError = Infer . StateT . const . Left
 
 tell :: Results -> Infer ()
 tell w =

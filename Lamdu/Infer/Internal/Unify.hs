@@ -2,16 +2,15 @@ module Lamdu.Infer.Internal.Unify
   ( unify
   ) where
 
-import Control.Monad.Except (throwError)
-import Control.Monad.State (StateT, evalStateT)
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State (StateT, evalStateT)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.TypeVars (CompositeHasVar)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
-import qualified Control.Monad.State as State
+import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -34,7 +33,7 @@ unifyFlatToPartial ::
   Infer ()
 unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
-    throwError $
+    M.throwError $
     Err.IncompatibleCompositeTypes
     (pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))))
     (pPrint (closedRecord ufields))
@@ -63,7 +62,7 @@ unifyFlatFulls ::
   Map E.Tag E.Type -> Map E.Tag E.Type -> Infer ()
 unifyFlatFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
-    throwError $
+    M.throwError $
     Err.IncompatibleCompositeTypes
     (pPrint (closedRecord tfields))
     (pPrint (closedRecord ufields))
@@ -90,14 +89,14 @@ unifyFlattened
 
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
-  throwError $ Err.TypesDoNotUnity (pPrint x) (pPrint y)
+  M.throwError $ Err.TypesDoNotUnity (pPrint x) (pPrint y)
 
 checkOccurs ::
   (Pretty t, TypeVars.HasVar t, TypeVars.Free t) =>
   E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (TypeVars.free typ) =
-    throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
+    M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
   | otherwise =
     act
 

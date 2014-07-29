@@ -3,7 +3,7 @@ module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , HasVar(..), CompositeHasVar
   , difference
-  , Subst(..)
+  , Subst(..), intersectSubst
   , FreeTypeVars(..)
   ) where
 
@@ -41,6 +41,13 @@ instance Monoid Subst where
     Subst
     (t1 `Map.union` Map.map (applySubst s1) t0)
     (r1 `Map.union` Map.map (applySubst s1) r0)
+
+intersectMapSet :: Ord k => Set k -> Map k a -> Map k a
+intersectMapSet s m = Map.intersection m $ Map.fromSet (const ()) s
+
+intersectSubst :: TypeVars -> Subst -> Subst
+intersectSubst (TypeVars tvs rtvs) (Subst ts rs) =
+  Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
 
 class FreeTypeVars a where
   freeTypeVars :: a -> TypeVars

@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Constraints
-  ( Constraints(..), applySubst, applyRenames
+  ( Constraints(..)
+  , intersect
+  , applySubst, applyRenames
   ) where
 
 import Control.Applicative ((<$>))
@@ -11,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
+import Lamdu.Infer.Internal.TypeVars (TypeVars)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
@@ -71,3 +74,10 @@ applySubst (TypeVars.Subst _ recordSubsts) (Constraints c) =
                                        pPrint f <+> PP.text "in." <+>
                                        pPrint recType
             | otherwise              = go rest
+
+intersect :: TypeVars -> Constraints -> Constraints
+intersect tvs (Constraints c) =
+  Constraints (Map.filterWithKey inTVs c)
+  where
+    inTVs rtv _ = rtv `Set.member` TypeVars.getVars tvs
+

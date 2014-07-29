@@ -33,11 +33,9 @@ instance NFData Scheme where
 
 makeScheme :: E.Type -> Infer Scheme
 makeScheme t = do
-  Constraints c <- M.getConstraints
-  let c' = Constraints $ Map.filterWithKey inFreeVars c
-  return $ Scheme freeVars c' t
+  c <- M.getConstraints
+  return $ Scheme freeVars (Constraints.intersect freeVars c) t
   where
-    inFreeVars rtv _ = rtv `Set.member` TypeVars.getVars freeVars
     freeVars = freeTypeVars t
 
 mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)

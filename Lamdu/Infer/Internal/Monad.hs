@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns #-}
 module Lamdu.Infer.Internal.Monad
-  ( Results(..), emptyResults
+  ( Results(..), emptyResults, intersectResults
   , Context(..), initialContext
   , InferState(..)
   , Infer(..)
   , tell, tellSubst, tellConstraint, tellConstraints
   , listen, listenNoTell
-  , getConstraints
+  , getConstraints, getSubst
   , newInferredVar, newInferredVarName
   , listenSubst
   ) where
@@ -19,7 +19,7 @@ import Control.Monad.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.TypeVars (HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (TypeVars, HasVar(..))
 import qualified Control.Monad.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -44,6 +44,10 @@ appendResults (Results s0 c0) (Results s1 c1) =
     c0' <- Constraints.applySubst s1 c0
     return $ Results (mappend s0 s1) (mappend c0' c1)
 {-# INLINE appendResults #-}
+
+intersectResults :: TypeVars -> Results -> Results
+intersectResults tvs (Results s c) =
+  Results (TypeVars.intersectSubst tvs s) (Constraints.intersect tvs c)
 
 data Context = Context
   { ctxResults :: {-# UNPACK #-} !Results
@@ -117,3 +121,6 @@ listenSubst x = listen x <&> _2 %~ subst
 
 getConstraints :: Infer Constraints
 getConstraints = Infer $ State.gets (constraints . ctxResults)
+
+getSubst :: Infer TypeVars.Subst
+getSubst = Infer $ State.gets (subst . ctxResults)

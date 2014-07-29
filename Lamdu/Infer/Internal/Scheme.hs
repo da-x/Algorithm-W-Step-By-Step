@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scheme
   ( Scheme(..)
-  , generalize
+  , make
   , instantiate
   ) where
 
@@ -31,14 +31,14 @@ data Scheme = Scheme
 instance NFData Scheme where
   rnf = genericRnf
 
--- outside represents all outside types
-generalize :: FreeTypeVars o => o -> Infer (E.Type, a) -> Infer (o, Scheme, a)
-generalize outside mkType = do
-  ((t, pl), results@(M.Results s c)) <- M.listenNoTell mkType
-  let outside' = applySubst s outside
-  let insideVars = freeTypeVars t `TypeVars.difference` freeTypeVars outside'
-  M.tell $ M.deleteResultsVars insideVars results
-  return (outside', Scheme insideVars c t, pl)
+make :: E.Type -> Infer Scheme
+make t = do
+  Constraints c <- M.getConstraints
+  let c' = Constraints $ Map.filterWithKey inFreeVars c
+  return $ Scheme freeVars c' t
+  where
+    inFreeVars rtv _ = rtv `Set.member` TypeVars.getVars freeVars
+    freeVars = freeTypeVars t
 
 mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)
 mkInstantiateSubstPart prefix =

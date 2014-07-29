@@ -7,6 +7,7 @@ module Lamdu.Infer.Internal.Monad
   , Infer(..)
   , tell, tellSubst, tellConstraint, tellConstraints
   , listen, listenNoTell
+  , getConstraints
   , newInferredVar, newInferredVarName
   , listenSubst
   ) where
@@ -120,3 +121,6 @@ newInferredVar = fmap liftVar . newInferredVarName
 
 listenSubst :: Infer a -> Infer (a, TypeVars.Subst)
 listenSubst x = listen x <&> _2 %~ subst
+
+getConstraints :: Infer Constraints
+getConstraints = Infer $ State.gets (constraints . ctxResults)

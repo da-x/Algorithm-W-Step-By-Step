@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Constraints
   ( Constraints(..), applySubst, applyRenames
-  , constraintDeleteVars
   ) where
 
 import Control.Applicative ((<$>))
@@ -12,11 +11,9 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
-import qualified Data.Map.Utils as MapU
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
@@ -39,10 +36,6 @@ instance Pretty Constraints where
     | otherwise =
       PP.hcat $ PP.punctuate PP.comma $ map (uncurry pPrintConstraint) $
       Map.toList m
-
-constraintDeleteVars :: TypeVars -> Constraints -> Constraints
-constraintDeleteVars (TypeVars _ rvs) (Constraints m) =
-  Constraints $ MapU.deleteKeySet rvs m
 
 pPrintConstraint :: E.TypeVar E.ProductType -> Set E.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =

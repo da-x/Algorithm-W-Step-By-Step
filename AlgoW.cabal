@@ -16,8 +16,7 @@ library
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Infer
                  ,     Lamdu.Pretty
-  other-modules:       Data.Map.Utils
-               ,       Lamdu.Infer.Internal.Constraints
+  other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatComposite
                ,       Lamdu.Infer.Internal.Monad
                ,       Lamdu.Infer.Internal.Scheme

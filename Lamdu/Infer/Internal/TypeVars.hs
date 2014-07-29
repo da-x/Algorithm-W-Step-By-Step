@@ -3,7 +3,7 @@ module Lamdu.Infer.Internal.TypeVars
   ( TypeVars(..)
   , HasVar(..), CompositeHasVar
   , difference
-  , Subst(..), substDeleteVars
+  , Subst(..)
   , FreeTypeVars(..)
   ) where
 
@@ -16,7 +16,6 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
-import qualified Data.Map.Utils as MapU
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 
@@ -103,7 +102,3 @@ instance CompositeHasVar p => HasVar (E.CompositeType p) where
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =
   TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
-
-substDeleteVars :: TypeVars -> Subst -> Subst
-substDeleteVars (TypeVars t r) (Subst st sr) =
-  Subst (MapU.deleteKeySet t st) (MapU.deleteKeySet r sr)

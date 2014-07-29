@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns #-}
 module Lamdu.Infer.Internal.Monad
   ( Results(..), emptyResults
-  , deleteResultsVars
   , Context(..), initialContext
   , InferState(..)
   , Infer(..)
@@ -20,7 +19,7 @@ import Control.Monad.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
-import Lamdu.Infer.Internal.TypeVars (TypeVars, HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (HasVar(..))
 import qualified Control.Monad.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -45,12 +44,6 @@ appendResults (Results s0 c0) (Results s1 c1) =
     c0' <- Constraints.applySubst s1 c0
     return $ Results (mappend s0 s1) (mappend c0' c1)
 {-# INLINE appendResults #-}
-
-deleteResultsVars :: TypeVars -> Results -> Results
-deleteResultsVars vs (Results s c) =
-  Results
-  (TypeVars.substDeleteVars vs s)
-  (Constraints.constraintDeleteVars vs c)
 
 data Context = Context
   { ctxResults :: {-# UNPACK #-} !Results

@@ -2,7 +2,7 @@
 module Lamdu.Expr
   ( ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
-  , Val(..), expPayload
+  , Val(..)
   , ValVar(..)
   , CompositeType(..), ProductType
   , Type(..), TypeVar(..), Product
@@ -11,10 +11,9 @@ module Lamdu.Expr
   , pPrintValUnannotated
   ) where
 
-import Control.Applicative ((<$>), (<$))
+import Control.Applicative ((<$))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens')
 import Data.ByteString (ByteString)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
@@ -97,14 +96,10 @@ data ValBody exp
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
 
 data Val a = Val
-  { _expPayload :: a
+  { valPayload :: a
   , valBody :: !(ValBody (Val a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
-
--- TODO: valPayload
-expPayload :: Lens' (Val a) a
-expPayload f (Val pl body) = (`Val` body) <$> f pl
 
 data Product
 

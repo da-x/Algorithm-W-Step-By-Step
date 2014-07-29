@@ -9,18 +9,22 @@ import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
+import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Data.String (IsString(..))
 import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Constraints (Constraints(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.TypeVars (applySubst, TypeVars(..), HasVar(..))
+import Text.PrettyPrint ((<+>), (<>))
+import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
+import qualified Text.PrettyPrint as PP
 
 data Scheme = Scheme
   { schemeForAll :: TypeVars
@@ -30,6 +34,21 @@ data Scheme = Scheme
 
 instance NFData Scheme where
   rnf = genericRnf
+
+instance Pretty Scheme where
+  pPrintPrec lvl prec (Scheme vars@(TypeVars tv rv) constraints t)  =
+    prettyParen (0 < prec) $
+    forallStr <+> constraintsStr <+> pPrintPrec lvl 0 t
+    where
+      forallStr
+        | mempty == vars = mempty
+        | otherwise =
+          PP.text "forall" <+>
+          PP.hsep (map pPrint (Set.toList tv) ++ map pPrint (Set.toList rv)) <>
+          PP.text "."
+      constraintsStr
+        | mempty == constraints = mempty
+        | otherwise = pPrint constraints <+> PP.text "=>"
 
 makeScheme :: E.Type -> Infer Scheme
 makeScheme t = do

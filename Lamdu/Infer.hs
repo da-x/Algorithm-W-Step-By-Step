@@ -5,7 +5,7 @@ module Lamdu.Infer
   , TypeVars(..), typeInference
   , Scope, emptyScope
   , Payload(..), plType
-  , pPrintPureVal, pPrintValUnannotated
+  , E.pPrintValUnannotated
   , M.Context, M.initialContext
   , Infer(..)
   ) where
@@ -25,7 +25,6 @@ import Lamdu.Infer.Internal.Scheme (Scheme, makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
-import Lamdu.Pretty (pPrintPureVal, pPrintValUnannotated)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Error as Err

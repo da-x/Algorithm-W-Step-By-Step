@@ -9,20 +9,22 @@ module Lamdu.Expr
   , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
+  , pPrintValUnannotated
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<$))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.ByteString (ByteString)
 import Data.Foldable (Foldable)
 import Data.Map (Map)
+import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -144,6 +146,47 @@ eRecExtend name typ rest = Val () $ VRecExtend $ RecExtend name typ rest
 
 eGetField :: Val () -> Tag -> Val ()
 eGetField r n = Val () $ VGetField $ GetField r n
+
+data EmptyDoc = EmptyDoc
+instance Pretty EmptyDoc where
+  pPrint _ = PP.empty
+
+instance Pretty a => Pretty (Val a) where
+  pPrintPrec lvl prec (Val pl body)
+    | PP.isEmpty plDoc = pPrintPrecBody lvl prec body
+    | otherwise =
+      prettyParen (13 < prec) $ mconcat
+      [ pPrintPrecBody lvl 14 body, PP.text "{", plDoc, PP.text "}" ]
+    where
+      plDoc = pPrintPrec lvl 0 pl
+
+pPrintValUnannotated :: Val a -> PP.Doc
+pPrintValUnannotated = pPrint . (EmptyDoc <$)
+
+pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> ValBody (Val pl) -> PP.Doc
+pPrintPrecBody lvl prec body =
+  case body of
+  VLeaf (VVar var)          -> pPrint var
+  VLeaf (VGlobal tag)       -> pPrint tag
+  VLeaf (VLiteralInteger i) -> pPrint i
+  VLeaf VHole               -> PP.text "?"
+  VApp (Apply e1 e2)        -> prettyParen (10 < prec) $
+                                   pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
+  VAbs (Lam n e)            -> prettyParen (0 < prec) $
+                               PP.char '\\' <> pPrint n <+>
+                               PP.text "->" <+>
+                               pPrint e
+  VGetField (GetField e n)  -> prettyParen (12 < prec) $
+                               pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
+  VLeaf VRecEmpty           -> PP.text "V{}"
+  VRecExtend
+    (RecExtend tag val rest)  -> PP.text "{" <+>
+                                 prField <>
+                                 PP.comma <+>
+                                 pPrint rest <+>
+                                 PP.text "}"
+    where
+      prField = pPrint tag <+> PP.text "=" <+> pPrint val
 
 instance Pretty Type where
   pPrintPrec lvl prec typ =

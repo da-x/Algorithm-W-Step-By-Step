@@ -87,7 +87,7 @@ test :: E.Val () -> IO ()
 test e =
     case (`evalStateT` initialContext) $ run $ typeInference M.empty emptyScope e >>= _1 %%~ makeScheme of
         Left err ->
-          putStrLn $ show (pPrintPureVal e <+> "\n" <+> pPrint err)
+          putStrLn $ show (pPrintValUnannotated e <+> "\n" <+> pPrint err)
         Right (scheme, val) -> do
           print $ pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme
           let next = modify' (+1) >> get

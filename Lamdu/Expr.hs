@@ -6,7 +6,6 @@ module Lamdu.Expr
   , ValVar(..)
   , CompositeType(..), ProductType
   , Type(..), TypeVar(..), Product
-  , eAbs, eVar, eGlobal, eLitInt, eRecEmpty, eApp, eRecExtend, eGetField
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
   , pPrintValUnannotated
@@ -103,6 +102,7 @@ data Val a = Val
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
 
+-- TODO: valPayload
 expPayload :: Lens' (Val a) a
 expPayload f (Val pl body) = (`Val` body) <$> f pl
 
@@ -123,30 +123,7 @@ data Type    =  TVar (TypeVar Type)
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 
-eAbs :: ValVar -> Val () -> Val ()
-eAbs name body = Val () $ VAbs $ Lam name body
-
-eVar :: ValVar -> Val ()
-eVar = Val () . VLeaf . VVar
-
-eGlobal :: GlobalId -> Val ()
-eGlobal = Val () . VLeaf . VGlobal
-
-eLitInt :: Integer -> Val ()
-eLitInt = Val () . VLeaf . VLiteralInteger
-
-eRecEmpty :: Val ()
-eRecEmpty = Val () $ VLeaf VRecEmpty
-
-eApp :: Val () -> Val () -> Val ()
-eApp f x = Val () $ VApp $ Apply f x
-
-eRecExtend :: Tag -> Val () -> Val () -> Val ()
-eRecExtend name typ rest = Val () $ VRecExtend $ RecExtend name typ rest
-
-eGetField :: Val () -> Tag -> Val ()
-eGetField r n = Val () $ VGetField $ GetField r n
-
+-- TODO: To Expr.Pretty
 data EmptyDoc = EmptyDoc
 instance Pretty EmptyDoc where
   pPrint _ = PP.empty

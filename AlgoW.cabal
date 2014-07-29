@@ -14,6 +14,7 @@ library
   ghc-options:         -Wall -O2
   exposed-modules:     Lamdu.Expr
                  ,     Lamdu.Expr.Globals
+                 ,     Lamdu.Expr.Pure
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Suggest

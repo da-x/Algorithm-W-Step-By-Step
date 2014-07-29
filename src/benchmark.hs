@@ -14,18 +14,19 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Pure as P
 import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
 
 lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
-lambda varName mkBody = E.eAbs varName (mkBody (E.eVar varName))
+lambda varName mkBody = P.abs varName (mkBody (P.var varName))
 
 lambdaRecord :: [E.Tag] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
-  mkBody $ map (E.eGetField paramsRec) names
+  mkBody $ map (P.getField paramsRec) names
 
 whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
@@ -34,11 +35,11 @@ record :: [(E.Tag, E.Type)] -> E.Type
 record = E.TRecord . foldr (uncurry E.CExtend) E.CEmpty
 
 eRecord :: [(E.Tag, E.Val ())] -> E.Val ()
-eRecord = foldr (uncurry E.eRecExtend) E.eRecEmpty
+eRecord = foldr (uncurry P.recExtend) P.recEmpty
 
 infixl 4 $$
 ($$) :: E.Val () -> E.Val () -> E.Val ()
-($$) = E.eApp
+($$) = P.app
 
 infixl 4 $$:
 ($$:) :: E.Val () -> [(E.Tag, E.Val ())] -> E.Val ()
@@ -49,10 +50,10 @@ infixr 4 ~>
 (~>) = E.TFun
 
 getDef :: E.GlobalId -> E.Val ()
-getDef = E.eGlobal
+getDef = P.global
 
 literalInteger :: Integer -> E.Val ()
-literalInteger = E.eLitInt
+literalInteger = P.litInt
 
 integerType :: E.Type
 integerType = E.TInst "Int" Map.empty

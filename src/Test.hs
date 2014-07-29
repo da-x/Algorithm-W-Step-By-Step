@@ -9,33 +9,34 @@ import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Pure as P
 import qualified Text.PrettyPrint as PP
 
 eLet :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
-eLet name val mkBody = E.eApp (E.eAbs name body) val
+eLet name val mkBody = P.app (P.abs name body) val
   where
-    body = mkBody $ E.eVar name
+    body = mkBody $ P.var name
 
 lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
-lambda name mkBody = E.eAbs name $ mkBody $ E.eVar name
+lambda name mkBody = P.abs name $ mkBody $ P.var name
 
 int :: Integer -> E.Val ()
-int = E.eLitInt
+int = P.litInt
 
 emptyRec :: E.Val ()
-emptyRec = E.eRecEmpty
+emptyRec = P.recEmpty
 
 infixl 4 $$
 ($$) :: E.Val () -> E.Val () -> E.Val ()
-($$) = E.eApp
+($$) = P.app
 
 infixl 9 $.
 ($.) :: E.Val () -> E.Tag -> E.Val ()
-($.) = E.eGetField
+($.) = P.getField
 
 infixl 3 $=
 ($=) :: E.Tag -> E.Val () -> E.Val () -> E.Val ()
-($=) = E.eRecExtend
+($=) = P.recExtend
 
 exps :: [E.Val ()]
 exps =

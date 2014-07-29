@@ -5,7 +5,7 @@ import Control.Lens.Tuple
 import Control.Monad.State (evalStateT, runState, modify', get)
 import Data.Traversable (traverse)
 import Lamdu.Infer
-import Text.PrettyPrint ((<>), (<+>))
+import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
@@ -87,7 +87,7 @@ test :: E.Val () -> IO ()
 test e =
     case (`evalStateT` initialContext) $ run $ typeInference M.empty emptyScope e >>= _1 %%~ makeScheme of
         Left err ->
-          putStrLn $ show (pPrintValUnannotated e <+> "\n" <+> pPrint err)
+          putStrLn $ show (pPrintValUnannotated e $+$ pPrint err)
         Right (scheme, val) -> do
           print $ pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme
           let next = modify' (+1) >> get

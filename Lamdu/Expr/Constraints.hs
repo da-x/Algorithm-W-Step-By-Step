@@ -6,6 +6,7 @@ module Lamdu.Expr.Constraints
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Data.Binary (Binary)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
@@ -35,6 +36,8 @@ instance Pretty Constraints where
     | otherwise =
       PP.hcat $ PP.punctuate PP.comma $ map (uncurry pPrintConstraint) $
       Map.toList m
+
+instance Binary Constraints
 
 pPrintConstraint :: E.TypeVar E.ProductType -> Set E.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =

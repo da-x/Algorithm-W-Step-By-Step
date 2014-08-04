@@ -5,10 +5,11 @@ module Lamdu.Expr.Scheme
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Data.Binary (Binary)
 import Data.Monoid (Monoid(..))
 import GHC.Generics (Generic)
-import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Expr.Constraints (Constraints(..))
+import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Set as Set
@@ -38,3 +39,5 @@ instance Pretty Scheme where
       constraintsStr
         | mempty == constraints = mempty
         | otherwise = pPrint constraints <+> PP.text "=>"
+
+instance Binary Scheme

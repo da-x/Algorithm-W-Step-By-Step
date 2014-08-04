@@ -5,6 +5,7 @@ module Lamdu.Expr.TypeVars
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Data.Binary (Binary)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
@@ -18,3 +19,5 @@ instance Monoid TypeVars where
   mempty = TypeVars mempty mempty
   mappend (TypeVars t0 r0) (TypeVars t1 r1) =
     TypeVars (mappend t0 t1) (mappend r0 r1)
+
+instance Binary TypeVars

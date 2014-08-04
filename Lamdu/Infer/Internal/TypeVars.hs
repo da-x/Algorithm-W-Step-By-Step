@@ -1,32 +1,19 @@
-{-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.TypeVars
-  ( TypeVars(..)
-  , HasVar(..), CompositeHasVar
+  ( HasVar(..), CompositeHasVar
   , difference
   , Subst(..), intersectSubst
   , Free(..)
   ) where
 
 import Control.Applicative ((<$>))
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
-import GHC.Generics (Generic)
+import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
-
-data TypeVars = TypeVars (Set (E.TypeVar E.Type)) (Set (E.TypeVar E.ProductType))
-  deriving (Eq, Generic)
-instance NFData TypeVars where
-  rnf = genericRnf
-instance Monoid TypeVars where
-  mempty = TypeVars mempty mempty
-  mappend (TypeVars t0 r0) (TypeVars t1 r1) =
-    TypeVars (mappend t0 t1) (mappend r0 r1)
 
 type SubSubst t = Map (E.TypeVar t) t
 

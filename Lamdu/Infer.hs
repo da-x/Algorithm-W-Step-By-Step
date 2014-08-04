@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
-  ( Constraints(..)
-  , Scheme(..), makeScheme
+  ( makeScheme
   , TypeVars(..), typeInference
   , Scope, emptyScope
   , Payload(..), plType
@@ -18,11 +17,12 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
-import Lamdu.Infer.Internal.Constraints (Constraints(..))
+import Lamdu.Expr.Scheme (Scheme)
+import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
-import Lamdu.Infer.Internal.Scheme (Scheme, makeScheme)
+import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
-import Lamdu.Infer.Internal.TypeVars (TypeVars(..), HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E

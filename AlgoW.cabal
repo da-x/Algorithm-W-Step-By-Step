@@ -13,9 +13,12 @@ cabal-version:       >=1.10
 library
   ghc-options:         -Wall -O2
   exposed-modules:     Lamdu.Expr
+                 ,     Lamdu.Expr.Constraints
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Pure
                  ,     Lamdu.Expr.Pretty
+                 ,     Lamdu.Expr.Scheme
+                 ,     Lamdu.Expr.TypeVars
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Suggest

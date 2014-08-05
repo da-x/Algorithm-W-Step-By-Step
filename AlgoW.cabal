@@ -21,6 +21,7 @@ library
                  ,     Lamdu.Expr.TypeVars
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
+                 ,     Lamdu.Infer.Load
                  ,     Lamdu.Suggest
   other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatComposite

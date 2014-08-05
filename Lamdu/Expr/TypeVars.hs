@@ -2,6 +2,7 @@
 module Lamdu.Expr.TypeVars
   ( TypeVars(..)
   , HasVar(..), CompositeHasVar(..)
+  , newVar
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -10,6 +11,7 @@ import Data.Binary (Binary)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
+import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 
 data TypeVars = TypeVars (Set (E.TypeVar E.Type)) (Set (E.TypeVar E.ProductType))
@@ -27,6 +29,9 @@ class HasVar t where
   getVars :: TypeVars -> Set (E.TypeVar t)
   newVars :: Set (E.TypeVar t) -> TypeVars
   liftVar :: E.TypeVar t -> t
+
+newVar :: HasVar t => E.TypeVar t -> TypeVars
+newVar = newVars . Set.singleton
 
 instance HasVar E.Type where
   getVars (TypeVars vs _) = vs

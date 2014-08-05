@@ -54,7 +54,7 @@ class TypeVars.CompositeHasVar p => CompositeHasVar p where
 
 instance CompositeHasVar p => CanSubst (E.CompositeType p) where
   freeVars E.CEmpty          = mempty
-  freeVars (E.CVar n)        = TypeVars.newVars (Set.singleton n)
+  freeVars (E.CVar n)        = TypeVars.newVar n
   freeVars (E.CExtend _ t r) = freeVars t `mappend` freeVars r
 
   apply _ E.CEmpty          = E.CEmpty
@@ -62,7 +62,7 @@ instance CompositeHasVar p => CanSubst (E.CompositeType p) where
   apply s (E.CExtend n t r) = E.CExtend n (apply s t) (apply s r)
 
 instance CanSubst E.Type where
-  freeVars (E.TVar n)      =  TypeVars.newVars (Set.singleton n)
+  freeVars (E.TVar n)      =  TypeVars.newVar n
   freeVars (E.TInst _ p)   =  mconcat $ map freeVars $ Map.elems p
   freeVars (E.TFun t1 t2)  =  freeVars t1 `mappend` freeVars t2
   freeVars (E.TRecord r)   =  freeVars r

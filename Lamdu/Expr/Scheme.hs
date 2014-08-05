@@ -1,12 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.Scheme
-  ( Scheme(..), forAll
+  ( Scheme(..), mono
   ) where
 
-import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens')
 import Data.Binary (Binary)
 import Data.Monoid (Monoid(..))
 import GHC.Generics (Generic)
@@ -24,10 +22,13 @@ data Scheme = Scheme
   , schemeType :: E.Type
   } deriving (Generic, Show)
 
-forAll :: Lens' Scheme TypeVars
-forAll f s = mkScheme <$> f (schemeForAll s)
-  where
-    mkScheme tvs = s { schemeForAll = tvs }
+mono :: E.Type -> Scheme
+mono x =
+  Scheme
+  { schemeForAll = mempty
+  , schemeConstraints = mempty
+  , schemeType = x
+  }
 
 instance NFData Scheme where
   rnf = genericRnf

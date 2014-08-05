@@ -4,7 +4,7 @@ module Lamdu.Infer
   , TypeVars(..)
   , infer
   , Scope, emptyScope
-  , Payload(..), plType
+  , Payload(..), plScope, plType
   , M.Context, M.initialContext
   , Infer(..)
   ) where
@@ -44,6 +44,10 @@ instance NFData a => NFData (Payload a) where rnf = genericRnf
 plType :: Lens' (Payload a) E.Type
 plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)
 {-# INLINE plType #-}
+
+plScope :: Lens' (Payload a) Scope
+plScope f pl = (\t' -> pl { _plScope = t' }) <$> f (_plScope pl)
+{-# INLINE plScope #-}
 
 instance CanSubst (Payload a) where
   freeVars (Payload typ scope _dat) =

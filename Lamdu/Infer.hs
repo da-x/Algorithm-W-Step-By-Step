@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
   ( makeScheme
-  , TypeVars(..), typeInference
+  , TypeVars(..)
+  , infer
   , Scope, emptyScope
   , Payload(..), plType
   , M.Context, M.initialContext
@@ -56,21 +57,21 @@ censorInfer typeVars act =
       M.tell $ M.intersectResults typeVars results
       return val
 
-typeInferenceSubst ::
+inferSubst ::
   Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
-typeInferenceSubst globals scope val =
+inferSubst globals scope val =
   do  prevSubst <- M.getSubst
-      (inferredVal, newResults) <- M.listen $ infer Payload globals (Subst.apply prevSubst scope) val
+      (inferredVal, newResults) <- M.listen $ inferInternal Payload globals (Subst.apply prevSubst scope) val
       return $ Subst.apply (M.subst newResults) <$> inferredVal
 
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
 -- much faster than a polymorphic monad underlying the Infer monad
 -- allowing global access.
-typeInference ::
+infer ::
   Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
-typeInference globals scope =
-  censorInfer (Subst.freeVars scope) . typeInferenceSubst globals scope
+infer globals scope =
+  censorInfer (Subst.freeVars scope) . inferSubst globals scope
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
@@ -81,11 +82,11 @@ hasTag tag (E.CExtend t _ r)
   | tag == t  = HasTag
   | otherwise = hasTag tag r
 
-infer ::
+inferInternal ::
   (E.Type -> Scope -> a -> b) ->
   Map E.GlobalId Scheme -> Scope -> E.Val a ->
   Infer (E.Val b)
-infer f globals =
+inferInternal f globals =
   (fmap . fmap) snd . go
   where
     go locals (E.Val pl body) =

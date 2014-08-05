@@ -8,7 +8,7 @@ import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Scheme (Scheme(..))
-import Lamdu.Infer (TypeVars(..), typeInference, plType, initialContext, run, emptyScope)
+import Lamdu.Infer (TypeVars(..), infer, plType, initialContext, run, emptyScope)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
@@ -188,17 +188,17 @@ solveDepressedQuarticVal =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-infer :: E.Val () -> IO ()
-infer e =
-    case (`evalStateT` initialContext) $ run $ typeInference env emptyScope e of
+benchInfer :: E.Val () -> IO ()
+benchInfer e =
+    case (`evalStateT` initialContext) $ run $ infer env emptyScope e of
     Left err -> fail $ show $ "error:" <+> pPrint err
     Right eTyped -> evaluate $ rnf $ eTyped ^.. folded . plType
 
 benches :: [(String, IO ())]
 benches =
-  [ ("factorial", infer factorialVal)
-  , ("euler1", infer euler1Val)
-  , ("solveDepressedQuartic", infer solveDepressedQuarticVal)
+  [ ("factorial", benchInfer factorialVal)
+  , ("euler1", benchInfer euler1Val)
+  , ("solveDepressedQuartic", benchInfer solveDepressedQuarticVal)
   ]
 
 main :: IO ()

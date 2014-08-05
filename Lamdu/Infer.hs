@@ -22,10 +22,10 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
-import Lamdu.Infer.Internal.TypeVars (HasVar(..))
 import Lamdu.Infer.Internal.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
@@ -113,7 +113,7 @@ infer f globals = go
             ((t, e'), s) <- M.listenSubst $ go locals e
             ((), su) <-
               M.listenSubst $ unify (TypeVars.applySubst s t) $
-              E.TRecord $ E.CExtend name tv $ liftVar tvRecName
+              E.TRecord $ E.CExtend name tv $ TypeVars.liftVar tvRecName
             return $ mkResult (E.VGetField (E.GetField e' name)) $ TypeVars.applySubst su tv
       E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
@@ -131,7 +131,7 @@ infer f globals = go
               _ -> do
                 tv <- M.newInferredVarName "r"
                 M.tellConstraint tv name
-                let tve = liftVar tv
+                let tve = TypeVars.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ E.TRecord tve
                 return $ TypeVars.applySubst s tve
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $

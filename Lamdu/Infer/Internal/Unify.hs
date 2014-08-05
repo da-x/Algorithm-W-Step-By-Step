@@ -8,13 +8,14 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (CompositeHasVar)
+import Lamdu.Infer.Internal.TypeVars (CompositeHasVar, HasVar)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
 import qualified Lamdu.Infer.Internal.Monad as M
@@ -92,7 +93,7 @@ dontUnify x y =
   M.throwError $ Err.TypesDoNotUnity (pPrint x) (pPrint y)
 
 checkOccurs ::
-  (Pretty t, TypeVars.HasVar t, TypeVars.Free t) =>
+  (Pretty t, HasVar t, TypeVars.Free t) =>
   E.TypeVar t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (TypeVars.free typ) =
@@ -119,7 +120,7 @@ instance Unify E.Type where
   varBind u (E.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-instance TypeVars.CompositeHasVar p => Unify (E.CompositeType p) where
+instance CompositeHasVar p => Unify (E.CompositeType p) where
   unify E.CEmpty E.CEmpty       =  return ()
   unify (E.CVar u) t            =  varBind u t
   unify t (E.CVar u)            =  varBind u t

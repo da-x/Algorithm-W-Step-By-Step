@@ -8,9 +8,9 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.String (IsString(..))
 import Lamdu.Expr.Scheme (Scheme(..))
-import Lamdu.Expr.TypeVars (TypeVars(..))
+import Lamdu.Expr.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (applySubst, HasVar(..))
+import Lamdu.Infer.Internal.TypeVars (applySubst)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E

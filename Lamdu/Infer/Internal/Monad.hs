@@ -19,9 +19,9 @@ import Control.Monad.Trans.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Expr.Constraints (Constraints(..))
+import Lamdu.Expr.TypeVars (HasVar(..))
 import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error)
-import Lamdu.Infer.Internal.TypeVars (HasVar(..))
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set

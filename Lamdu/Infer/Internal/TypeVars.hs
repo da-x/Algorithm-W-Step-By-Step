@@ -1,8 +1,8 @@
 module Lamdu.Infer.Internal.TypeVars
   ( HasVar(..), CompositeHasVar
-  , difference
   , Subst(..), intersectSubst
   , Free(..)
+  , difference
   ) where
 
 import Control.Applicative ((<$>))
@@ -14,6 +14,7 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.TypeVars as TypeVars
 
 type SubSubst t = Map (E.TypeVar t) t
 
@@ -36,25 +37,24 @@ intersectSubst :: TypeVars -> Subst -> Subst
 intersectSubst (TypeVars tvs rtvs) (Subst ts rs) =
   Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
 
+difference :: TypeVars -> TypeVars -> TypeVars
+difference (TypeVars t0 r0) (TypeVars t1 r1) =
+  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
+
 class Free a where
   free :: a -> TypeVars
   applySubst   :: Subst -> a -> a
 
-class CompositeHasVar p where
-  compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
-  compositeNewVars :: Set (E.TypeVar (E.CompositeType p)) -> TypeVars
-  compositeGetSubst :: Subst -> SubSubst (E.CompositeType p)
-  compositeNewSubst :: SubSubst (E.CompositeType p) -> Subst
-
-class Free t => HasVar t where
-  getVars :: TypeVars -> Set (E.TypeVar t)
-  newVars :: Set (E.TypeVar t) -> TypeVars
-  liftVar :: E.TypeVar t -> t
+class (TypeVars.HasVar t, Free t) => HasVar t where
   newSubst :: E.TypeVar t -> t -> Subst
+
+class TypeVars.CompositeHasVar p => CompositeHasVar p where
+  compositeNewSubst :: SubSubst (E.CompositeType p) -> Subst
+  compositeGetSubst :: Subst -> SubSubst (E.CompositeType p)
 
 instance CompositeHasVar p => Free (E.CompositeType p) where
   free E.CEmpty          = mempty
-  free (E.CVar n)        = newVars (Set.singleton n)
+  free (E.CVar n)        = TypeVars.newVars (Set.singleton n)
   free (E.CExtend _ t r) = free t `mappend` free r
 
   applySubst _ E.CEmpty          = E.CEmpty
@@ -62,7 +62,7 @@ instance CompositeHasVar p => Free (E.CompositeType p) where
   applySubst s (E.CExtend n t r) = E.CExtend n (applySubst s t) (applySubst s r)
 
 instance Free E.Type where
-  free (E.TVar n)      =  newVars (Set.singleton n)
+  free (E.TVar n)      =  TypeVars.newVars (Set.singleton n)
   free (E.TInst _ p)   =  mconcat $ map free $ Map.elems p
   free (E.TFun t1 t2)  =  free t1 `mappend` free t2
   free (E.TRecord r)   =  free r
@@ -73,26 +73,14 @@ instance Free E.Type where
   applySubst s (E.TRecord r)   = E.TRecord $ applySubst s r
 
 instance HasVar E.Type where
-  getVars (TypeVars vs _) = vs
-  newVars vs = TypeVars vs mempty
-  liftVar = E.TVar
   newSubst tv t = Subst (Map.singleton tv t) mempty
   {-# INLINE newSubst #-}
 
 instance CompositeHasVar E.Product where
-  compositeGetVars (TypeVars _ vs) = vs
-  compositeNewVars = TypeVars mempty
-  compositeNewSubst = Subst mempty
   {-# INLINE compositeNewSubst #-}
   compositeGetSubst = substRecordTypes
+  compositeNewSubst = Subst mempty
 
 instance CompositeHasVar p => HasVar (E.CompositeType p) where
-  getVars = compositeGetVars
-  newVars = compositeNewVars
   newSubst tv t = compositeNewSubst $ Map.singleton tv t
   {-# INLINE newSubst #-}
-  liftVar = E.CVar
-
-difference :: TypeVars -> TypeVars -> TypeVars
-difference (TypeVars t0 r0) (TypeVars t1 r1) =
-  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)

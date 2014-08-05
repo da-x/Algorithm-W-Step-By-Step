@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.TypeVars
   ( TypeVars(..)
+  , HasVar(..), CompositeHasVar(..)
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -21,3 +22,26 @@ instance Monoid TypeVars where
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
 instance Binary TypeVars
+
+class HasVar t where
+  getVars :: TypeVars -> Set (E.TypeVar t)
+  newVars :: Set (E.TypeVar t) -> TypeVars
+  liftVar :: E.TypeVar t -> t
+
+instance HasVar E.Type where
+  getVars (TypeVars vs _) = vs
+  newVars vs = TypeVars vs mempty
+  liftVar = E.TVar
+
+class CompositeHasVar p where
+  compositeGetVars :: TypeVars -> Set (E.TypeVar (E.CompositeType p))
+  compositeNewVars :: Set (E.TypeVar (E.CompositeType p)) -> TypeVars
+
+instance CompositeHasVar E.Product where
+  compositeGetVars (TypeVars _ vs) = vs
+  compositeNewVars = TypeVars mempty
+
+instance CompositeHasVar p => HasVar (E.CompositeType p) where
+  getVars = compositeGetVars
+  newVars = compositeNewVars
+  liftVar = E.CVar

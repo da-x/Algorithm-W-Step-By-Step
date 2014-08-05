@@ -9,6 +9,7 @@ module Lamdu.Expr
   , Type(..), TypeVar(..), Product
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
+  , (~>)
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -126,6 +127,10 @@ data Type    =  TVar (TypeVar Type)
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
+
+infixr 1 ~>
+(~>) :: Type -> Type -> Type
+(~>) = TFun
 
 pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> ValBody (Val pl) -> PP.Doc
 pPrintPrecBody lvl prec body =

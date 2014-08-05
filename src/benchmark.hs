@@ -3,7 +3,6 @@ import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
 import Control.Lens.Operators
-import Control.Monad ((<=<))
 import Control.Monad.State (evalStateT)
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
@@ -16,7 +15,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
-import qualified Text.PrettyPrint as PP
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
@@ -190,15 +188,13 @@ solveDepressedQuarticVal =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-infer :: E.Val () -> IO String
+infer :: E.Val () -> IO ()
 infer e =
     case (`evalStateT` initialContext) $ run $ typeInference env emptyScope e of
     Left err -> fail $ show $ "error:" <+> pPrint err
-    Right (eScheme, eTyped) ->
-      do  _ <- evaluate $ rnf (eTyped ^.. folded . plType, eScheme)
-          return $ show $ pPrint e <+> PP.text "::" <+> pPrint eScheme
+    Right eTyped -> evaluate $ rnf $ eTyped ^.. folded . plType
 
-benches :: [(String, IO String)]
+benches :: [(String, IO ())]
 benches =
   [ ("factorial", infer factorialVal)
   , ("euler1", infer euler1Val)
@@ -206,8 +202,7 @@ benches =
   ]
 
 main :: IO ()
-main = do
-  mapM_ (putStrLn <=< snd) benches
+main =
   defaultMain $ map makeBench benches
   where
     makeBench (name, f) =

@@ -87,7 +87,7 @@ exps =
 
 test :: E.Val () -> IO ()
 test e =
-    case (`evalStateT` initialContext) $ run $ typeInference M.empty emptyScope e >>= _1 %%~ makeScheme of
+    case inferredType of
         Left err ->
           putStrLn $ show (pPrintValUnannotated e $+$ pPrint err)
         Right (scheme, val) -> do
@@ -101,6 +101,12 @@ test e =
           print $ pPrint taggedVal
           let indent = PP.hcat $ replicate 4 PP.space
           mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
+    where
+        inferredType =
+          (`evalStateT` initialContext) . run $ do
+            e' <- typeInference M.empty emptyScope e
+            s <- makeScheme $ E.valPayload e' ^. plType
+            return (s, e')
 
 main :: IO ()
 main = mapM_ test exps

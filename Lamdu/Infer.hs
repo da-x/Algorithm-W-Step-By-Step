@@ -55,15 +55,15 @@ instance CanSubst (Payload a) where
 -- much faster than a polymorphic monad underlying the Infer monad
 -- allowing global access.
 typeInference ::
-  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Type, E.Val (Payload a))
+  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
 typeInference globals scope rootVal =
   do  prevSubst <- M.getSubst
-      ((topType, val), newResults) <-
+      (val, newResults) <-
         M.listenNoTell $ infer Payload globals (Subst.apply prevSubst scope) rootVal
 
       M.tell $ M.intersectResults (Subst.freeVars scope) newResults
 
-      return (topType, Subst.apply (M.subst newResults) <$> val)
+      return $ Subst.apply (M.subst newResults) <$> val
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
@@ -77,8 +77,9 @@ hasTag tag (E.CExtend t _ r)
 infer ::
   (E.Type -> Scope -> a -> b) ->
   Map E.GlobalId Scheme -> Scope -> E.Val a ->
-  Infer (E.Type, E.Val b)
-infer f globals = go
+  Infer (E.Val b)
+infer f globals =
+  (fmap . fmap) snd . go
   where
     go locals (E.Val pl body) =
       case body of

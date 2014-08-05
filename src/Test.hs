@@ -105,7 +105,7 @@ test e =
         inferredType =
           (`evalStateT` initialContext) . run $ do
             e' <- infer M.empty emptyScope e
-            s <- makeScheme $ E.valPayload e' ^. plType
+            s <- makeScheme $ e' ^. E.valPayload . plType
             return (s, e')
 
 main :: IO ()

@@ -6,15 +6,15 @@ import Control.Applicative ((<$>))
 import Lamdu.Expr.Constraints (Constraints(..))
 import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error(FieldForbidden))
+import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
 
 applySubst ::
-  TypeVars.Subst -> Constraints -> Either Error Constraints
-applySubst (TypeVars.Subst _ recordSubsts) (Constraints c) =
+  Subst -> Constraints -> Either Error Constraints
+applySubst (Subst _ recordSubsts) (Constraints c) =
   Constraints . Map.fromListWith Set.union . concat <$>
   mapM onConstraint (Map.toList c)
   where

@@ -22,17 +22,18 @@ import Lamdu.Expr.Constraints (Constraints(..))
 import Lamdu.Expr.TypeVars (HasVar(..))
 import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error)
+import Lamdu.Infer.Internal.Subst (Subst)
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
+import qualified Lamdu.Infer.Internal.Subst as Subst
 
 data InferState = InferState { inferSupply :: Int }
 
 data Results = Results
-  { subst :: {-# UNPACK #-} !TypeVars.Subst
+  { subst :: {-# UNPACK #-} !Subst
   , constraints :: !Constraints
   }
 
@@ -49,7 +50,7 @@ appendResults (Results s0 c0) (Results s1 c1) =
 
 intersectResults :: TypeVars -> Results -> Results
 intersectResults tvs (Results s c) =
-  Results (TypeVars.intersectSubst tvs s) (Constraints.intersect tvs c)
+  Results (Subst.intersect tvs s) (Constraints.intersect tvs c)
 
 data Context = Context
   { ctxResults :: {-# UNPACK #-} !Results
@@ -80,10 +81,8 @@ tell w =
     Right ((), c { ctxResults = newRes} )
 {-# INLINE tell #-}
 
-tellSubst :: TypeVars.HasVar t => E.TypeVar t -> t -> Infer ()
-tellSubst v t =
-  tell $ emptyResults
-  { subst = TypeVars.newSubst v t }
+tellSubst :: Subst.HasVar t => E.TypeVar t -> t -> Infer ()
+tellSubst v t = tell $ emptyResults { subst = Subst.new v t }
 
 tellConstraints :: Constraints -> Infer ()
 tellConstraints x = tell $ emptyResults { constraints = x }
@@ -121,11 +120,11 @@ newInferredVarName prefix =
 newInferredVar :: HasVar t => String -> Infer t
 newInferredVar = fmap liftVar . newInferredVarName
 
-listenSubst :: Infer a -> Infer (a, TypeVars.Subst)
+listenSubst :: Infer a -> Infer (a, Subst)
 listenSubst x = listen x <&> _2 %~ subst
 
 getConstraints :: Infer Constraints
 getConstraints = Infer $ State.gets (constraints . ctxResults)
 
-getSubst :: Infer TypeVars.Subst
+getSubst :: Infer Subst
 getSubst = Infer $ State.gets (subst . ctxResults)

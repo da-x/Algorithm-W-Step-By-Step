@@ -22,6 +22,7 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
+import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import Lamdu.Infer.Internal.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
@@ -30,7 +31,7 @@ import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import qualified Lamdu.Infer.Internal.Scope as Scope
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
+import qualified Lamdu.Infer.Internal.Subst as Subst
 
 data Payload a = Payload
   { _plType :: E.Type
@@ -43,11 +44,11 @@ plType :: Lens' (Payload a) E.Type
 plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)
 {-# INLINE plType #-}
 
-instance TypeVars.Free (Payload a) where
-  free (Payload typ scope _dat) =
-    TypeVars.free typ <> TypeVars.free scope
-  applySubst s (Payload typ scope dat) =
-    Payload (TypeVars.applySubst s typ) (TypeVars.applySubst s scope) dat
+instance CanSubst (Payload a) where
+  freeVars (Payload typ scope _dat) =
+    Subst.freeVars typ <> Subst.freeVars scope
+  apply s (Payload typ scope dat) =
+    Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
@@ -58,11 +59,11 @@ typeInference ::
 typeInference globals scope rootVal =
   do  prevSubst <- M.getSubst
       ((topType, val), newResults) <-
-        M.listenNoTell $ infer Payload globals (TypeVars.applySubst prevSubst scope) rootVal
+        M.listenNoTell $ infer Payload globals (Subst.apply prevSubst scope) rootVal
 
-      M.tell $ M.intersectResults (TypeVars.free scope) newResults
+      M.tell $ M.intersectResults (Subst.freeVars scope) newResults
 
-      return (topType, TypeVars.applySubst (M.subst newResults) <$> val)
+      return (topType, Subst.apply (M.subst newResults) <$> val)
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 
@@ -99,25 +100,25 @@ infer f globals = go
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- M.listenSubst $ go locals' e
-            return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (TypeVars.applySubst s1 tv) t1
+            return $ mkResult (E.VAbs (E.Lam n e')) $ E.TFun (Subst.apply s1 tv) t1
       E.VApp (E.Apply e1 e2) ->
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-            ((t2, e2'), s2) <- M.listenSubst $ go (TypeVars.applySubst s1 locals) e2
-            ((), s3) <- M.listenSubst $ unify (TypeVars.applySubst s2 t1) (E.TFun t2 tv)
-            return $ mkResult (E.VApp (E.Apply e1' e2')) $ TypeVars.applySubst s3 tv
+            ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
+            ((), s3) <- M.listenSubst $ unify (Subst.apply s2 t1) (E.TFun t2 tv)
+            return $ mkResult (E.VApp (E.Apply e1' e2')) $ Subst.apply s3 tv
       E.VGetField (E.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"
             M.tellConstraint tvRecName name
             ((t, e'), s) <- M.listenSubst $ go locals e
             ((), su) <-
-              M.listenSubst $ unify (TypeVars.applySubst s t) $
+              M.listenSubst $ unify (Subst.apply s t) $
               E.TRecord $ E.CExtend name tv $ TypeVars.liftVar tvRecName
-            return $ mkResult (E.VGetField (E.GetField e' name)) $ TypeVars.applySubst su tv
+            return $ mkResult (E.VGetField (E.GetField e' name)) $ Subst.apply su tv
       E.VRecExtend (E.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-            ((t2, e2'), _) <- M.listenSubst $ go (TypeVars.applySubst s1 locals) e2
+            ((t2, e2'), _) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             rest <-
               case t2 of
               E.TRecord x ->
@@ -133,7 +134,7 @@ infer f globals = go
                 M.tellConstraint tv name
                 let tve = TypeVars.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ E.TRecord tve
-                return $ TypeVars.applySubst s tve
+                return $ Subst.apply s tve
             return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
               E.TRecord $ E.CExtend name t1 rest
       where

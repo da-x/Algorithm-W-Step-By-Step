@@ -10,21 +10,21 @@ import Data.String (IsString(..))
 import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.TypeVars (applySubst)
+import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Monad as M
-import qualified Lamdu.Infer.Internal.TypeVars as TypeVars
+import qualified Lamdu.Infer.Internal.Subst as Subst
 
 makeScheme :: E.Type -> Infer Scheme
 makeScheme t = do
   c <- M.getConstraints
   return $ Scheme freeVars (Constraints.intersect freeVars c) t
   where
-    freeVars = TypeVars.free t
+    freeVars = Subst.freeVars t
 
 mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)
 mkInstantiateSubstPart prefix =
@@ -40,8 +40,8 @@ instantiate (Scheme (TypeVars tv rv) constraints t) =
   do
     recordSubsts <- mkInstantiateSubstPart "k" rv
     subst <-
-      (`TypeVars.Subst` fmap liftVar recordSubsts) .
+      (`Subst` fmap liftVar recordSubsts) .
       fmap liftVar
       <$> mkInstantiateSubstPart "i" tv
     M.tellConstraints $ Constraints.applyRenames recordSubsts constraints
-    return $ applySubst subst t
+    return $ Subst.apply subst t

@@ -50,20 +50,27 @@ instance CanSubst (Payload a) where
   apply s (Payload typ scope dat) =
     Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
+censorInfer :: TypeVars -> Infer a -> Infer a
+censorInfer typeVars act =
+  do  (val, results) <- M.listenNoTell act
+      M.tell $ M.intersectResults typeVars results
+      return val
+
+typeInferenceSubst ::
+  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
+typeInferenceSubst globals scope val =
+  do  prevSubst <- M.getSubst
+      (inferredVal, newResults) <- M.listen $ infer Payload globals (Subst.apply prevSubst scope) val
+      return $ Subst.apply (M.subst newResults) <$> inferredVal
+
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
 -- much faster than a polymorphic monad underlying the Infer monad
 -- allowing global access.
 typeInference ::
   Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
-typeInference globals scope rootVal =
-  do  prevSubst <- M.getSubst
-      (val, newResults) <-
-        M.listenNoTell $ infer Payload globals (Subst.apply prevSubst scope) rootVal
-
-      M.tell $ M.intersectResults (Subst.freeVars scope) newResults
-
-      return $ Subst.apply (M.subst newResults) <$> val
+typeInference globals scope =
+  censorInfer (Subst.freeVars scope) . typeInferenceSubst globals scope
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

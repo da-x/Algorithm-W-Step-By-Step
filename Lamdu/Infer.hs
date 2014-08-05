@@ -24,7 +24,7 @@ import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.Subst (CanSubst(..))
-import Lamdu.Infer.Internal.Unify (unify)
+import Lamdu.Infer.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.TypeVars as TypeVars

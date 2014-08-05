@@ -1,4 +1,4 @@
-module Lamdu.Infer.Internal.Unify
+module Lamdu.Infer.Unify
   ( unify
   ) where
 
@@ -21,8 +21,12 @@ import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
+unify :: E.Type -> E.Type -> Infer ()
+unify = unifyGeneric
+{-# INLINE unify #-}
+
 class CanSubst t => Unify t where
-  unify :: t -> t -> Infer ()
+  unifyGeneric :: t -> t -> Infer ()
   varBind :: E.TypeVar t -> t -> Infer ()
 
 closedRecord :: Map E.Tag E.Type -> E.CompositeType p
@@ -72,7 +76,7 @@ unifyFlatFulls tfields ufields
 unifyChild :: Unify t => t -> t -> StateT Subst Infer ()
 unifyChild t u =
     do  old <- State.get
-        ((), s) <- lift $ M.listenSubst $ unify (Subst.apply old t) (Subst.apply old u)
+        ((), s) <- lift $ M.listenSubst $ unifyGeneric (Subst.apply old t) (Subst.apply old u)
         State.put (old `mappend` s)
 
 unifyFlattened ::
@@ -102,37 +106,37 @@ checkOccurs var typ act
     act
 
 instance Unify E.Type where
-  unify (E.TFun l r) (E.TFun l' r') =
+  unifyGeneric (E.TFun l r) (E.TFun l' r') =
     do
-      ((), s1) <- M.listenSubst $ unify l l'
-      unify
+      ((), s1) <- M.listenSubst $ unifyGeneric l l'
+      unifyGeneric
         (Subst.apply s1 r)
         (Subst.apply s1 r')
-  unify (E.TInst c0 p0) (E.TInst c1 p1)
+  unifyGeneric (E.TInst c0 p0) (E.TInst c1 p1)
     | c0 == c1
       && Map.keys p0 == Map.keys p1 = (`evalStateT` mempty) . Foldable.sequence_ $
                                       Map.intersectionWith unifyChild p0 p1
-  unify (E.TVar u) t                =  varBind u t
-  unify t (E.TVar u)                =  varBind u t
-  unify (E.TRecord x) (E.TRecord y) =  unify x y
-  unify t1 t2                       =  dontUnify t1 t2
+  unifyGeneric (E.TVar u) t                =  varBind u t
+  unifyGeneric t (E.TVar u)                =  varBind u t
+  unifyGeneric (E.TRecord x) (E.TRecord y) =  unifyGeneric x y
+  unifyGeneric t1 t2                       =  dontUnify t1 t2
 
   varBind u (E.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
 instance Subst.CompositeHasVar p => Unify (E.CompositeType p) where
-  unify E.CEmpty E.CEmpty       =  return ()
-  unify (E.CVar u) t            =  varBind u t
-  unify t (E.CVar u)            =  varBind u t
-  unify t@(E.CExtend f0 t0 r0)
+  unifyGeneric E.CEmpty E.CEmpty       =  return ()
+  unifyGeneric (E.CVar u) t            =  varBind u t
+  unifyGeneric t (E.CVar u)            =  varBind u t
+  unifyGeneric t@(E.CExtend f0 t0 r0)
         u@(E.CExtend f1 t1 r1)
-        | f0 == f1              =  do  ((), s) <- M.listenSubst $ unify t0 t1
-                                       unify (Subst.apply s r0)
+        | f0 == f1              =  do  ((), s) <- M.listenSubst $ unifyGeneric t0 t1
+                                       unifyGeneric (Subst.apply s r0)
                                              (Subst.apply s r1)
         | otherwise             =  unifyFlattened
                                    (FlatComposite.from t)
                                    (FlatComposite.from u)
-  unify t1 t2                   =  dontUnify t1 t2
+  unifyGeneric t1 t2                   =  dontUnify t1 t2
 
   varBind u (E.CVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t

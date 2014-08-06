@@ -55,27 +55,26 @@ instance CanSubst (Payload a) where
   apply s (Payload typ scope dat) =
     Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
-censorInfer :: TypeVars -> Infer a -> Infer a
-censorInfer typeVars act =
-  do  (val, results) <- M.listenNoTell act
-      M.tell $ M.intersectResults typeVars results
-      return val
-
 inferSubst ::
-  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
+  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (Scope, E.Val (Payload a))
 inferSubst globals scope val =
   do  prevSubst <- M.getSubst
-      (inferredVal, newResults) <- M.listen $ inferInternal Payload globals (Subst.apply prevSubst scope) val
-      return $ Subst.apply (M.subst newResults) <$> inferredVal
+      let scope' = Subst.apply prevSubst scope
+      (inferredVal, newResults) <- M.listen $ inferInternal Payload globals scope' val
+      return (scope', Subst.apply (M.subst newResults) <$> inferredVal)
 
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
 -- much faster than a polymorphic monad underlying the Infer monad
 -- allowing global access.
+-- Use loadInfer for a safer interface
 infer ::
   Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
-infer globals scope =
-  censorInfer (Subst.freeVars scope) . inferSubst globals scope
+infer globals scope val =
+  do  ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
+      M.tell $ results
+        { M.subst = Subst.intersect (Subst.freeVars scope') $ M.subst results }
+      return val'
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (E.TypeVar (E.CompositeType p))
 

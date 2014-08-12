@@ -1,9 +1,10 @@
 module Lamdu.Infer.Update
-  ( update
+  ( update, updatePayload
   ) where
 
 import Lamdu.Infer (Infer)
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
@@ -16,3 +17,8 @@ update :: E.Type -> Infer E.Type
 update typ =
   do  s <- M.getSubst
       return $ Subst.apply s typ
+
+updatePayload :: Infer.Payload a -> Infer (Infer.Payload a)
+updatePayload (Infer.Payload typ scope dat) =
+  do  s <- M.getSubst
+      return $ Infer.Payload (Subst.apply s typ) (Subst.apply s scope) dat

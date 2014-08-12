@@ -1,18 +1,20 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr
   ( Identifier(..)
   , ValLeaf(..)
   , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
   , Val(..), valBody, valPayload
   , ValVar(..)
-  , CompositeType(..), ProductType
-  , Type(..), TypeVar(..), Product
+  , CompositeType(..), compositeTypeTypes
+  , ProductType
+  , Type(..), typeNextLayer, intType
+  , TypeVar(..), Product
   , GlobalId(..), TypeId(..)
   , Tag(..), TypeParamId(..)
   , (~>)
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), Applicative(..))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
@@ -26,6 +28,7 @@ import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
+import qualified Control.Lens as Lens
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -126,6 +129,11 @@ data CompositeType p = CExtend Tag Type (CompositeType p)
 instance NFData (CompositeType p) where rnf = genericRnf
 instance Binary (CompositeType p)
 
+compositeTypeTypes :: Lens.Traversal' (CompositeType p) Type
+compositeTypeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypeTypes f rest
+compositeTypeTypes _ CEmpty = pure CEmpty
+compositeTypeTypes _ (CVar tv) = pure (CVar tv)
+
 type ProductType = CompositeType Product
 
 data Type    =  TVar (TypeVar Type)
@@ -135,6 +143,17 @@ data Type    =  TVar (TypeVar Type)
   deriving (Generic, Show)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
+
+-- | Traverse direct types within a type
+typeNextLayer :: Lens.Traversal' Type Type
+typeNextLayer _ (TVar tv) = pure (TVar tv)
+typeNextLayer f (TFun a r) = TFun <$> f a <*> f r
+typeNextLayer f (TInst tid m) = TInst tid <$> Lens.traverse f m
+typeNextLayer f (TRecord p) = TRecord <$> compositeTypeTypes f p
+
+-- The type of LiteralInteger
+intType :: Type
+intType = TInst "Int" Map.empty
 
 infixr 1 ~>
 (~>) :: Type -> Type -> Type

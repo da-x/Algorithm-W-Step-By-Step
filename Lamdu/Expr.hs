@@ -125,7 +125,7 @@ data Product
 data CompositeType p = CExtend Tag Type (CompositeType p)
                      | CEmpty
                      | CVar (TypeVar (CompositeType p))
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq, Ord)
 instance NFData (CompositeType p) where rnf = genericRnf
 instance Binary (CompositeType p)
 
@@ -140,7 +140,7 @@ data Type    =  TVar (TypeVar Type)
              |  TFun Type Type
              |  TInst TypeId (Map TypeParamId Type)
              |  TRecord ProductType
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
 

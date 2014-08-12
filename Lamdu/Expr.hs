@@ -71,21 +71,21 @@ instance Binary ValLeaf
 data Apply expr = Apply
   { _applyFunc :: expr
   , _applyArg :: expr
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
 
 data GetField expr = GetField
   { _getFieldRecord :: expr
   , _getFieldTag :: Tag
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
   { _lamParamId :: ValVar
   , _lamResult :: expr
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 instance Binary exp => Binary (Lam exp)
 
@@ -93,7 +93,7 @@ data RecExtend expr = RecExtend
   { _recTag :: Tag
   , _recFieldVal :: expr
   , _recRest :: expr
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
 
@@ -103,14 +103,15 @@ data ValBody exp
   |  VGetField {-# UNPACK #-}!(GetField exp)
   |  VRecExtend {-# UNPACK #-}!(RecExtend exp)
   |  VLeaf ValLeaf
-  deriving (Functor, Foldable, Traversable, Generic, Show)
+  deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+-- NOTE: Careful of Eq, it's not alpha-eq!
 instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
 instance Binary exp => Binary (ValBody exp)
 
 data Val a = Val
   { _valPayload :: a
   , _valBody :: !(ValBody (Val a))
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
 instance Binary a => Binary (Val a)
 

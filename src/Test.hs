@@ -83,6 +83,8 @@ exps =
 
   , eLet "f" (lambda "r" ("x" $= int 3)) $
     \f -> f $$ ("x" $= int 2) emptyRec
+
+  , "x" $= int 1 $ E.Val () $ E.VLeaf $ E.VHole
   ]
 
 test :: E.Val () -> IO ()

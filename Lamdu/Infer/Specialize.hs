@@ -7,7 +7,7 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.PositionVars (PositionVars(..), positionVars)
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst

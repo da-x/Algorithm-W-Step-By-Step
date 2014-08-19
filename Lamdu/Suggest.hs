@@ -7,6 +7,7 @@ import Control.Monad.Trans.State (State, state)
 import Data.String (IsString(..))
 import System.Random (RandomGen, random)
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 
 suggestValue :: RandomGen g => E.Type -> State g (E.Val ())
 suggestValue E.TVar{}              = return $ E.Val () $ E.VLeaf E.VHole

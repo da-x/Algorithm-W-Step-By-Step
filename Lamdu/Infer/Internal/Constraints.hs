@@ -9,7 +9,7 @@ import Lamdu.Infer.Error (Error(FieldForbidden))
 import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 
 applySubst ::

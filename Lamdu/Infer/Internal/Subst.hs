@@ -11,7 +11,7 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 
 type SubSubst t = Map (E.TypeVar t) t

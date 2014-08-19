@@ -7,6 +7,7 @@ module Lamdu.Infer.Error
 import Text.PrettyPrint ((<+>), Doc)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 
 data Error
   = FieldAlreadyInRecord E.Tag E.ProductType

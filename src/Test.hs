@@ -13,6 +13,7 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
+import qualified Lamdu.Expr.Type as E
 import qualified Text.PrettyPrint as PP
 
 eLet :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()

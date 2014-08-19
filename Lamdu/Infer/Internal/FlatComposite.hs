@@ -9,7 +9,7 @@ import Control.Lens (Lens')
 import Control.Lens.Operators
 import Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 
 data FlatComposite p = FlatComposite
   { _fields :: Map E.Tag E.Type

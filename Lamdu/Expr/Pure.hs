@@ -4,6 +4,7 @@ module Lamdu.Expr.Pure
 
 import Prelude hiding (abs)
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 
 abs :: E.ValVar -> E.Val () -> E.Val ()
 abs name body = E.Val () $ E.VAbs $ E.Lam name body

@@ -13,7 +13,7 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 
 data TypeVars = TypeVars (Set (E.TypeVar E.Type)) (Set (E.TypeVar E.ProductType))
   deriving (Eq, Generic, Show)

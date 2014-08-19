@@ -14,6 +14,7 @@ import GHC.Generics (Generic)
 import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 newtype Scope = Scope { typeOfVar :: Map E.ValVar E.Type }

@@ -5,7 +5,7 @@ module Lamdu.Infer.Internal.PositionVars
 import Data.Monoid (Monoid(..), (<>))
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Internal.Subst as Subst
 

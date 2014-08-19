@@ -26,7 +26,7 @@ import Lamdu.Infer.Internal.Subst (Subst)
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Subst as Subst
 

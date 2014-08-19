@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
+import qualified Lamdu.Expr.Type as E
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun

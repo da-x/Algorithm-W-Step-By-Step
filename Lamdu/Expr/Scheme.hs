@@ -13,7 +13,7 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Text.PrettyPrint as PP
 
 data Scheme = Scheme

@@ -5,6 +5,7 @@ module Lamdu.Infer.Update
 import Data.Traversable (traverse)
 import Lamdu.Infer (Infer)
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst

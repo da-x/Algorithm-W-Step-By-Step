@@ -14,7 +14,7 @@ import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite

@@ -27,6 +27,7 @@ import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import Lamdu.Infer.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M

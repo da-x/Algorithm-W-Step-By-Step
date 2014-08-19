@@ -19,9 +19,12 @@ import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Expr.Identifier (Identifier)
+import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Tag)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
+import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 newtype Var = Var { vvName :: Identifier }
@@ -56,6 +59,7 @@ instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
   { _lamParamId :: Var
+  , _lamParamTypeTemplate :: Scheme
   , _lamResult :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
@@ -102,10 +106,17 @@ pPrintPrecBody lvl prec b =
   BLeaf LHole               -> PP.text "?"
   BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
                                    pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-  BAbs (Lam n e)            -> prettyParen (0 < prec) $
+  BAbs (Lam n t e)          -> prettyParen (0 < prec) $
                                PP.char '\\' <> pPrint n <+>
+                               ( if nullTemplate t
+                                 then mempty
+                                 else PP.text "::" <+> pPrint t
+                               ) <+>
                                PP.text "->" <+>
                                pPrint e
+    where
+      nullTemplate (Scheme vars c (T.TVar v)) = c == mempty && TypeVars.newVar v == vars
+      nullTemplate _ = False
   BGetField (GetField e n)  -> prettyParen (12 < prec) $
                                pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
   BLeaf LRecEmpty           -> PP.text "V{}"

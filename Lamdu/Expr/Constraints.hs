@@ -16,11 +16,11 @@ import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
-  { forbiddenRecordFields :: Map (E.TypeVar E.ProductType) (Set E.Tag)
+  { forbiddenRecordFields :: Map (T.TypeVar T.ProductType) (Set T.Tag)
   } deriving (Generic, Eq, Show)
 
 instance NFData Constraints where
@@ -39,14 +39,14 @@ instance Pretty Constraints where
 
 instance Binary Constraints
 
-pPrintConstraint :: E.TypeVar E.ProductType -> Set E.Tag -> PP.Doc
+pPrintConstraint :: T.TypeVar T.ProductType -> Set T.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =
   PP.text "{" <>
   (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
   PP.text "}" <+>
   PP.text "∉" <+> pPrint tv
 
-applyRenames :: Map (E.TypeVar E.ProductType) (E.TypeVar E.ProductType) -> Constraints -> Constraints
+applyRenames :: Map (T.TypeVar T.ProductType) (T.TypeVar T.ProductType) -> Constraints -> Constraints
 applyRenames renames (Constraints m) =
   Constraints $ Map.mapKeys rename m
   where

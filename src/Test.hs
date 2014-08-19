@@ -13,7 +13,7 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 import qualified Text.PrettyPrint as PP
 
 eLet :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
@@ -35,11 +35,11 @@ infixl 4 $$
 ($$) = P.app
 
 infixl 9 $.
-($.) :: E.Val () -> E.Tag -> E.Val ()
+($.) :: E.Val () -> T.Tag -> E.Val ()
 ($.) = P.getField
 
 infixl 3 $=
-($=) :: E.Tag -> E.Val () -> E.Val () -> E.Val ()
+($=) :: T.Tag -> E.Val () -> E.Val () -> E.Val ()
 ($=) = P.recExtend
 
 exps :: [E.Val ()]

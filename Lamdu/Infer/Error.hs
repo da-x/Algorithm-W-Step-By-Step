@@ -7,11 +7,11 @@ module Lamdu.Infer.Error
 import Text.PrettyPrint ((<+>), Doc)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 
 data Error
-  = FieldAlreadyInRecord E.Tag E.ProductType
-  | FieldForbidden E.Tag (E.TypeVar E.ProductType) E.ProductType
+  = FieldAlreadyInRecord T.Tag T.ProductType
+  | FieldForbidden T.Tag (T.TypeVar T.ProductType) T.ProductType
   | IncompatibleCompositeTypes Doc Doc
   | MissingGlobal E.GlobalId
   | OccursCheckFail Doc Doc

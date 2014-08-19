@@ -9,7 +9,7 @@ import Lamdu.Infer.Error (Error(FieldForbidden))
 import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 
 applySubst ::
@@ -24,9 +24,9 @@ applySubst (Subst _ recordSubsts) (Constraints c) =
       Just recType ->
         go recType
         where
-          go E.CEmpty             = Right []
-          go (E.CVar newVar)      = Right [(newVar, forbidden)]
-          go (E.CExtend f _ rest)
+          go T.CEmpty             = Right []
+          go (T.CVar newVar)      = Right [(newVar, forbidden)]
+          go (T.CExtend f _ rest)
             | Set.member f forbidden = Left $ FieldForbidden f var recType
             | otherwise              = go rest
 

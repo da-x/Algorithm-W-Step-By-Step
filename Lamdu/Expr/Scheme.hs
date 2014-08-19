@@ -9,20 +9,20 @@ import Data.Binary (Binary)
 import Data.Monoid (Monoid(..))
 import GHC.Generics (Generic)
 import Lamdu.Expr.Constraints (Constraints(..))
+import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Set as Set
-import qualified Lamdu.Expr.Type as E
 import qualified Text.PrettyPrint as PP
 
 data Scheme = Scheme
   { schemeForAll :: TypeVars
   , schemeConstraints :: Constraints
-  , schemeType :: E.Type
+  , schemeType :: Type
   } deriving (Generic, Show)
 
-mono :: E.Type -> Scheme
+mono :: Type -> Scheme
 mono x =
   Scheme
   { schemeForAll = mempty

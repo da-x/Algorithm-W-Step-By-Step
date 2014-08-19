@@ -8,18 +8,18 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.String (IsString(..))
 import Lamdu.Expr.Scheme (Scheme(..))
+import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..), HasVar(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Constraints as Constraints
-import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
-makeScheme :: E.Type -> Infer Scheme
+makeScheme :: Type -> Infer Scheme
 makeScheme t = do
   c <- M.getConstraints
   return $ Scheme freeVars (Constraints.intersect freeVars c) t
@@ -35,7 +35,7 @@ mkInstantiateSubstPart prefix =
         newVarExpr <- M.newInferredVarName prefix
         return (oldVar, newVarExpr)
 
-instantiate :: Scheme -> Infer E.Type
+instantiate :: Scheme -> Infer Type
 instantiate (Scheme (TypeVars tv rv) constraints t) =
   do
     recordSubsts <- mkInstantiateSubstPart "k" rv

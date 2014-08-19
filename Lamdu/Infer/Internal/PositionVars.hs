@@ -3,9 +3,10 @@ module Lamdu.Infer.Internal.PositionVars
   ) where
 
 import Data.Monoid (Monoid(..), (<>))
+import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
@@ -23,14 +24,14 @@ instance Monoid PositionVars where
 negatePos :: PositionVars -> PositionVars
 negatePos (PositionVars pos neg unk) = PositionVars neg pos unk
 
-positionVars :: E.Type -> PositionVars
-positionVars (E.TVar v) = mempty { pvPositive = TypeVars.newVar v }
-positionVars (E.TFun a r) = negatePos (positionVars a) <> positionVars r
-positionVars (E.TRecord c) = compositePositionVars c
-positionVars (E.TInst _ args) =
+positionVars :: Type -> PositionVars
+positionVars (T.TVar v) = mempty { pvPositive = TypeVars.newVar v }
+positionVars (T.TFun a r) = negatePos (positionVars a) <> positionVars r
+positionVars (T.TRecord c) = compositePositionVars c
+positionVars (T.TInst _ args) =
   mempty { pvUnknown = mconcat $ map Subst.freeVars $ Map.elems args }
 
-compositePositionVars :: TypeVars.CompositeHasVar p => E.CompositeType p -> PositionVars
-compositePositionVars (E.CVar v) = mempty { pvPositive = TypeVars.newVar v }
-compositePositionVars (E.CExtend _ t c) = positionVars t <> compositePositionVars c
-compositePositionVars E.CEmpty = mempty
+compositePositionVars :: TypeVars.CompositeHasVar p => T.CompositeType p -> PositionVars
+compositePositionVars (T.CVar v) = mempty { pvPositive = TypeVars.newVar v }
+compositePositionVars (T.CExtend _ t c) = positionVars t <> compositePositionVars c
+compositePositionVars T.CEmpty = mempty

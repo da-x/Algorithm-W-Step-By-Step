@@ -8,6 +8,7 @@ import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Scheme (Scheme(..))
+import Lamdu.Expr.Type (Type)
 import Lamdu.Infer (TypeVars(..), infer, plType, initialContext, run, emptyScope)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -15,7 +16,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
@@ -23,7 +24,7 @@ import qualified Lamdu.Expr.Type as E
 lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
 lambda varName mkBody = P.abs varName (mkBody (P.var varName))
 
-lambdaRecord :: [E.Tag] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
+lambdaRecord :: [T.Tag] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (P.getField paramsRec) names
@@ -31,10 +32,10 @@ lambdaRecord names mkBody =
 whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
-record :: [(E.Tag, E.Type)] -> E.Type
-record = E.TRecord . foldr (uncurry E.CExtend) E.CEmpty
+record :: [(T.Tag, Type)] -> Type
+record = T.TRecord . foldr (uncurry T.CExtend) T.CEmpty
 
-eRecord :: [(E.Tag, E.Val ())] -> E.Val ()
+eRecord :: [(T.Tag, E.Val ())] -> E.Val ()
 eRecord = foldr (uncurry P.recExtend) P.recEmpty
 
 infixl 4 $$
@@ -42,12 +43,12 @@ infixl 4 $$
 ($$) = P.app
 
 infixl 4 $$:
-($$:) :: E.Val () -> [(E.Tag, E.Val ())] -> E.Val ()
+($$:) :: E.Val () -> [(T.Tag, E.Val ())] -> E.Val ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>
-(~>) :: E.Type -> E.Type -> E.Type
-(~>) = E.TFun
+(~>) :: Type -> Type -> Type
+(~>) = T.TFun
 
 getDef :: E.GlobalId -> E.Val ()
 getDef = P.global
@@ -55,20 +56,20 @@ getDef = P.global
 literalInteger :: Integer -> E.Val ()
 literalInteger = P.litInt
 
-integerType :: E.Type
-integerType = E.TInst "Int" Map.empty
+integerType :: Type
+integerType = T.TInst "Int" Map.empty
 
-boolType :: E.Type
-boolType = E.TInst "Bool" Map.empty
+boolType :: Type
+boolType = T.TInst "Bool" Map.empty
 
-forAll :: [E.TypeVar E.Type] -> ([E.Type] -> E.Type) -> Scheme
+forAll :: [T.TypeVar Type] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
-  Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map E.TVar tvs
+  Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map T.TVar tvs
 
-listOf :: E.Type -> E.Type
-listOf = E.TInst "List" . Map.singleton "elem"
+listOf :: Type -> Type
+listOf = T.TInst "List" . Map.singleton "elem"
 
-infixType :: E.Type -> E.Type -> E.Type -> E.Type
+infixType :: Type -> Type -> Type -> Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
 infixArgs :: E.Val () -> E.Val () -> E.Val ()

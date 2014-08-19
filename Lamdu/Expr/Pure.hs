@@ -4,7 +4,7 @@ module Lamdu.Expr.Pure
 
 import Prelude hiding (abs)
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Expr.Type as E
+import qualified Lamdu.Expr.Type as T
 
 abs :: E.ValVar -> E.Val () -> E.Val ()
 abs name body = E.Val () $ E.VAbs $ E.Lam name body
@@ -27,10 +27,10 @@ recEmpty = E.Val () $ E.VLeaf E.VRecEmpty
 app :: E.Val () -> E.Val () -> E.Val ()
 app f x = E.Val () $ E.VApp $ E.Apply f x
 
-recExtend :: E.Tag -> E.Val () -> E.Val () -> E.Val ()
+recExtend :: T.Tag -> E.Val () -> E.Val () -> E.Val ()
 recExtend name typ rest = E.Val () $ E.VRecExtend $ E.RecExtend name typ rest
 
-getField :: E.Val () -> E.Tag -> E.Val ()
+getField :: E.Val () -> T.Tag -> E.Val ()
 getField r n = E.Val () $ E.VGetField $ E.GetField r n
 
 hole :: E.Val ()

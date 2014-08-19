@@ -3,9 +3,9 @@ module Lamdu.Infer.Update
   ) where
 
 import Data.Traversable (traverse)
+import Lamdu.Expr.Type (Type)
 import Lamdu.Infer (Infer)
 import qualified Lamdu.Expr as E
-import qualified Lamdu.Expr.Type as E
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -15,7 +15,7 @@ import qualified Lamdu.Infer.Internal.Subst as Subst
 -- variables that have known substitutions. To update old types to
 -- contain knowledge from all accumulated substitutions, use this
 -- action.
-update :: E.Type -> Infer E.Type
+update :: Type -> Infer Type
 update typ =
   do  s <- M.getSubst
       return $ Subst.apply s typ

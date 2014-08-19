@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Expr.Scheme
-  ( Scheme(..), mono, any
+  ( Scheme(..), make, mono, any
   ) where
 
 import Prelude hiding (any)
@@ -16,6 +16,7 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Set as Set
+import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
@@ -25,6 +26,12 @@ data Scheme = Scheme
   , schemeConstraints :: Constraints
   , schemeType :: Type
   } deriving (Generic, Show)
+
+make :: Constraints -> Type -> Scheme
+make c t =
+  Scheme freeVars (Constraints.intersect freeVars c) t
+  where
+    freeVars = TypeVars.free t
 
 mono :: Type -> Scheme
 mono x =

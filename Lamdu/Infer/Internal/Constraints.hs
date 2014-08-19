@@ -1,16 +1,14 @@
 module Lamdu.Infer.Internal.Constraints
-  ( applySubst, intersect
+  ( applySubst
   ) where
 
 import Control.Applicative ((<$>))
 import Lamdu.Expr.Constraints (Constraints(..))
-import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error(FieldForbidden))
 import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
-import qualified Lamdu.Expr.TypeVars as TypeVars
 
 applySubst ::
   Subst -> Constraints -> Either Error Constraints
@@ -29,9 +27,3 @@ applySubst (Subst _ recordSubsts) (Constraints c) =
           go (T.CExtend f _ rest)
             | Set.member f forbidden = Left $ FieldForbidden f var recType
             | otherwise              = go rest
-
-intersect :: TypeVars -> Constraints -> Constraints
-intersect tvs (Constraints c) =
-  Constraints (Map.filterWithKey inTVs c)
-  where
-    inTVs rtv _ = rtv `TypeVars.member` tvs

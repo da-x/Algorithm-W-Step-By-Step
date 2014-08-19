@@ -2,6 +2,7 @@
 module Lamdu.Expr.Constraints
   ( Constraints(..)
   , applyRenames
+  , intersect
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -12,11 +13,13 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import GHC.Generics (Generic)
+import Lamdu.Expr.TypeVars (TypeVars)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
@@ -51,3 +54,9 @@ applyRenames renames (Constraints m) =
   Constraints $ Map.mapKeys rename m
   where
     rename x = fromMaybe x $ Map.lookup x renames
+
+intersect :: TypeVars -> Constraints -> Constraints
+intersect tvs (Constraints c) =
+  Constraints (Map.filterWithKey inTVs c)
+  where
+    inTVs rtv _ = rtv `TypeVars.member` tvs

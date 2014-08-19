@@ -29,7 +29,6 @@ import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import Lamdu.Infer.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
-import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
@@ -133,7 +132,7 @@ inferInternal f globals =
             ((t, e'), s) <- M.listenSubst $ go locals e
             ((), su) <-
               M.listenSubst $ unify (Subst.apply s t) $
-              T.TRecord $ T.CExtend name tv $ TypeVars.liftVar tvRecName
+              T.TRecord $ T.CExtend name tv $ T.liftVar tvRecName
             return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
       V.BRecExtend (V.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
@@ -151,7 +150,7 @@ inferInternal f globals =
               _ -> do
                 tv <- M.newInferredVarName "r"
                 M.tellConstraint tv name
-                let tve = TypeVars.liftVar tv
+                let tve = T.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ T.TRecord tve
                 return $ Subst.apply s tve
             return $ mkResult (V.BRecExtend (V.RecExtend name e1' e2')) $

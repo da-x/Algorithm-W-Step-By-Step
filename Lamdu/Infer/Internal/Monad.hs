@@ -19,7 +19,6 @@ import Control.Monad.Trans.State (StateT(..))
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Lamdu.Expr.Constraints (Constraints(..))
-import Lamdu.Expr.TypeVars (HasVar(..))
 import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error)
 import Lamdu.Infer.Internal.Subst (Subst)
@@ -120,8 +119,8 @@ newInferredVarName prefix =
       State.put oldCtx{ctxState = (ctxState oldCtx){inferSupply = oldSupply+1}}
       return $ fromString $ prefix ++ show oldSupply
 
-newInferredVar :: HasVar t => String -> Infer t
-newInferredVar = fmap liftVar . newInferredVarName
+newInferredVar :: T.LiftVar t => String -> Infer t
+newInferredVar = fmap T.liftVar . newInferredVarName
 
 listenSubst :: Infer a -> Infer (a, Subst)
 listenSubst x = listen x <&> _2 %~ subst

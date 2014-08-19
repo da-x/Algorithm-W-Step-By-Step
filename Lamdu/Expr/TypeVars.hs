@@ -34,7 +34,6 @@ difference (TypeVars t0 r0) (TypeVars t1 r1) =
 class HasVar t where
   getVars :: TypeVars -> Set (T.Var t)
   newVars :: Set (T.Var t) -> TypeVars
-  liftVar :: T.Var t -> t
 
 newVar :: HasVar t => T.Var t -> TypeVars
 newVar = newVars . Set.singleton
@@ -42,7 +41,6 @@ newVar = newVars . Set.singleton
 instance HasVar Type where
   getVars (TypeVars vs _) = vs
   newVars vs = TypeVars vs mempty
-  liftVar = T.TVar
 
 class CompositeHasVar p where
   compositeGetVars :: TypeVars -> Set (T.Var (T.Composite p))
@@ -55,4 +53,3 @@ instance CompositeHasVar T.Product where
 instance CompositeHasVar p => HasVar (T.Composite p) where
   getVars = compositeGetVars
   newVars = compositeNewVars
-  liftVar = T.CVar

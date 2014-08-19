@@ -9,12 +9,13 @@ import Data.Set (Set)
 import Data.String (IsString(..))
 import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.TypeVars (TypeVars(..), HasVar(..))
+import Lamdu.Expr.TypeVars (TypeVars(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Constraints as Constraints
+import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -40,8 +41,8 @@ instantiate (Scheme (TypeVars tv rv) constraints t) =
   do
     recordSubsts <- mkInstantiateSubstPart "k" rv
     subst <-
-      (`Subst` fmap liftVar recordSubsts) .
-      fmap liftVar
+      (`Subst` fmap T.liftVar recordSubsts) .
+      fmap T.liftVar
       <$> mkInstantiateSubstPart "i" tv
     M.tellConstraints $ Constraints.applyRenames recordSubsts constraints
     return $ Subst.apply subst t

@@ -22,12 +22,14 @@ library
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Infer.Load
+                 ,     Lamdu.Infer.Specialize
                  ,     Lamdu.Infer.Unify
                  ,     Lamdu.Infer.Update
                  ,     Lamdu.Suggest
   other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.FlatComposite
                ,       Lamdu.Infer.Internal.Monad
+               ,       Lamdu.Infer.Internal.PositionVars
                ,       Lamdu.Infer.Internal.Scheme
                ,       Lamdu.Infer.Internal.Scope
                ,       Lamdu.Infer.Internal.Subst

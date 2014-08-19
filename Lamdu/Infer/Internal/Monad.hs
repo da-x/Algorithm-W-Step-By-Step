@@ -5,7 +5,7 @@ module Lamdu.Infer.Internal.Monad
   , InferState(..)
   , Infer(..)
   , throwError
-  , tell, tellSubst, tellConstraint, tellConstraints
+  , tell, tellSubst, tellSubsts, tellConstraint, tellConstraints
   , listen, listenNoTell
   , getConstraints, getSubst
   , newInferredVar, newInferredVarName
@@ -80,6 +80,9 @@ tell w =
     !newRes <- appendResults (ctxResults c) w
     Right ((), c { ctxResults = newRes} )
 {-# INLINE tell #-}
+
+tellSubsts :: Subst -> Infer ()
+tellSubsts s = tell $ emptyResults { subst = s }
 
 tellSubst :: Subst.HasVar t => E.TypeVar t -> t -> Infer ()
 tellSubst v t = tell $ emptyResults { subst = Subst.new v t }

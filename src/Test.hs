@@ -5,6 +5,8 @@ import Control.Lens.Tuple
 import Control.Monad.State (evalStateT, runState, modify', get)
 import Data.Traversable (traverse)
 import Lamdu.Infer
+import Lamdu.Infer.Specialize
+import Lamdu.Infer.Update
 import Lamdu.Expr.Pretty
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -89,11 +91,12 @@ exps =
 
 test :: E.Val () -> IO ()
 test e =
-    case inferredType of
+    case result of
         Left err ->
           putStrLn $ show (pPrintValUnannotated e $+$ pPrint err)
-        Right (scheme, val) -> do
+        Right (scheme, val, specializedScheme) -> do
           print $ pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme
+          print $ "Specialized to:" <+> pPrint specializedScheme
           let next = modify' (+1) >> get
               tag x =
                 do  n <- zoom _1 next
@@ -104,11 +107,15 @@ test e =
           let indent = PP.hcat $ replicate 4 PP.space
           mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
     where
-        inferredType =
+        result =
           (`evalStateT` initialContext) . run $ do
             e' <- infer M.empty emptyScope e
-            s <- makeScheme $ e' ^. E.valPayload . plType
-            return (s, e')
+            let t = e' ^. E.valPayload . plType
+            s <- makeScheme t
+            specialize t
+            t' <- update t
+            s' <- makeScheme t'
+            return (s, e', s')
 
 main :: IO ()
 main = mapM_ test exps

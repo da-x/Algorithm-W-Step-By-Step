@@ -2,7 +2,6 @@ module Lamdu.Infer.Internal.Subst
   ( HasVar(..), CompositeHasVar
   , Subst(..), intersect
   , CanSubst(..)
-  , difference
   ) where
 
 import Control.Applicative ((<$>))
@@ -12,7 +11,6 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.TypeVars as TypeVars
 
@@ -36,10 +34,6 @@ intersectMapSet s m = Map.intersection m $ Map.fromSet (const ()) s
 intersect :: TypeVars -> Subst -> Subst
 intersect (TypeVars tvs rtvs) (Subst ts rs) =
   Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
-
-difference :: TypeVars -> TypeVars -> TypeVars
-difference (TypeVars t0 r0) (TypeVars t1 r1) =
-  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
 
 class CanSubst a where
   freeVars :: a -> TypeVars

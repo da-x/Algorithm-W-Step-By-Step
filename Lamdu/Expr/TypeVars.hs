@@ -3,6 +3,7 @@ module Lamdu.Expr.TypeVars
   ( TypeVars(..)
   , HasVar(..), CompositeHasVar(..)
   , newVar
+  , difference
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -24,6 +25,10 @@ instance Monoid TypeVars where
     TypeVars (mappend t0 t1) (mappend r0 r1)
 
 instance Binary TypeVars
+
+difference :: TypeVars -> TypeVars -> TypeVars
+difference (TypeVars t0 r0) (TypeVars t1 r1) =
+  TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
 
 class HasVar t where
   getVars :: TypeVars -> Set (E.TypeVar t)

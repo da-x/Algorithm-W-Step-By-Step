@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.TypeVars
   ( TypeVars(..)
+  , Free(..)
   , VarKind(..), CompositeVarKind(..)
   , difference
   ) where
@@ -8,10 +9,11 @@ module Lamdu.Expr.TypeVars
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.Binary (Binary)
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..), (<>))
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Lamdu.Expr.Type (Type)
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
 
@@ -29,6 +31,19 @@ instance Binary TypeVars
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =
   TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
+
+class Free t where free :: t -> TypeVars
+
+instance Free Type where
+  free (T.TVar n)      =  singleton n
+  free (T.TInst _ p)   =  mconcat $ map free $ Map.elems p
+  free (T.TFun t1 t2)  =  free t1 <> free t2
+  free (T.TRecord r)   =  free r
+
+instance CompositeVarKind p => Free (T.Composite p) where
+  free T.CEmpty          = mempty
+  free (T.CVar n)        = singleton n
+  free (T.CExtend _ t r) = free t <> free r
 
 class VarKind t where
   member :: T.Var t -> TypeVars -> Bool

@@ -36,8 +36,7 @@ intersect :: TypeVars -> Subst -> Subst
 intersect (TypeVars tvs rtvs) (Subst ts rs) =
   Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
 
-class CanSubst a where
-  freeVars :: a -> TypeVars
+class TypeVars.Free a => CanSubst a where
   apply   :: Subst -> a -> a
 
 class (TypeVars.VarKind t, CanSubst t) => HasVar t where
@@ -48,20 +47,11 @@ class TypeVars.CompositeVarKind p => CompositeHasVar p where
   compositeGet :: Subst -> SubSubst (T.Composite p)
 
 instance CompositeHasVar p => CanSubst (T.Composite p) where
-  freeVars T.CEmpty          = mempty
-  freeVars (T.CVar n)        = TypeVars.singleton n
-  freeVars (T.CExtend _ t r) = freeVars t `mappend` freeVars r
-
   apply _ T.CEmpty          = T.CEmpty
   apply s (T.CVar n)        = fromMaybe (T.CVar n) $ Map.lookup n (compositeGet s)
   apply s (T.CExtend n t r) = T.CExtend n (apply s t) (apply s r)
 
 instance CanSubst Type where
-  freeVars (T.TVar n)      =  TypeVars.singleton n
-  freeVars (T.TInst _ p)   =  mconcat $ map freeVars $ Map.elems p
-  freeVars (T.TFun t1 t2)  =  freeVars t1 `mappend` freeVars t2
-  freeVars (T.TRecord r)   =  freeVars r
-
   apply s (T.TVar n)      = fromMaybe (T.TVar n) $ Map.lookup n (substTypes s)
   apply s (T.TInst n p)   = T.TInst n $ apply s <$> p
   apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)

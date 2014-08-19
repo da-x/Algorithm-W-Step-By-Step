@@ -16,6 +16,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -25,7 +26,7 @@ makeScheme t = do
   c <- M.getConstraints
   return $ Scheme freeVars (Constraints.intersect freeVars c) t
   where
-    freeVars = Subst.freeVars t
+    freeVars = TypeVars.free t
 
 mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)
 mkInstantiateSubstPart prefix =

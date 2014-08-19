@@ -29,6 +29,7 @@ import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import Lamdu.Infer.Unify (unify)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
@@ -55,9 +56,11 @@ plData :: Lens' (Payload a) a
 plData f pl = (\t' -> pl { _plData = t' }) <$> f (_plData pl)
 {-# INLINE plData #-}
 
+instance TypeVars.Free (Payload a) where
+  free (Payload typ scope _dat) =
+    TypeVars.free typ <> TypeVars.free scope
+
 instance CanSubst (Payload a) where
-  freeVars (Payload typ scope _dat) =
-    Subst.freeVars typ <> Subst.freeVars scope
   apply s (Payload typ scope dat) =
     Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
@@ -79,7 +82,7 @@ infer ::
 infer globals scope val =
   do  ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
       M.tell $ results
-        { M.subst = Subst.intersect (Subst.freeVars scope') $ M.subst results }
+        { M.subst = Subst.intersect (TypeVars.free scope') $ M.subst results }
       return val'
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (T.Var (T.Composite p))

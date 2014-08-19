@@ -100,7 +100,7 @@ checkOccurs ::
   (Pretty t, Subst.HasVar t) =>
   T.Var t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
-  | var `TypeVars.member` Subst.freeVars typ =
+  | var `TypeVars.member` TypeVars.free typ =
     M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
   | otherwise =
     act

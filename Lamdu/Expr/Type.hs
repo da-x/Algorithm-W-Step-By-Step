@@ -3,8 +3,8 @@ module Lamdu.Expr.Type
   ( Type(..), Composite(..), Product
   , Var(..), Id(..), Tag(..), ParamId(..)
   , ProductVar
-  , (~>), intType
-  , compositeTypeTypes, typeNextLayer
+  , (~>), int
+  , compositeTypes, nextLayer
   ) where
 
 import Control.Applicative ((<$>), Applicative(..))
@@ -45,10 +45,10 @@ instance Binary (Composite p)
 
 type ProductVar = Var (Composite Product)
 
-compositeTypeTypes :: Lens.Traversal' (Composite p) Type
-compositeTypeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypeTypes f rest
-compositeTypeTypes _ CEmpty = pure CEmpty
-compositeTypeTypes _ (CVar tv) = pure (CVar tv)
+compositeTypes :: Lens.Traversal' (Composite p) Type
+compositeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypes f rest
+compositeTypes _ CEmpty = pure CEmpty
+compositeTypes _ (CVar tv) = pure (CVar tv)
 
 data Type    =  TVar (Var Type)
              |  TFun Type Type
@@ -59,15 +59,15 @@ instance NFData Type where rnf = genericRnf
 instance Binary Type
 
 -- | Traverse direct types within a type
-typeNextLayer :: Lens.Traversal' Type Type
-typeNextLayer _ (TVar tv) = pure (TVar tv)
-typeNextLayer f (TFun a r) = TFun <$> f a <*> f r
-typeNextLayer f (TInst tid m) = TInst tid <$> Lens.traverse f m
-typeNextLayer f (TRecord p) = TRecord <$> compositeTypeTypes f p
+nextLayer :: Lens.Traversal' Type Type
+nextLayer _ (TVar tv) = pure (TVar tv)
+nextLayer f (TFun a r) = TFun <$> f a <*> f r
+nextLayer f (TInst tid m) = TInst tid <$> Lens.traverse f m
+nextLayer f (TRecord p) = TRecord <$> compositeTypes f p
 
 -- The type of LiteralInteger
-intType :: Type
-intType = TInst "Int" Map.empty
+int :: Type
+int = TInst "Int" Map.empty
 
 infixr 1 ~>
 (~>) :: Type -> Type -> Type

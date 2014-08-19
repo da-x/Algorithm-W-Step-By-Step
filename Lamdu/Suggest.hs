@@ -12,8 +12,8 @@ import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 
 suggestValue :: RandomGen g => Type -> State g (Val ())
-suggestValue T.TVar{}              = return $ Val () $ V.VLeaf V.VHole
-suggestValue T.TInst{}             = return $ Val () $ V.VLeaf V.VHole
+suggestValue T.TVar{}              = return $ Val () $ V.VLeaf V.LHole
+suggestValue T.TInst{}             = return $ Val () $ V.VLeaf V.LHole
 suggestValue (T.TRecord composite) = suggestRecord composite
 suggestValue (T.TFun _ r)          = do
                                        param <-
@@ -23,8 +23,8 @@ suggestValue (T.TFun _ r)          = do
                                        return $ Val () $ V.VAbs $ V.Lam param res
 
 suggestRecord :: RandomGen g => T.Composite T.Product -> State g (Val ())
-suggestRecord T.CVar{}          = return $ Val () $ V.VLeaf V.VHole
-suggestRecord T.CEmpty          = return $ Val () $ V.VLeaf V.VRecEmpty
+suggestRecord T.CVar{}          = return $ Val () $ V.VLeaf V.LHole
+suggestRecord T.CEmpty          = return $ Val () $ V.VLeaf V.LRecEmpty
 suggestRecord (T.CExtend f t r) = do
                                     fv <- suggestValue t
                                     rv <- suggestRecord r

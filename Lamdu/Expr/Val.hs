@@ -30,11 +30,11 @@ newtype GlobalId = GlobalId { globalId :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 data Leaf
-  =  VVar Var
-  |  VGlobal GlobalId
-  |  VHole
-  |  VLiteralInteger Integer
-  |  VRecEmpty
+  =  LVar Var
+  |  LGlobal GlobalId
+  |  LHole
+  |  LLiteralInteger Integer
+  |  LRecEmpty
   deriving (Eq, Ord, Generic, Show)
 instance NFData Leaf where rnf = genericRnf
 instance Binary Leaf
@@ -95,10 +95,10 @@ payload f (Val pl b) = (`Val` b) <$> f pl
 pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> Body (Val pl) -> PP.Doc
 pPrintPrecBody lvl prec b =
   case b of
-  VLeaf (VVar var)          -> pPrint var
-  VLeaf (VGlobal tag)       -> pPrint tag
-  VLeaf (VLiteralInteger i) -> pPrint i
-  VLeaf VHole               -> PP.text "?"
+  VLeaf (LVar var)          -> pPrint var
+  VLeaf (LGlobal tag)       -> pPrint tag
+  VLeaf (LLiteralInteger i) -> pPrint i
+  VLeaf LHole               -> PP.text "?"
   VApp (Apply e1 e2)        -> prettyParen (10 < prec) $
                                    pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
   VAbs (Lam n e)            -> prettyParen (0 < prec) $
@@ -107,7 +107,7 @@ pPrintPrecBody lvl prec b =
                                pPrint e
   VGetField (GetField e n)  -> prettyParen (12 < prec) $
                                pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-  VLeaf VRecEmpty           -> PP.text "V{}"
+  VLeaf LRecEmpty           -> PP.text "V{}"
   VRecExtend
     (RecExtend tag val rest)  -> PP.text "{" <+>
                                  prField <>

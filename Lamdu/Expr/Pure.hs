@@ -14,16 +14,16 @@ leaf :: V.Leaf -> Val ()
 leaf = Val () . V.VLeaf
 
 var :: V.Var -> Val ()
-var = leaf . V.VVar
+var = leaf . V.LVar
 
 global :: V.GlobalId -> Val ()
-global = leaf . V.VGlobal
+global = leaf . V.LGlobal
 
 litInt :: Integer -> Val ()
-litInt = leaf . V.VLiteralInteger
+litInt = leaf . V.LLiteralInteger
 
 recEmpty :: Val ()
-recEmpty = Val () $ V.VLeaf V.VRecEmpty
+recEmpty = Val () $ V.VLeaf V.LRecEmpty
 
 app :: Val () -> Val () -> Val ()
 app f x = Val () $ V.VApp $ V.Apply f x
@@ -35,4 +35,4 @@ getField :: Val () -> T.Tag -> Val ()
 getField r n = Val () $ V.VGetField $ V.GetField r n
 
 hole :: Val ()
-hole = leaf V.VHole
+hole = leaf V.LHole

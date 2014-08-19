@@ -7,7 +7,7 @@ import qualified Data.Foldable as Foldable
 import qualified Lamdu.Expr.Val as V
 
 valBodyGlobals :: V.Body exp -> [V.GlobalId]
-valBodyGlobals (V.VLeaf (V.VGlobal g)) = [g]
+valBodyGlobals (V.VLeaf (V.LGlobal g)) = [g]
 valBodyGlobals _ = []
 
 valGlobals :: Val a -> [V.GlobalId]

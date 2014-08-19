@@ -104,17 +104,17 @@ inferInternal f globals =
       V.VLeaf leaf ->
         mkResult (V.VLeaf leaf) <$>
         case leaf of
-        V.VHole -> M.newInferredVar "h"
-        V.VVar n ->
+        V.LHole -> M.newInferredVar "h"
+        V.LVar n ->
             case Scope.lookupTypeOf n locals of
                Nothing      -> M.throwError $ Err.UnboundVariable n
                Just t       -> return t
-        V.VGlobal n ->
+        V.LGlobal n ->
             case Map.lookup n globals of
                Nothing      -> M.throwError $ Err.MissingGlobal n
                Just sigma   -> Scheme.instantiate sigma
-        V.VLiteralInteger _ -> return (T.TInst "Int" mempty)
-        V.VRecEmpty -> return $ T.TRecord T.CEmpty
+        V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
+        V.LRecEmpty -> return $ T.TRecord T.CEmpty
       V.VAbs (V.Lam n e) ->
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals

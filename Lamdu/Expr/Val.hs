@@ -5,9 +5,10 @@ module Lamdu.Expr.Val
   , Val(..), body, payload
   , Var(..)
   , GlobalId(..)
+  , pPrintUnannotated
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
@@ -125,3 +126,10 @@ instance Pretty a => Pretty (Val a) where
       [ pPrintPrecBody lvl 14 b, PP.text "{", plDoc, PP.text "}" ]
     where
       plDoc = pPrintPrec lvl 0 pl
+
+data EmptyDoc = EmptyDoc
+instance Pretty EmptyDoc where
+  pPrint _ = PP.empty
+
+pPrintUnannotated :: Val a -> PP.Doc
+pPrintUnannotated = pPrint . (EmptyDoc <$)

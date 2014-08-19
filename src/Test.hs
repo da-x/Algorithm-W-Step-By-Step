@@ -7,7 +7,6 @@ import Data.Traversable (traverse)
 import Lamdu.Infer
 import Lamdu.Infer.Specialize
 import Lamdu.Infer.Update
-import Lamdu.Expr.Pretty
 import Lamdu.Expr.Val (Val(..))
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -95,9 +94,9 @@ test :: Val () -> IO ()
 test e =
     case result of
         Left err ->
-          putStrLn $ show (pPrintValUnannotated e $+$ pPrint err)
+          putStrLn $ show (V.pPrintUnannotated e $+$ pPrint err)
         Right (scheme, val, specializedScheme) -> do
-          print $ pPrintValUnannotated val <+> PP.text "::" <+> pPrint scheme
+          print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme
           print $ "Specialized to:" <+> pPrint specializedScheme
           let next = modify' (+1) >> get
               tag x =

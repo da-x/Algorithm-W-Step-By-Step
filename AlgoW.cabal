@@ -16,7 +16,6 @@ library
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Identifier
                  ,     Lamdu.Expr.Pure
-                 ,     Lamdu.Expr.Pretty
                  ,     Lamdu.Expr.Scheme
                  ,     Lamdu.Expr.Type
                  ,     Lamdu.Expr.TypeVars

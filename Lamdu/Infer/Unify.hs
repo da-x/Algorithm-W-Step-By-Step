@@ -39,7 +39,7 @@ unifyFlatToPartial ::
 unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     M.throwError $
-    Err.IncompatibleCompositeTypes
+    Err.TypesDoNotUnity
     (pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))))
     (pPrint (closedRecord ufields))
   | otherwise = varBind tname $ FlatComposite.toRecordType $ FlatComposite uniqueUFields Nothing
@@ -68,7 +68,7 @@ unifyFlatFulls ::
 unifyFlatFulls tfields ufields
   | Map.keys tfields /= Map.keys ufields =
     M.throwError $
-    Err.IncompatibleCompositeTypes
+    Err.TypesDoNotUnity
     (pPrint (closedRecord tfields))
     (pPrint (closedRecord ufields))
   | otherwise = return mempty

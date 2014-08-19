@@ -12,7 +12,6 @@ import qualified Lamdu.Expr.Val as V
 data Error
   = FieldAlreadyInRecord T.Tag (T.Composite T.Product)
   | FieldForbidden T.Tag T.ProductVar (T.Composite T.Product)
-  | IncompatibleCompositeTypes Doc Doc
   | MissingGlobal V.GlobalId
   | OccursCheckFail Doc Doc
   | TypesDoNotUnity Doc Doc
@@ -23,8 +22,6 @@ instance Pretty Error where
     "Added field" <+> pPrint t <+> "but already in record" <+> pPrint r
   pPrint (FieldForbidden t v r) =
     "Field" <+> pPrint t <+> "forbidden in var" <+> pPrint v <+> "from record" <+> pPrint r
-  pPrint (IncompatibleCompositeTypes x y) =
-    "Incompatible composite types" <+> x <+> "vs." <+> y
   pPrint (MissingGlobal g) = "Missing global:" <+> pPrint g
   pPrint (OccursCheckFail v t) = "Occurs check fails:" <+> v <+> "vs." <+> t
   pPrint (UnboundVariable v) = "Unbound variable:" <+> pPrint v

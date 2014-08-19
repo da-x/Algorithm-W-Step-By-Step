@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.TypeVars
   ( TypeVars(..)
-  , HasVar(..), CompositeHasVar(..)
-  , newVar
+  , VarKind(..), CompositeVarKind(..)
   , difference
   ) where
 
@@ -31,25 +30,22 @@ difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0) (TypeVars t1 r1) =
   TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
 
-class HasVar t where
-  getVars :: TypeVars -> Set (T.Var t)
-  newVars :: Set (T.Var t) -> TypeVars
+class VarKind t where
+  member :: T.Var t -> TypeVars -> Bool
+  singleton :: T.Var t -> TypeVars
 
-newVar :: HasVar t => T.Var t -> TypeVars
-newVar = newVars . Set.singleton
+instance VarKind Type where
+  member v (TypeVars vs _) = v `Set.member` vs
+  singleton v = TypeVars (Set.singleton v) mempty
 
-instance HasVar Type where
-  getVars (TypeVars vs _) = vs
-  newVars vs = TypeVars vs mempty
+class CompositeVarKind p where
+  compositeMember :: T.Var (T.Composite p) -> TypeVars -> Bool
+  compositeSingleton :: T.Var (T.Composite p) -> TypeVars
 
-class CompositeHasVar p where
-  compositeGetVars :: TypeVars -> Set (T.Var (T.Composite p))
-  compositeNewVars :: Set (T.Var (T.Composite p)) -> TypeVars
+instance CompositeVarKind T.Product where
+  compositeMember v (TypeVars _ vs) = v `Set.member` vs
+  compositeSingleton = TypeVars mempty . Set.singleton
 
-instance CompositeHasVar T.Product where
-  compositeGetVars (TypeVars _ vs) = vs
-  compositeNewVars = TypeVars mempty
-
-instance CompositeHasVar p => HasVar (T.Composite p) where
-  getVars = compositeGetVars
-  newVars = compositeNewVars
+instance CompositeVarKind p => VarKind (T.Composite p) where
+  member = compositeMember
+  singleton = compositeSingleton

@@ -115,7 +115,7 @@ pPrintPrecBody lvl prec b =
                                PP.text "->" <+>
                                pPrint e
     where
-      nullTemplate (Scheme vars c (T.TVar v)) = c == mempty && TypeVars.newVar v == vars
+      nullTemplate (Scheme vars c (T.TVar v)) = c == mempty && TypeVars.singleton v == vars
       nullTemplate _ = False
   BGetField (GetField e n)  -> prettyParen (12 < prec) $
                                pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n

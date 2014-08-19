@@ -34,4 +34,4 @@ intersect :: TypeVars -> Constraints -> Constraints
 intersect tvs (Constraints c) =
   Constraints (Map.filterWithKey inTVs c)
   where
-    inTVs rtv _ = rtv `Set.member` TypeVars.getVars tvs
+    inTVs rtv _ = rtv `TypeVars.member` tvs

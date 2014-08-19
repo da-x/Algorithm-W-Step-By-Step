@@ -36,7 +36,7 @@ mono x =
 
 any :: Scheme
 any =
-  Scheme (TypeVars.newVar a) mempty (T.TVar a)
+  Scheme (TypeVars.singleton a) mempty (T.TVar a)
   where
     a = "a"
 

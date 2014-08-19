@@ -14,7 +14,6 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
@@ -101,7 +100,7 @@ checkOccurs ::
   (Pretty t, Subst.HasVar t) =>
   T.Var t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
-  | var `Set.member` TypeVars.getVars (Subst.freeVars typ) =
+  | var `TypeVars.member` Subst.freeVars typ =
     M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
   | otherwise =
     act

@@ -28,14 +28,14 @@ unify = unifyGeneric
 
 class CanSubst t => Unify t where
   unifyGeneric :: t -> t -> Infer ()
-  varBind :: T.TypeVar t -> t -> Infer ()
+  varBind :: T.Var t -> t -> Infer ()
 
-closedRecord :: Map T.Tag Type -> T.CompositeType p
+closedRecord :: Map T.Tag Type -> T.Composite p
 closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
 
 unifyFlatToPartial ::
   Subst.CompositeHasVar p =>
-  (Map T.Tag Type, T.TypeVar (T.CompositeType p)) -> Map T.Tag Type ->
+  (Map T.Tag Type, T.Var (T.Composite p)) -> Map T.Tag Type ->
   Infer ()
 unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
@@ -50,8 +50,8 @@ unifyFlatToPartial (tfields, tname) ufields
 
 unifyFlatPartials ::
   Subst.CompositeHasVar p =>
-  (Map T.Tag Type, T.TypeVar (T.CompositeType p)) ->
-  (Map T.Tag Type, T.TypeVar (T.CompositeType p)) ->
+  (Map T.Tag Type, T.Var (T.Composite p)) ->
+  (Map T.Tag Type, T.Var (T.Composite p)) ->
   Infer ()
 unifyFlatPartials (tfields, tname) (ufields, uname) =
   do  restTv <- M.newInferredVar "r"
@@ -99,7 +99,7 @@ dontUnify x y =
 
 checkOccurs ::
   (Pretty t, Subst.HasVar t) =>
-  T.TypeVar t -> t -> Infer () -> Infer ()
+  T.Var t -> t -> Infer () -> Infer ()
 checkOccurs var typ act
   | var `Set.member` TypeVars.getVars (Subst.freeVars typ) =
     M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
@@ -125,7 +125,7 @@ instance Unify Type where
   varBind u (T.TVar t) | t == u = return ()
   varBind u t = checkOccurs u t $ M.tellSubst u t
 
-instance Subst.CompositeHasVar p => Unify (T.CompositeType p) where
+instance Subst.CompositeHasVar p => Unify (T.Composite p) where
   unifyGeneric T.CEmpty T.CEmpty       =  return ()
   unifyGeneric (T.CVar u) t            =  varBind u t
   unifyGeneric t (T.CVar u)            =  varBind u t

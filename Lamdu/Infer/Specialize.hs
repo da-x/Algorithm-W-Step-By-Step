@@ -20,7 +20,7 @@ specialize t =
     pv = positionVars t
     vars = TypeVars.difference (pvNegative pv) (pvPositive pv <> pvUnknown pv)
     emptyRecord = T.TRecord T.CEmpty
-    emptyProduct :: T.ProductType
+    emptyProduct :: T.Composite T.Product
     emptyProduct = T.CEmpty
 
 substVars :: Subst.HasVar t => TypeVars -> t -> Subst.Subst

@@ -20,7 +20,7 @@ import qualified Lamdu.Expr.Type as T
 import qualified Text.PrettyPrint as PP
 
 newtype Constraints = Constraints
-  { forbiddenRecordFields :: Map (T.TypeVar T.ProductType) (Set T.Tag)
+  { forbiddenRecordFields :: Map T.ProductVar (Set T.Tag)
   } deriving (Generic, Eq, Show)
 
 instance NFData Constraints where
@@ -39,14 +39,14 @@ instance Pretty Constraints where
 
 instance Binary Constraints
 
-pPrintConstraint :: T.TypeVar T.ProductType -> Set T.Tag -> PP.Doc
+pPrintConstraint :: T.ProductVar -> Set T.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =
   PP.text "{" <>
   (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
   PP.text "}" <+>
   PP.text "∉" <+> pPrint tv
 
-applyRenames :: Map (T.TypeVar T.ProductType) (T.TypeVar T.ProductType) -> Constraints -> Constraints
+applyRenames :: Map T.ProductVar T.ProductVar -> Constraints -> Constraints
 applyRenames renames (Constraints m) =
   Constraints $ Map.mapKeys rename m
   where

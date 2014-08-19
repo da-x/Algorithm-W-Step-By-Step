@@ -16,7 +16,7 @@ import Lamdu.Expr.Type (Type)
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
 
-data TypeVars = TypeVars (Set (T.TypeVar Type)) (Set (T.TypeVar T.ProductType))
+data TypeVars = TypeVars (Set (T.Var Type)) (Set T.ProductVar)
   deriving (Eq, Generic, Show)
 instance NFData TypeVars where
   rnf = genericRnf
@@ -32,11 +32,11 @@ difference (TypeVars t0 r0) (TypeVars t1 r1) =
   TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
 
 class HasVar t where
-  getVars :: TypeVars -> Set (T.TypeVar t)
-  newVars :: Set (T.TypeVar t) -> TypeVars
-  liftVar :: T.TypeVar t -> t
+  getVars :: TypeVars -> Set (T.Var t)
+  newVars :: Set (T.Var t) -> TypeVars
+  liftVar :: T.Var t -> t
 
-newVar :: HasVar t => T.TypeVar t -> TypeVars
+newVar :: HasVar t => T.Var t -> TypeVars
 newVar = newVars . Set.singleton
 
 instance HasVar Type where
@@ -45,14 +45,14 @@ instance HasVar Type where
   liftVar = T.TVar
 
 class CompositeHasVar p where
-  compositeGetVars :: TypeVars -> Set (T.TypeVar (T.CompositeType p))
-  compositeNewVars :: Set (T.TypeVar (T.CompositeType p)) -> TypeVars
+  compositeGetVars :: TypeVars -> Set (T.Var (T.Composite p))
+  compositeNewVars :: Set (T.Var (T.Composite p)) -> TypeVars
 
 instance CompositeHasVar T.Product where
   compositeGetVars (TypeVars _ vs) = vs
   compositeNewVars = TypeVars mempty
 
-instance CompositeHasVar p => HasVar (T.CompositeType p) where
+instance CompositeHasVar p => HasVar (T.Composite p) where
   getVars = compositeGetVars
   newVars = compositeNewVars
   liftVar = T.CVar

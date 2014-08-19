@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr.Type
-  ( Type(..), CompositeType(..), Product, ProductType
-  , TypeVar(..), TypeId(..), Tag(..), TypeParamId(..)
+  ( Type(..), Composite(..), Product
+  , Var(..), Id(..), Tag(..), ParamId(..)
+  , ProductVar
   , (~>), intType
   , compositeTypeTypes, typeNextLayer
   ) where
@@ -21,38 +22,38 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
-newtype TypeVar t = TypeVar { tvName :: Identifier }
+newtype Var t = Var { tvName :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
-newtype TypeId = TypeId { typeId :: Identifier }
+newtype Id = Id { typeId :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype Tag = Tag { tagName :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
-newtype TypeParamId = TypeParamId { typeParamId :: Identifier }
+newtype ParamId = ParamId { typeParamId :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 data Product
 
-data CompositeType p = CExtend Tag Type (CompositeType p)
+data Composite p = CExtend Tag Type (Composite p)
                      | CEmpty
-                     | CVar (TypeVar (CompositeType p))
+                     | CVar (Var (Composite p))
   deriving (Generic, Show, Eq, Ord)
-instance NFData (CompositeType p) where rnf = genericRnf
-instance Binary (CompositeType p)
+instance NFData (Composite p) where rnf = genericRnf
+instance Binary (Composite p)
 
-compositeTypeTypes :: Lens.Traversal' (CompositeType p) Type
+type ProductVar = Var (Composite Product)
+
+compositeTypeTypes :: Lens.Traversal' (Composite p) Type
 compositeTypeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypeTypes f rest
 compositeTypeTypes _ CEmpty = pure CEmpty
 compositeTypeTypes _ (CVar tv) = pure (CVar tv)
 
-type ProductType = CompositeType Product
-
-data Type    =  TVar (TypeVar Type)
+data Type    =  TVar (Var Type)
              |  TFun Type Type
-             |  TInst TypeId (Map TypeParamId Type)
-             |  TRecord ProductType
+             |  TInst Id (Map ParamId Type)
+             |  TRecord (Composite Product)
   deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
@@ -90,7 +91,7 @@ instance Pretty Type where
         showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
     TRecord r -> pPrint r
 
-instance Pretty (CompositeType p) where
+instance Pretty (Composite p) where
   pPrint CEmpty = PP.text "T{}"
   pPrint x =
     PP.text "{" <+> go PP.empty x <+> PP.text "}"

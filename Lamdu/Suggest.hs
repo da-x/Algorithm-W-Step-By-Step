@@ -21,7 +21,7 @@ suggestValue (T.TFun _ r)          = do
                                        res <- suggestValue r
                                        return $ E.Val () $ E.VAbs $ E.Lam param res
 
-suggestRecord :: RandomGen g => T.ProductType -> State g (E.Val ())
+suggestRecord :: RandomGen g => T.Composite T.Product -> State g (E.Val ())
 suggestRecord T.CVar{}          = return $ E.Val () $ E.VLeaf E.VHole
 suggestRecord T.CEmpty          = return $ E.Val () $ E.VLeaf E.VRecEmpty
 suggestRecord (T.CExtend f t r) = do

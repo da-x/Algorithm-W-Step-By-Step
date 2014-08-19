@@ -31,7 +31,7 @@ positionVars (T.TRecord c) = compositePositionVars c
 positionVars (T.TInst _ args) =
   mempty { pvUnknown = mconcat $ map Subst.freeVars $ Map.elems args }
 
-compositePositionVars :: TypeVars.CompositeHasVar p => T.CompositeType p -> PositionVars
+compositePositionVars :: TypeVars.CompositeHasVar p => T.Composite p -> PositionVars
 compositePositionVars (T.CVar v) = mempty { pvPositive = TypeVars.newVar v }
 compositePositionVars (T.CExtend _ t c) = positionVars t <> compositePositionVars c
 compositePositionVars T.CEmpty = mempty

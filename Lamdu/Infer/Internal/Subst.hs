@@ -15,11 +15,11 @@ import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 
-type SubSubst t = Map (T.TypeVar t) t
+type SubSubst t = Map (T.Var t) t
 
 data Subst = Subst
   { substTypes :: SubSubst Type
-  , substRecordTypes :: SubSubst T.ProductType
+  , substRecordTypes :: SubSubst (T.Composite T.Product)
   }
 
 instance Monoid Subst where
@@ -41,13 +41,13 @@ class CanSubst a where
   apply   :: Subst -> a -> a
 
 class (TypeVars.HasVar t, CanSubst t) => HasVar t where
-  new :: T.TypeVar t -> t -> Subst
+  new :: T.Var t -> t -> Subst
 
 class TypeVars.CompositeHasVar p => CompositeHasVar p where
-  compositeNew :: SubSubst (T.CompositeType p) -> Subst
-  compositeGet :: Subst -> SubSubst (T.CompositeType p)
+  compositeNew :: SubSubst (T.Composite p) -> Subst
+  compositeGet :: Subst -> SubSubst (T.Composite p)
 
-instance CompositeHasVar p => CanSubst (T.CompositeType p) where
+instance CompositeHasVar p => CanSubst (T.Composite p) where
   freeVars T.CEmpty          = mempty
   freeVars (T.CVar n)        = TypeVars.newVar n
   freeVars (T.CExtend _ t r) = freeVars t `mappend` freeVars r
@@ -76,6 +76,6 @@ instance CompositeHasVar T.Product where
   compositeGet = substRecordTypes
   compositeNew = Subst mempty
 
-instance CompositeHasVar p => HasVar (T.CompositeType p) where
+instance CompositeHasVar p => HasVar (T.Composite p) where
   new tv t = compositeNew $ Map.singleton tv t
   {-# INLINE new #-}

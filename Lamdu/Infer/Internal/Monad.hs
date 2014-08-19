@@ -84,13 +84,13 @@ tell w =
 tellSubsts :: Subst -> Infer ()
 tellSubsts s = tell $ emptyResults { subst = s }
 
-tellSubst :: Subst.HasVar t => T.TypeVar t -> t -> Infer ()
+tellSubst :: Subst.HasVar t => T.Var t -> t -> Infer ()
 tellSubst v t = tell $ emptyResults { subst = Subst.new v t }
 
 tellConstraints :: Constraints -> Infer ()
 tellConstraints x = tell $ emptyResults { constraints = x }
 
-tellConstraint :: T.TypeVar T.ProductType -> T.Tag -> Infer ()
+tellConstraint :: T.ProductVar -> T.Tag -> Infer ()
 tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.singleton tag)
 
 listen :: Infer a -> Infer (a, Results)

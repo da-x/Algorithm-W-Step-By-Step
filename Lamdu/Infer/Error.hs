@@ -10,8 +10,8 @@ import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Type as T
 
 data Error
-  = FieldAlreadyInRecord T.Tag T.ProductType
-  | FieldForbidden T.Tag (T.TypeVar T.ProductType) T.ProductType
+  = FieldAlreadyInRecord T.Tag (T.Composite T.Product)
+  | FieldForbidden T.Tag T.ProductVar (T.Composite T.Product)
   | IncompatibleCompositeTypes Doc Doc
   | MissingGlobal E.GlobalId
   | OccursCheckFail Doc Doc

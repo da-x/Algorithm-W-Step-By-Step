@@ -82,9 +82,9 @@ infer globals scope val =
         { M.subst = Subst.intersect (Subst.freeVars scope') $ M.subst results }
       return val'
 
-data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (T.TypeVar (T.CompositeType p))
+data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (T.Var (T.Composite p))
 
-hasTag :: T.Tag -> T.CompositeType p -> CompositeHasTag p
+hasTag :: T.Tag -> T.Composite p -> CompositeHasTag p
 hasTag _ T.CEmpty   = DoesNotHaveTag
 hasTag _ (T.CVar v) = MayHaveTag v
 hasTag tag (T.CExtend t _ r)

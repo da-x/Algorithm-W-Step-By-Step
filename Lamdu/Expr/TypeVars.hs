@@ -45,7 +45,7 @@ instance CompositeVarKind p => Free (T.Composite p) where
   free (T.CVar n)        = singleton n
   free (T.CExtend _ t r) = free t <> free r
 
-class VarKind t where
+class T.LiftVar t => VarKind t where
   member :: T.Var t -> TypeVars -> Bool
   singleton :: T.Var t -> TypeVars
 

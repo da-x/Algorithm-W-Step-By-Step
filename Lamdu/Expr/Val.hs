@@ -59,7 +59,7 @@ instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
   { _lamParamId :: Var
-  , _lamParamTypeTemplate :: Scheme
+  , _lamParamTypeConstraint :: Scheme
   , _lamResult :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf

@@ -9,6 +9,7 @@ import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.Val (Val(..))
 import System.Random (RandomGen, random)
 import qualified Lamdu.Expr.Pure as P
+import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
 
 suggestValue :: RandomGen g => Type -> State g (Val ())
@@ -20,7 +21,7 @@ suggestValue (T.TFun _ r)          = do
                                          fmap fromString $
                                          replicateM 16 $ state random
                                        res <- suggestValue r
-                                       return $ P.abs param res
+                                       return $ P.abs param S.any res
 
 suggestRecord :: RandomGen g => T.Composite T.Product -> State g (Val ())
 suggestRecord T.CVar{}          = return P.hole

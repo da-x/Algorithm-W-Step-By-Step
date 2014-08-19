@@ -1,7 +1,9 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Expr.Scheme
-  ( Scheme(..), mono
+  ( Scheme(..), mono, any
   ) where
+
+import Prelude hiding (any)
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
@@ -14,6 +16,8 @@ import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 import qualified Data.Set as Set
+import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 data Scheme = Scheme
@@ -29,6 +33,12 @@ mono x =
   , schemeConstraints = mempty
   , schemeType = x
   }
+
+any :: Scheme
+any =
+  Scheme (TypeVars.newVar a) mempty (T.TVar a)
+  where
+    a = "a"
 
 instance NFData Scheme where
   rnf = genericRnf

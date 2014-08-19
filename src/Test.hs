@@ -12,17 +12,18 @@ import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr.Pure as P
+import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 import qualified Text.PrettyPrint as PP
 
 eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
-eLet name val mkBody = P.app (P.abs name body) val
+eLet name val mkBody = P.app (P.abs name S.any body) val
   where
     body = mkBody $ P.var name
 
 lambda :: V.Var -> (Val () -> Val ()) -> Val ()
-lambda name mkBody = P.abs name $ mkBody $ P.var name
+lambda name mkBody = P.abs name S.any $ mkBody $ P.var name
 
 int :: Integer -> Val ()
 int = P.litInt

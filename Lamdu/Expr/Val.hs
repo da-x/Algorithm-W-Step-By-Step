@@ -36,28 +36,28 @@ data Leaf
   |  LHole
   |  LLiteralInteger Integer
   |  LRecEmpty
-  deriving (Eq, Ord, Generic, Show)
+  deriving (Generic, Show)
 instance NFData Leaf where rnf = genericRnf
 instance Binary Leaf
 
 data Apply expr = Apply
   { _applyFunc :: expr
   , _applyArg :: expr
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
 
 data GetField expr = GetField
   { _getFieldRecord :: expr
   , _getFieldTag :: Tag
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
   { _lamParamId :: Var
   , _lamResult :: expr
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 instance Binary exp => Binary (Lam exp)
 
@@ -65,7 +65,7 @@ data RecExtend expr = RecExtend
   { _recTag :: Tag
   , _recFieldVal :: expr
   , _recRest :: expr
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
 
@@ -75,7 +75,7 @@ data Body exp
   |  BGetField {-# UNPACK #-}!(GetField exp)
   |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
   |  BLeaf Leaf
-  deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  deriving (Functor, Foldable, Traversable, Generic, Show)
 -- NOTE: Careful of Eq, it's not alpha-eq!
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
 instance Binary exp => Binary (Body exp)
@@ -83,7 +83,7 @@ instance Binary exp => Binary (Body exp)
 data Val a = Val
   { _valPayload :: a
   , _valBody :: !(Body (Val a))
-  } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
 instance Binary a => Binary (Val a)
 

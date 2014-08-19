@@ -101,8 +101,8 @@ inferInternal f globals =
   where
     go locals (Val pl body) =
       case body of
-      V.VLeaf leaf ->
-        mkResult (V.VLeaf leaf) <$>
+      V.BLeaf leaf ->
+        mkResult (V.BLeaf leaf) <$>
         case leaf of
         V.LHole -> M.newInferredVar "h"
         V.LVar n ->
@@ -115,18 +115,18 @@ inferInternal f globals =
                Just sigma   -> Scheme.instantiate sigma
         V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
         V.LRecEmpty -> return $ T.TRecord T.CEmpty
-      V.VAbs (V.Lam n e) ->
+      V.BAbs (V.Lam n e) ->
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- M.listenSubst $ go locals' e
-            return $ mkResult (V.VAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
-      V.VApp (V.Apply e1 e2) ->
+            return $ mkResult (V.BAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
+      V.BApp (V.Apply e1 e2) ->
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             ((), s3) <- M.listenSubst $ unify (Subst.apply s2 t1) (T.TFun t2 tv)
-            return $ mkResult (V.VApp (V.Apply e1' e2')) $ Subst.apply s3 tv
-      V.VGetField (V.GetField e name) ->
+            return $ mkResult (V.BApp (V.Apply e1' e2')) $ Subst.apply s3 tv
+      V.BGetField (V.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"
             M.tellConstraint tvRecName name
@@ -134,8 +134,8 @@ inferInternal f globals =
             ((), su) <-
               M.listenSubst $ unify (Subst.apply s t) $
               T.TRecord $ T.CExtend name tv $ TypeVars.liftVar tvRecName
-            return $ mkResult (V.VGetField (V.GetField e' name)) $ Subst.apply su tv
-      V.VRecExtend (V.RecExtend name e1 e2) ->
+            return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
+      V.BRecExtend (V.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), _) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             rest <-
@@ -154,7 +154,7 @@ inferInternal f globals =
                 let tve = TypeVars.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ T.TRecord tve
                 return $ Subst.apply s tve
-            return $ mkResult (V.VRecExtend (V.RecExtend name e1' e2')) $
+            return $ mkResult (V.BRecExtend (V.RecExtend name e1' e2')) $
               T.TRecord $ T.CExtend name t1 rest
       where
         mkResult body' typ = (typ, Val (f typ locals pl) body')

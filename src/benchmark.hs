@@ -19,7 +19,7 @@ import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 
--- TODO: $$ to be type-classed for TApp vs VApp
+-- TODO: $$ to be type-classed for TApp vs BApp
 -- TODO: TCon "->" instead of TFun
 
 lambda :: V.Var -> (Val () -> Val ()) -> Val ()

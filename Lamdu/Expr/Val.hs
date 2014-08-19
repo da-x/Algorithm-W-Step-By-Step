@@ -69,11 +69,11 @@ instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
 
 data Body exp
-  =  VApp {-# UNPACK #-}!(Apply exp)
-  |  VAbs {-# UNPACK #-}!(Lam exp)
-  |  VGetField {-# UNPACK #-}!(GetField exp)
-  |  VRecExtend {-# UNPACK #-}!(RecExtend exp)
-  |  VLeaf Leaf
+  =  BApp {-# UNPACK #-}!(Apply exp)
+  |  BAbs {-# UNPACK #-}!(Lam exp)
+  |  BGetField {-# UNPACK #-}!(GetField exp)
+  |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
+  |  BLeaf Leaf
   deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 -- NOTE: Careful of Eq, it's not alpha-eq!
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
@@ -95,20 +95,20 @@ payload f (Val pl b) = (`Val` b) <$> f pl
 pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> Body (Val pl) -> PP.Doc
 pPrintPrecBody lvl prec b =
   case b of
-  VLeaf (LVar var)          -> pPrint var
-  VLeaf (LGlobal tag)       -> pPrint tag
-  VLeaf (LLiteralInteger i) -> pPrint i
-  VLeaf LHole               -> PP.text "?"
-  VApp (Apply e1 e2)        -> prettyParen (10 < prec) $
+  BLeaf (LVar var)          -> pPrint var
+  BLeaf (LGlobal tag)       -> pPrint tag
+  BLeaf (LLiteralInteger i) -> pPrint i
+  BLeaf LHole               -> PP.text "?"
+  BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
                                    pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-  VAbs (Lam n e)            -> prettyParen (0 < prec) $
+  BAbs (Lam n e)            -> prettyParen (0 < prec) $
                                PP.char '\\' <> pPrint n <+>
                                PP.text "->" <+>
                                pPrint e
-  VGetField (GetField e n)  -> prettyParen (12 < prec) $
+  BGetField (GetField e n)  -> prettyParen (12 < prec) $
                                pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-  VLeaf LRecEmpty           -> PP.text "V{}"
-  VRecExtend
+  BLeaf LRecEmpty           -> PP.text "V{}"
+  BRecExtend
     (RecExtend tag val rest)  -> PP.text "{" <+>
                                  prField <>
                                  PP.comma <+>

@@ -8,10 +8,10 @@ import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 
 abs :: V.Var -> Val () -> Val ()
-abs name body = Val () $ V.VAbs $ V.Lam name body
+abs name body = Val () $ V.BAbs $ V.Lam name body
 
 leaf :: V.Leaf -> Val ()
-leaf = Val () . V.VLeaf
+leaf = Val () . V.BLeaf
 
 var :: V.Var -> Val ()
 var = leaf . V.LVar
@@ -23,16 +23,16 @@ litInt :: Integer -> Val ()
 litInt = leaf . V.LLiteralInteger
 
 recEmpty :: Val ()
-recEmpty = Val () $ V.VLeaf V.LRecEmpty
+recEmpty = Val () $ V.BLeaf V.LRecEmpty
 
 app :: Val () -> Val () -> Val ()
-app f x = Val () $ V.VApp $ V.Apply f x
+app f x = Val () $ V.BApp $ V.Apply f x
 
 recExtend :: T.Tag -> Val () -> Val () -> Val ()
-recExtend name typ rest = Val () $ V.VRecExtend $ V.RecExtend name typ rest
+recExtend name typ rest = Val () $ V.BRecExtend $ V.RecExtend name typ rest
 
 getField :: Val () -> T.Tag -> Val ()
-getField r n = Val () $ V.VGetField $ V.GetField r n
+getField r n = Val () $ V.BGetField $ V.GetField r n
 
 hole :: Val ()
 hole = leaf V.LHole

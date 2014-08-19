@@ -37,8 +37,8 @@ newtype ParamId = ParamId { typeParamId :: Identifier }
 data Product
 
 data Composite p = CExtend Tag Type (Composite p)
-                     | CEmpty
-                     | CVar (Var (Composite p))
+                 | CEmpty
+                 | CVar (Var (Composite p))
   deriving (Generic, Show, Eq, Ord)
 instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)

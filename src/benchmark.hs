@@ -3,6 +3,7 @@ import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)
 import Control.Lens.Operators
+import Control.Lens.Tuple
 import Control.Monad.State (evalStateT)
 import Criterion.Main (bench, defaultMain)
 import Data.Map (Map)
@@ -196,7 +197,7 @@ benchInfer :: Val () -> IO ()
 benchInfer e =
     case (`evalStateT` initialContext) $ run $ infer env emptyScope e of
     Left err -> fail $ show $ "error:" <+> pPrint err
-    Right eTyped -> evaluate $ rnf $ eTyped ^.. folded . plType
+    Right eTyped -> evaluate $ rnf $ eTyped ^.. folded . _1 . plType
 
 benches :: [(String, IO ())]
 benches =

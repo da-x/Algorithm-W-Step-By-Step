@@ -21,7 +21,7 @@ loadValGlobals :: Monad m => Loader m -> Val a -> m (Map V.GlobalId Scheme)
 loadValGlobals (Loader load) =
     Traversable.sequence . Map.fromSet load . Set.fromList . valGlobals
 
-loadInfer :: Monad m => Loader m -> Scope -> Val a -> m (Infer (Val (Payload a)))
+loadInfer :: Monad m => Loader m -> Scope -> Val a -> m (Infer (Val (Payload, a)))
 loadInfer loader scope val =
   do  globals <- loadValGlobals loader val
       return $ infer globals scope val

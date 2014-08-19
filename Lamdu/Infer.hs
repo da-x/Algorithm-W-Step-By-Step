@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
   ( makeScheme
   , TypeVars(..)
   , infer
   , Scope, emptyScope
-  , Payload(..), plScope, plType, plData
+  , Payload(..), plScope, plType
   , M.Context, M.initialContext
   , Infer(..)
   ) where
@@ -13,10 +13,10 @@ import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
-import Data.Foldable (Foldable)
+import Control.Lens.Operators
+import Control.Lens.Tuple
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
-import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Expr.Scheme (Scheme)
 import Lamdu.Expr.Type (Type)
@@ -37,40 +37,37 @@ import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import qualified Lamdu.Infer.Internal.Scope as Scope
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
-data Payload a = Payload
+data Payload = Payload
   { _plType :: Type
   , _plScope :: Scope
-  , _plData :: a
-  } deriving (Generic, Show, Functor, Foldable, Traversable)
-instance NFData a => NFData (Payload a) where rnf = genericRnf
+  } deriving (Generic, Show)
+instance NFData Payload where rnf = genericRnf
 
-plType :: Lens' (Payload a) Type
+plType :: Lens' Payload Type
 plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)
 {-# INLINE plType #-}
 
-plScope :: Lens' (Payload a) Scope
+plScope :: Lens' Payload Scope
 plScope f pl = (\t' -> pl { _plScope = t' }) <$> f (_plScope pl)
 {-# INLINE plScope #-}
 
-plData :: Lens' (Payload a) a
-plData f pl = (\t' -> pl { _plData = t' }) <$> f (_plData pl)
-{-# INLINE plData #-}
-
-instance TypeVars.Free (Payload a) where
-  free (Payload typ scope _dat) =
+instance TypeVars.Free Payload where
+  free (Payload typ scope) =
     TypeVars.free typ <> TypeVars.free scope
 
-instance CanSubst (Payload a) where
-  apply s (Payload typ scope dat) =
-    Payload (Subst.apply s typ) (Subst.apply s scope) dat
+instance CanSubst Payload where
+  apply s (Payload typ scope) =
+    Payload (Subst.apply s typ) (Subst.apply s scope)
 
 inferSubst ::
-  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Scope, Val (Payload a))
-inferSubst globals scope val =
+  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Scope, Val (Payload, a))
+inferSubst globals rootScope val =
   do  prevSubst <- M.getSubst
-      let scope' = Subst.apply prevSubst scope
-      (inferredVal, newResults) <- M.listen $ inferInternal Payload globals scope' val
-      return (scope', Subst.apply (M.subst newResults) <$> inferredVal)
+      let rootScope' = Subst.apply prevSubst rootScope
+      (inferredVal, newResults) <- M.listen $ inferInternal mkPayload globals rootScope' val
+      return (rootScope', inferredVal <&> _1 %~ Subst.apply (M.subst newResults))
+  where
+      mkPayload typ scope dat = (Payload typ scope, dat)
 
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
@@ -78,7 +75,7 @@ inferSubst globals scope val =
 -- allowing global access.
 -- Use loadInfer for a safer interface
 infer ::
-  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Val (Payload a))
+  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Val (Payload, a))
 infer globals scope val =
   do  ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
       M.tell $ results

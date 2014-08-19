@@ -2,6 +2,7 @@ module Lamdu.Infer.Update
   ( update, updatePayload, updateInferredVal
   ) where
 
+import Control.Lens.Tuple
 import Data.Traversable (traverse)
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.Val (Val)
@@ -20,10 +21,10 @@ update typ =
   do  s <- M.getSubst
       return $ Subst.apply s typ
 
-updatePayload :: Infer.Payload a -> Infer (Infer.Payload a)
-updatePayload (Infer.Payload typ scope dat) =
+updatePayload :: Infer.Payload -> Infer Infer.Payload
+updatePayload (Infer.Payload typ scope) =
   do  s <- M.getSubst
-      return $ Infer.Payload (Subst.apply s typ) (Subst.apply s scope) dat
+      return $ Infer.Payload (Subst.apply s typ) (Subst.apply s scope)
 
-updateInferredVal :: Val (Infer.Payload a) -> Infer (Val (Infer.Payload a))
-updateInferredVal = traverse updatePayload
+updateInferredVal :: Val (Infer.Payload, a) -> Infer (Val (Infer.Payload, a))
+updateInferredVal = (traverse . _1) updatePayload

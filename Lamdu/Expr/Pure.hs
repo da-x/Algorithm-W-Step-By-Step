@@ -3,35 +3,36 @@ module Lamdu.Expr.Pure
   ) where
 
 import Prelude hiding (abs)
-import qualified Lamdu.Expr as E
+import Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Val as V
 
-abs :: E.ValVar -> E.Val () -> E.Val ()
-abs name body = E.Val () $ E.VAbs $ E.Lam name body
+abs :: V.Var -> Val () -> Val ()
+abs name body = Val () $ V.VAbs $ V.Lam name body
 
-leaf :: E.ValLeaf -> E.Val ()
-leaf = E.Val () . E.VLeaf
+leaf :: V.Leaf -> Val ()
+leaf = Val () . V.VLeaf
 
-var :: E.ValVar -> E.Val ()
-var = leaf . E.VVar
+var :: V.Var -> Val ()
+var = leaf . V.VVar
 
-global :: E.GlobalId -> E.Val ()
-global = leaf . E.VGlobal
+global :: V.GlobalId -> Val ()
+global = leaf . V.VGlobal
 
-litInt :: Integer -> E.Val ()
-litInt = leaf . E.VLiteralInteger
+litInt :: Integer -> Val ()
+litInt = leaf . V.VLiteralInteger
 
-recEmpty :: E.Val ()
-recEmpty = E.Val () $ E.VLeaf E.VRecEmpty
+recEmpty :: Val ()
+recEmpty = Val () $ V.VLeaf V.VRecEmpty
 
-app :: E.Val () -> E.Val () -> E.Val ()
-app f x = E.Val () $ E.VApp $ E.Apply f x
+app :: Val () -> Val () -> Val ()
+app f x = Val () $ V.VApp $ V.Apply f x
 
-recExtend :: T.Tag -> E.Val () -> E.Val () -> E.Val ()
-recExtend name typ rest = E.Val () $ E.VRecExtend $ E.RecExtend name typ rest
+recExtend :: T.Tag -> Val () -> Val () -> Val ()
+recExtend name typ rest = Val () $ V.VRecExtend $ V.RecExtend name typ rest
 
-getField :: E.Val () -> T.Tag -> E.Val ()
-getField r n = E.Val () $ E.VGetField $ E.GetField r n
+getField :: Val () -> T.Tag -> Val ()
+getField r n = Val () $ V.VGetField $ V.GetField r n
 
-hole :: E.Val ()
-hole = leaf E.VHole
+hole :: Val ()
+hole = leaf V.VHole

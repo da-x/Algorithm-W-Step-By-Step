@@ -2,13 +2,14 @@ module Lamdu.Expr.Globals
   ( valGlobals
   ) where
 
+import Lamdu.Expr.Val (Val(..))
 import qualified Data.Foldable as Foldable
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Val as V
 
-valBodyGlobals :: E.ValBody exp -> [E.GlobalId]
-valBodyGlobals (E.VLeaf (E.VGlobal g)) = [g]
+valBodyGlobals :: V.Body exp -> [V.GlobalId]
+valBodyGlobals (V.VLeaf (V.VGlobal g)) = [g]
 valBodyGlobals _ = []
 
-valGlobals :: E.Val a -> [E.GlobalId]
-valGlobals (E.Val _ body) =
+valGlobals :: Val a -> [V.GlobalId]
+valGlobals (Val _ body) =
   valBodyGlobals body ++ concatMap valGlobals (Foldable.toList body)

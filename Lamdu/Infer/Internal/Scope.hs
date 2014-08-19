@@ -14,10 +14,10 @@ import GHC.Generics (Generic)
 import Lamdu.Expr.Type (Type)
 import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Data.Map as Map
-import qualified Lamdu.Expr as E
+import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
-newtype Scope = Scope { typeOfVar :: Map E.ValVar Type }
+newtype Scope = Scope { typeOfVar :: Map V.Var Type }
   deriving (Generic, Show)
 instance NFData Scope where rnf = genericRnf
 instance CanSubst Scope where
@@ -27,11 +27,11 @@ instance CanSubst Scope where
 emptyScope :: Scope
 emptyScope = Scope Map.empty
 
-lookupTypeOf :: E.ValVar -> Scope -> Maybe Type
+lookupTypeOf :: V.Var -> Scope -> Maybe Type
 lookupTypeOf key = Map.lookup key . typeOfVar
 
-insertTypeOf :: E.ValVar -> Type -> Scope -> Scope
+insertTypeOf :: V.Var -> Type -> Scope -> Scope
 insertTypeOf key scheme (Scope env) = Scope (Map.insert key scheme env)
 
-fromTypeMap :: Map E.ValVar Type -> Scope
+fromTypeMap :: Map V.Var Type -> Scope
 fromTypeMap = Scope

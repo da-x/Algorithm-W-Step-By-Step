@@ -3,13 +3,13 @@ module Lamdu.Expr.Pretty
   ) where
 
 import Control.Applicative ((<$))
+import Lamdu.Expr.Val (Val)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
-import qualified Lamdu.Expr as E
 import qualified Text.PrettyPrint as PP
 
 data EmptyDoc = EmptyDoc
 instance Pretty EmptyDoc where
   pPrint _ = PP.empty
 
-pPrintValUnannotated :: E.Val a -> PP.Doc
+pPrintValUnannotated :: Val a -> PP.Doc
 pPrintValUnannotated = pPrint . (EmptyDoc <$)

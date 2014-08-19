@@ -8,41 +8,42 @@ import Lamdu.Infer
 import Lamdu.Infer.Specialize
 import Lamdu.Infer.Update
 import Lamdu.Expr.Pretty
+import Lamdu.Expr.Val (Val(..))
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
-import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Val as V
 import qualified Text.PrettyPrint as PP
 
-eLet :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
+eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 eLet name val mkBody = P.app (P.abs name body) val
   where
     body = mkBody $ P.var name
 
-lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
+lambda :: V.Var -> (Val () -> Val ()) -> Val ()
 lambda name mkBody = P.abs name $ mkBody $ P.var name
 
-int :: Integer -> E.Val ()
+int :: Integer -> Val ()
 int = P.litInt
 
-emptyRec :: E.Val ()
+emptyRec :: Val ()
 emptyRec = P.recEmpty
 
 infixl 4 $$
-($$) :: E.Val () -> E.Val () -> E.Val ()
+($$) :: Val () -> Val () -> Val ()
 ($$) = P.app
 
 infixl 9 $.
-($.) :: E.Val () -> T.Tag -> E.Val ()
+($.) :: Val () -> T.Tag -> Val ()
 ($.) = P.getField
 
 infixl 3 $=
-($=) :: T.Tag -> E.Val () -> E.Val () -> E.Val ()
+($=) :: T.Tag -> Val () -> Val () -> Val ()
 ($=) = P.recExtend
 
-exps :: [E.Val ()]
+exps :: [Val ()]
 exps =
   [ eLet "id" (lambda "x" id) id
 
@@ -87,10 +88,10 @@ exps =
   , eLet "f" (lambda "r" ("x" $= int 3)) $
     \f -> f $$ ("x" $= int 2) emptyRec
 
-  , "x" $= int 1 $ E.Val () $ E.VLeaf $ E.VHole
+  , "x" $= int 1 $ Val () $ V.VLeaf $ V.VHole
   ]
 
-test :: E.Val () -> IO ()
+test :: Val () -> IO ()
 test e =
     case result of
         Left err ->
@@ -111,7 +112,7 @@ test e =
         result =
           (`evalStateT` initialContext) . run $ do
             e' <- infer M.empty emptyScope e
-            let t = e' ^. E.valPayload . plType
+            let t = e' ^. V.payload . plType
             s <- makeScheme t
             specialize t
             t' <- update t

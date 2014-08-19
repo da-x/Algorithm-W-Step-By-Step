@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
-module Lamdu.Expr
-  ( ValLeaf(..)
-  , ValBody(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
-  , Val(..), valBody, valPayload
-  , ValVar(..)
+module Lamdu.Expr.Val
+  ( Leaf(..)
+  , Body(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
+  , Val(..), body, payload
+  , Var(..)
   , GlobalId(..)
   ) where
 
@@ -23,21 +23,21 @@ import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
 import qualified Text.PrettyPrint as PP
 
-newtype ValVar = ValVar { vvName :: Identifier }
+newtype Var = Var { vvName :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
 newtype GlobalId = GlobalId { globalId :: Identifier }
   deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
 
-data ValLeaf
-  =  VVar ValVar
+data Leaf
+  =  VVar Var
   |  VGlobal GlobalId
   |  VHole
   |  VLiteralInteger Integer
   |  VRecEmpty
   deriving (Eq, Ord, Generic, Show)
-instance NFData ValLeaf where rnf = genericRnf
-instance Binary ValLeaf
+instance NFData Leaf where rnf = genericRnf
+instance Binary Leaf
 
 data Apply expr = Apply
   { _applyFunc :: expr
@@ -54,7 +54,7 @@ instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
 
 data Lam expr = Lam
-  { _lamParamId :: ValVar
+  { _lamParamId :: Var
   , _lamResult :: expr
   } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
@@ -68,33 +68,33 @@ data RecExtend expr = RecExtend
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
 
-data ValBody exp
+data Body exp
   =  VApp {-# UNPACK #-}!(Apply exp)
   |  VAbs {-# UNPACK #-}!(Lam exp)
   |  VGetField {-# UNPACK #-}!(GetField exp)
   |  VRecExtend {-# UNPACK #-}!(RecExtend exp)
-  |  VLeaf ValLeaf
+  |  VLeaf Leaf
   deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 -- NOTE: Careful of Eq, it's not alpha-eq!
-instance NFData exp => NFData (ValBody exp) where rnf = genericRnf
-instance Binary exp => Binary (ValBody exp)
+instance NFData exp => NFData (Body exp) where rnf = genericRnf
+instance Binary exp => Binary (Body exp)
 
 data Val a = Val
   { _valPayload :: a
-  , _valBody :: !(ValBody (Val a))
+  , _valBody :: !(Body (Val a))
   } deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
 instance Binary a => Binary (Val a)
 
-valBody :: Lens' (Val a) (ValBody (Val a))
-valBody f (Val pl body) = Val pl <$> f body
+body :: Lens' (Val a) (Body (Val a))
+body f (Val pl b) = Val pl <$> f b
 
-valPayload :: Lens' (Val a) a
-valPayload f (Val pl body) = (`Val` body) <$> f pl
+payload :: Lens' (Val a) a
+payload f (Val pl b) = (`Val` b) <$> f pl
 
-pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> ValBody (Val pl) -> PP.Doc
-pPrintPrecBody lvl prec body =
-  case body of
+pPrintPrecBody :: Pretty pl => PrettyLevel -> Rational -> Body (Val pl) -> PP.Doc
+pPrintPrecBody lvl prec b =
+  case b of
   VLeaf (VVar var)          -> pPrint var
   VLeaf (VGlobal tag)       -> pPrint tag
   VLeaf (VLiteralInteger i) -> pPrint i
@@ -118,10 +118,10 @@ pPrintPrecBody lvl prec body =
       prField = pPrint tag <+> PP.text "=" <+> pPrint val
 
 instance Pretty a => Pretty (Val a) where
-  pPrintPrec lvl prec (Val pl body)
-    | PP.isEmpty plDoc = pPrintPrecBody lvl prec body
+  pPrintPrec lvl prec (Val pl b)
+    | PP.isEmpty plDoc = pPrintPrecBody lvl prec b
     | otherwise =
       prettyParen (13 < prec) $ mconcat
-      [ pPrintPrecBody lvl 14 body, PP.text "{", plDoc, PP.text "}" ]
+      [ pPrintPrecBody lvl 14 b, PP.text "{", plDoc, PP.text "}" ]
     where
       plDoc = pPrintPrec lvl 0 pl

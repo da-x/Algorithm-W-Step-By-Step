@@ -21,15 +21,16 @@ import GHC.Generics (Generic)
 import Lamdu.Expr.Scheme (Scheme)
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
+import Lamdu.Expr.Val (Val(..))
 import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.Subst (CanSubst(..))
 import Lamdu.Infer.Unify (unify)
 import qualified Data.Map as Map
-import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
+import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
@@ -62,7 +63,7 @@ instance CanSubst (Payload a) where
     Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
 inferSubst ::
-  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (Scope, E.Val (Payload a))
+  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Scope, Val (Payload a))
 inferSubst globals scope val =
   do  prevSubst <- M.getSubst
       let scope' = Subst.apply prevSubst scope
@@ -75,7 +76,7 @@ inferSubst globals scope val =
 -- allowing global access.
 -- Use loadInfer for a safer interface
 infer ::
-  Map E.GlobalId Scheme -> Scope -> E.Val a -> Infer (E.Val (Payload a))
+  Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Val (Payload a))
 infer globals scope val =
   do  ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
       M.tell $ results
@@ -93,39 +94,39 @@ hasTag tag (T.CExtend t _ r)
 
 inferInternal ::
   (Type -> Scope -> a -> b) ->
-  Map E.GlobalId Scheme -> Scope -> E.Val a ->
-  Infer (E.Val b)
+  Map V.GlobalId Scheme -> Scope -> Val a ->
+  Infer (Val b)
 inferInternal f globals =
   (fmap . fmap) snd . go
   where
-    go locals (E.Val pl body) =
+    go locals (Val pl body) =
       case body of
-      E.VLeaf leaf ->
-        mkResult (E.VLeaf leaf) <$>
+      V.VLeaf leaf ->
+        mkResult (V.VLeaf leaf) <$>
         case leaf of
-        E.VHole -> M.newInferredVar "h"
-        E.VVar n ->
+        V.VHole -> M.newInferredVar "h"
+        V.VVar n ->
             case Scope.lookupTypeOf n locals of
                Nothing      -> M.throwError $ Err.UnboundVariable n
                Just t       -> return t
-        E.VGlobal n ->
+        V.VGlobal n ->
             case Map.lookup n globals of
                Nothing      -> M.throwError $ Err.MissingGlobal n
                Just sigma   -> Scheme.instantiate sigma
-        E.VLiteralInteger _ -> return (T.TInst "Int" mempty)
-        E.VRecEmpty -> return $ T.TRecord T.CEmpty
-      E.VAbs (E.Lam n e) ->
+        V.VLiteralInteger _ -> return (T.TInst "Int" mempty)
+        V.VRecEmpty -> return $ T.TRecord T.CEmpty
+      V.VAbs (V.Lam n e) ->
         do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- M.listenSubst $ go locals' e
-            return $ mkResult (E.VAbs (E.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
-      E.VApp (E.Apply e1 e2) ->
+            return $ mkResult (V.VAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
+      V.VApp (V.Apply e1 e2) ->
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             ((), s3) <- M.listenSubst $ unify (Subst.apply s2 t1) (T.TFun t2 tv)
-            return $ mkResult (E.VApp (E.Apply e1' e2')) $ Subst.apply s3 tv
-      E.VGetField (E.GetField e name) ->
+            return $ mkResult (V.VApp (V.Apply e1' e2')) $ Subst.apply s3 tv
+      V.VGetField (V.GetField e name) ->
         do  tv <- M.newInferredVar "a"
             tvRecName <- M.newInferredVarName "r"
             M.tellConstraint tvRecName name
@@ -133,8 +134,8 @@ inferInternal f globals =
             ((), su) <-
               M.listenSubst $ unify (Subst.apply s t) $
               T.TRecord $ T.CExtend name tv $ TypeVars.liftVar tvRecName
-            return $ mkResult (E.VGetField (E.GetField e' name)) $ Subst.apply su tv
-      E.VRecExtend (E.RecExtend name e1 e2) ->
+            return $ mkResult (V.VGetField (V.GetField e' name)) $ Subst.apply su tv
+      V.VRecExtend (V.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), _) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             rest <-
@@ -153,7 +154,7 @@ inferInternal f globals =
                 let tve = TypeVars.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ T.TRecord tve
                 return $ Subst.apply s tve
-            return $ mkResult (E.VRecExtend (E.RecExtend name e1' e2')) $
+            return $ mkResult (V.VRecExtend (V.RecExtend name e1' e2')) $
               T.TRecord $ T.CExtend name t1 rest
       where
-        mkResult body' typ = (typ, E.Val (f typ locals pl) body')
+        mkResult body' typ = (typ, Val (f typ locals pl) body')

@@ -6,17 +6,17 @@ module Lamdu.Infer.Error
 
 import Text.PrettyPrint ((<+>), Doc)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
-import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Val as V
 
 data Error
   = FieldAlreadyInRecord T.Tag (T.Composite T.Product)
   | FieldForbidden T.Tag T.ProductVar (T.Composite T.Product)
   | IncompatibleCompositeTypes Doc Doc
-  | MissingGlobal E.GlobalId
+  | MissingGlobal V.GlobalId
   | OccursCheckFail Doc Doc
   | TypesDoNotUnity Doc Doc
-  | UnboundVariable E.ValVar
+  | UnboundVariable V.Var
 
 instance Pretty Error where
   pPrint (FieldAlreadyInRecord t r) =

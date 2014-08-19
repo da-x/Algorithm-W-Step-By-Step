@@ -9,51 +9,52 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Type)
+import Lamdu.Expr.Val (Val)
 import Lamdu.Infer (TypeVars(..), infer, plType, initialContext, run, emptyScope)
 import Text.PrettyPrint ((<+>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Lamdu.Expr as E
 import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Val as V
 
 -- TODO: $$ to be type-classed for TApp vs VApp
 -- TODO: TCon "->" instead of TFun
 
-lambda :: E.ValVar -> (E.Val () -> E.Val ()) -> E.Val ()
+lambda :: V.Var -> (Val () -> Val ()) -> Val ()
 lambda varName mkBody = P.abs varName (mkBody (P.var varName))
 
-lambdaRecord :: [T.Tag] -> ([E.Val ()] -> E.Val ()) -> E.Val ()
+lambdaRecord :: [T.Tag] -> ([Val ()] -> Val ()) -> Val ()
 lambdaRecord names mkBody =
   lambda "paramsRecord" $ \paramsRec ->
   mkBody $ map (P.getField paramsRec) names
 
-whereItem :: E.ValVar -> E.Val () -> (E.Val () -> E.Val ()) -> E.Val ()
+whereItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
 record :: [(T.Tag, Type)] -> Type
 record = T.TRecord . foldr (uncurry T.CExtend) T.CEmpty
 
-eRecord :: [(T.Tag, E.Val ())] -> E.Val ()
+eRecord :: [(T.Tag, Val ())] -> Val ()
 eRecord = foldr (uncurry P.recExtend) P.recEmpty
 
 infixl 4 $$
-($$) :: E.Val () -> E.Val () -> E.Val ()
+($$) :: Val () -> Val () -> Val ()
 ($$) = P.app
 
 infixl 4 $$:
-($$:) :: E.Val () -> [(T.Tag, E.Val ())] -> E.Val ()
+($$:) :: Val () -> [(T.Tag, Val ())] -> Val ()
 func $$: fields = func $$ eRecord fields
 
 infixr 4 ~>
 (~>) :: Type -> Type -> Type
 (~>) = T.TFun
 
-getDef :: E.GlobalId -> E.Val ()
+getDef :: V.GlobalId -> Val ()
 getDef = P.global
 
-literalInteger :: Integer -> E.Val ()
+literalInteger :: Integer -> Val ()
 literalInteger = P.litInt
 
 integerType :: Type
@@ -72,10 +73,10 @@ listOf = T.TInst "List" . Map.singleton "elem"
 infixType :: Type -> Type -> Type -> Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
-infixArgs :: E.Val () -> E.Val () -> E.Val ()
+infixArgs :: Val () -> Val () -> Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
-env :: Map E.GlobalId Scheme
+env :: Map V.GlobalId Scheme
 env = Map.fromList
   [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
   , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
@@ -99,7 +100,7 @@ env = Map.fromList
   , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
   ]
 
-list :: [E.Val ()] -> E.Val ()
+list :: [Val ()] -> Val ()
 list [] = getDef "[]"
 list items@(_x:_) =
   foldr cons nil items
@@ -107,7 +108,7 @@ list items@(_x:_) =
     cons h t = getDef ":" $$: [("head", h), ("tail", t)]
     nil = getDef "[]"
 
-factorialVal :: E.Val ()
+factorialVal :: Val ()
 factorialVal =
   getDef "fix" $$
   lambda "loop"
@@ -123,7 +124,7 @@ factorialVal =
     ]
   )
 
-euler1Val :: E.Val ()
+euler1Val :: Val ()
 euler1Val =
   getDef "sum" $$
   ( getDef "filter" $$:
@@ -139,7 +140,7 @@ euler1Val =
     ]
   )
 
-solveDepressedQuarticVal :: E.Val ()
+solveDepressedQuarticVal :: Val ()
 solveDepressedQuarticVal =
   lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
   whereItem "solvePoly" (getDef "id")
@@ -190,7 +191,7 @@ solveDepressedQuarticVal =
     x %* y = getDef "*" $$ infixArgs x y
     x %/ y = getDef "/" $$ infixArgs x y
 
-benchInfer :: E.Val () -> IO ()
+benchInfer :: Val () -> IO ()
 benchInfer e =
     case (`evalStateT` initialContext) $ run $ infer env emptyScope e of
     Left err -> fail $ show $ "error:" <+> pPrint err

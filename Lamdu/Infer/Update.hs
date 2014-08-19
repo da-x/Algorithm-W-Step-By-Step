@@ -4,8 +4,8 @@ module Lamdu.Infer.Update
 
 import Data.Traversable (traverse)
 import Lamdu.Expr.Type (Type)
+import Lamdu.Expr.Val (Val)
 import Lamdu.Infer (Infer)
-import qualified Lamdu.Expr as E
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -25,5 +25,5 @@ updatePayload (Infer.Payload typ scope dat) =
   do  s <- M.getSubst
       return $ Infer.Payload (Subst.apply s typ) (Subst.apply s scope) dat
 
-updateInferredVal :: E.Val (Infer.Payload a) -> Infer (E.Val (Infer.Payload a))
+updateInferredVal :: Val (Infer.Payload a) -> Infer (Val (Infer.Payload a))
 updateInferredVal = traverse updatePayload

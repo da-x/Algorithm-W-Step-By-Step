@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
   ( makeScheme
   , TypeVars(..)
@@ -18,6 +18,7 @@ import Control.Lens.Tuple
 import Data.Binary (Binary)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
+import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Lamdu.Expr.Scheme (Scheme)
 import Lamdu.Expr.Type (Type)
@@ -41,7 +42,7 @@ import qualified Lamdu.Infer.Internal.Subst as Subst
 data Payload = Payload
   { _plType :: Type
   , _plScope :: Scope
-  } deriving (Generic, Show)
+  } deriving (Generic, Typeable, Show)
 instance NFData Payload where rnf = genericRnf
 instance Binary Payload
 

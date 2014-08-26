@@ -8,6 +8,7 @@ module Lamdu.Infer.Internal.Scope
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Data.Binary (Binary)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import GHC.Generics (Generic)
@@ -22,6 +23,7 @@ newtype Scope = Scope { typeOfVar :: Map V.Var Type }
   deriving (Generic, Show)
 
 instance NFData Scope where rnf = genericRnf
+instance Binary Scope
 
 instance TypeVars.Free Scope where
   free (Scope env) = mconcat $ map TypeVars.free $ Map.elems env

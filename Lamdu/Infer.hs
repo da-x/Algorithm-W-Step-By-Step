@@ -15,6 +15,7 @@ import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Control.Lens.Operators
 import Control.Lens.Tuple
+import Data.Binary (Binary)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..), (<>))
 import GHC.Generics (Generic)
@@ -42,6 +43,7 @@ data Payload = Payload
   , _plScope :: Scope
   } deriving (Generic, Show)
 instance NFData Payload where rnf = genericRnf
+instance Binary Payload
 
 plType :: Lens' Payload Type
 plType f pl = (\t' -> pl { _plType = t' }) <$> f (_plType pl)

@@ -7,7 +7,7 @@ import Control.Monad.Trans.State (StateT, evalStateT)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Type (Type)
-import Lamdu.Infer.Internal.FlatComposite (FlatComposite(..))
+import Lamdu.Expr.FlatComposite (FlatComposite(..))
 import Lamdu.Infer.Internal.Monad (Infer)
 import Lamdu.Infer.Internal.Subst (Subst, CanSubst)
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -17,7 +17,7 @@ import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
-import qualified Lamdu.Infer.Internal.FlatComposite as FlatComposite
+import qualified Lamdu.Expr.FlatComposite as FlatComposite
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 

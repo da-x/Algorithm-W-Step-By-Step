@@ -16,6 +16,7 @@ library
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Identifier
                  ,     Lamdu.Expr.Pure
+                 ,     Lamdu.Expr.FlatComposite
                  ,     Lamdu.Expr.Scheme
                  ,     Lamdu.Expr.Type
                  ,     Lamdu.Expr.TypeVars
@@ -27,7 +28,6 @@ library
                  ,     Lamdu.Infer.Update
                  ,     Lamdu.Suggest
   other-modules:       Lamdu.Infer.Internal.Constraints
-               ,       Lamdu.Infer.Internal.FlatComposite
                ,       Lamdu.Infer.Internal.Monad
                ,       Lamdu.Infer.Internal.Scheme
                ,       Lamdu.Infer.Internal.Scope

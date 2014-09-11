@@ -1,4 +1,4 @@
-module Lamdu.Infer.Internal.FlatComposite
+module Lamdu.Expr.FlatComposite
   ( FlatComposite(..)
   , fromComposite
   , toComposite

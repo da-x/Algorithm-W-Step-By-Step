@@ -1,8 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.Constraints
   ( Constraints(..)
+  , ForbiddenFields
   , applyRenames
   , intersect
+  , getProductVarConstraints, ProductVarConstraints
+  , getTypeVarConstraints, TypeVarConstraints
   ) where
 
 import Control.DeepSeq (NFData(..))
@@ -22,8 +25,13 @@ import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
+type ForbiddenFields = Set T.Tag
+
+type ProductVarConstraints = ForbiddenFields
+type TypeVarConstraints = ()
+
 newtype Constraints = Constraints
-  { forbiddenRecordFields :: Map T.ProductVar (Set T.Tag)
+  { productVarConstraints :: Map T.ProductVar ProductVarConstraints
   } deriving (Generic, Eq, Show)
 
 instance NFData Constraints where
@@ -41,6 +49,13 @@ instance Pretty Constraints where
       Map.toList m
 
 instance Binary Constraints
+
+getProductVarConstraints :: T.ProductVar -> Constraints -> ProductVarConstraints
+getProductVarConstraints tv c =
+  fromMaybe Set.empty $ Map.lookup tv $ productVarConstraints c
+
+getTypeVarConstraints :: T.Var T.Type -> Constraints -> TypeVarConstraints
+getTypeVarConstraints _ _ = ()
 
 pPrintConstraint :: T.ProductVar -> Set T.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =

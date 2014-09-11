@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scope
   ( Scope, emptyScope
-  , fromTypeMap
+  , fromTypeMap, scopeToTypeMap
   , insertTypeOf
   , lookupTypeOf
   ) where
@@ -39,6 +39,9 @@ lookupTypeOf key = Map.lookup key . typeOfVar
 
 insertTypeOf :: V.Var -> Type -> Scope -> Scope
 insertTypeOf key scheme (Scope env) = Scope (Map.insert key scheme env)
+
+scopeToTypeMap :: Scope -> Map V.Var Type
+scopeToTypeMap = typeOfVar
 
 fromTypeMap :: Map V.Var Type -> Scope
 fromTypeMap = Scope

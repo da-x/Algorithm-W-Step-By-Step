@@ -3,7 +3,7 @@ module Lamdu.Infer
   ( makeScheme
   , TypeVars(..)
   , infer
-  , Scope, emptyScope
+  , Scope, emptyScope, Scope.scopeToTypeMap
   , Payload(..), plScope, plType
   , M.Context, M.initialContext
   , Infer(..)

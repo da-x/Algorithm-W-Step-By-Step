@@ -30,7 +30,7 @@ class CanSubst t => Unify t where
   varBind :: T.Var t -> t -> Infer ()
 
 closedRecord :: Map T.Tag Type -> T.Composite p
-closedRecord fields = FlatComposite.toRecordType (FlatComposite fields Nothing)
+closedRecord fields = FlatComposite.toComposite (FlatComposite fields Nothing)
 
 unifyFlatToPartial ::
   Subst.CompositeHasVar p =>
@@ -40,9 +40,9 @@ unifyFlatToPartial (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     M.throwError $
     Err.TypesDoNotUnity
-    (pPrint (FlatComposite.toRecordType (FlatComposite tfields (Just tname))))
+    (pPrint (FlatComposite.toComposite (FlatComposite tfields (Just tname))))
     (pPrint (closedRecord ufields))
-  | otherwise = varBind tname $ FlatComposite.toRecordType $ FlatComposite uniqueUFields Nothing
+  | otherwise = varBind tname $ FlatComposite.toComposite $ FlatComposite uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
@@ -134,8 +134,8 @@ instance Subst.CompositeHasVar p => Unify (T.Composite p) where
                                        unifyGeneric (Subst.apply s r0)
                                              (Subst.apply s r1)
         | otherwise             =  unifyFlattened
-                                   (FlatComposite.from t)
-                                   (FlatComposite.from u)
+                                   (FlatComposite.fromComposite t)
+                                   (FlatComposite.fromComposite u)
   unifyGeneric t1 t2                   =  dontUnify t1 t2
 
   varBind u (T.CVar t) | t == u = return ()

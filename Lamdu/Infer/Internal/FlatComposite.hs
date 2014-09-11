@@ -1,7 +1,7 @@
 module Lamdu.Infer.Internal.FlatComposite
   ( FlatComposite(..)
-  , from
-  , toRecordType
+  , fromComposite
+  , toComposite
   ) where
 
 import Control.Applicative ((<$>))
@@ -21,11 +21,11 @@ fields :: Lens' (FlatComposite p) (Map T.Tag Type)
 fields f (FlatComposite fs ext) = (`FlatComposite` ext) <$> f fs
 
 -- From a record type to a sorted list of fields
-from :: T.Composite p -> FlatComposite p
-from (T.CExtend name typ rest) = from rest & fields %~ Map.insert name typ
-from T.CEmpty                  = FlatComposite Map.empty Nothing
-from (T.CVar name)             = FlatComposite Map.empty (Just name)
+fromComposite :: T.Composite p -> FlatComposite p
+fromComposite (T.CExtend name typ rest) = fromComposite rest & fields %~ Map.insert name typ
+fromComposite T.CEmpty                  = FlatComposite Map.empty Nothing
+fromComposite (T.CVar name)             = FlatComposite Map.empty (Just name)
 
-toRecordType :: FlatComposite p -> T.Composite p
-toRecordType (FlatComposite fs ext) =
+toComposite :: FlatComposite p -> T.Composite p
+toComposite (FlatComposite fs ext) =
   Map.foldWithKey T.CExtend (maybe T.CEmpty T.CVar ext) fs

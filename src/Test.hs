@@ -2,7 +2,7 @@
 import Control.Lens (zoom)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad.State (evalStateT, runState, modify', get)
+import Control.Monad.State (StateT(..), runState, modify', get)
 import Data.Traversable (traverse)
 import Lamdu.Infer
 import Lamdu.Expr.Val (Val(..))
@@ -94,7 +94,8 @@ test e =
     case result of
         Left err ->
           putStrLn $ show (V.pPrintUnannotated e $+$ pPrint err)
-        Right (scheme, val) -> do
+        Right ((typ, val), finalContext) -> do
+          let scheme = makeScheme finalContext typ
           print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme
           let next = modify' (+1) >> get
               tag x =
@@ -108,11 +109,10 @@ test e =
           mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
     where
         result =
-          (`evalStateT` initialContext) . run $ do
+          (`runStateT` initialContext) . run $ do
             e' <- infer M.empty emptyScope e
             let t = e' ^. V.payload . _1 . plType
-            s <- makeScheme t
-            return (s, e')
+            return (t, e')
 
 main :: IO ()
 main = mapM_ test exps

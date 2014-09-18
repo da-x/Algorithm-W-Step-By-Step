@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr.Val
   ( Leaf(..)
-  , Body(..), Apply(..), GetField(..), Lam(..), RecExtend(..)
+  , Body(..)
+  , Apply(..), applyArg
+  , GetField(..), Lam(..), RecExtend(..)
   , Val(..), body, payload
   , Var(..)
   , GlobalId(..)
@@ -49,6 +51,9 @@ data Apply expr = Apply
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
+
+applyArg :: Lens' (Apply expr) expr
+applyArg f (Apply func arg) = Apply func <$> f arg
 
 data GetField expr = GetField
   { _getFieldRecord :: expr

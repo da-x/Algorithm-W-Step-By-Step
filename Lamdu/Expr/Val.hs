@@ -2,9 +2,9 @@
 module Lamdu.Expr.Val
   ( Leaf(..)
   , Body(..)
-  , Apply(..), applyArg
+  , Apply(..), applyFunc, applyArg
   , GetField(..), Lam(..), RecExtend(..)
-  , Val(..), body, payload
+  , Val(..), body, payload, alphaEq
   , Var(..)
   , GlobalId(..)
   , pPrintUnannotated
@@ -16,6 +16,7 @@ import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.Binary (Binary)
 import Data.Foldable (Foldable)
+import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Data.Traversable (Traversable)
@@ -25,6 +26,9 @@ import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Tag)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
+import qualified Data.Foldable as Foldable
+import qualified Data.Map as Map
+import qualified Lamdu.Expr.Scheme as Scheme
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
@@ -41,9 +45,12 @@ data Leaf
   |  LHole
   |  LLiteralInteger Integer
   |  LRecEmpty
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 instance NFData Leaf where rnf = genericRnf
 instance Binary Leaf
+
+class Match f where
+  match :: (a -> b -> c) -> f a -> f b -> Maybe (f c)
 
 data Apply expr = Apply
   { _applyFunc :: expr
@@ -51,6 +58,11 @@ data Apply expr = Apply
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
+instance Match Apply where
+    match f (Apply f0 a0) (Apply f1 a1) = Just $ Apply (f f0 f1) (f a0 a1)
+
+applyFunc :: Lens' (Apply expr) expr
+applyFunc f (Apply func arg) = (`Apply` arg) <$> f func
 
 applyArg :: Lens' (Apply expr) expr
 applyArg f (Apply func arg) = Apply func <$> f arg
@@ -61,6 +73,10 @@ data GetField expr = GetField
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
+instance Match GetField where
+    match f (GetField r0 t0) (GetField r1 t1)
+      | t0 == t1 = Just $ GetField (f r0 r1) t0
+      | otherwise = Nothing
 
 data Lam expr = Lam
   { _lamParamId :: Var
@@ -77,6 +93,10 @@ data RecExtend expr = RecExtend
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
+instance Match RecExtend where
+  match f (RecExtend t0 f0 r0) (RecExtend t1 f1 r1)
+    | t0 == t1 = Just $ RecExtend t0 (f f0 f1) (f r0 r1)
+    | otherwise = Nothing
 
 data Body exp
   =  BApp {-# UNPACK #-}!(Apply exp)
@@ -149,3 +169,27 @@ instance Pretty EmptyDoc where
 
 pPrintUnannotated :: Val a -> PP.Doc
 pPrintUnannotated = pPrint . (EmptyDoc <$)
+
+alphaEq :: Val () -> Val () -> Bool
+alphaEq =
+  go Map.empty
+  where
+    xToYConv xToY x =
+      fromMaybe x $ Map.lookup x xToY
+    go xToY (Val _ xBody) (Val _ yBody) =
+      case (xBody, yBody) of
+      (BAbs (Lam xvar xparamTypeConstraint xresult),
+       BAbs (Lam yvar yparamTypeConstraint yresult)) ->
+        Scheme.alphaEq xparamTypeConstraint yparamTypeConstraint &&
+        go (Map.insert xvar yvar xToY) xresult yresult
+      (BLeaf (LVar x), BLeaf (LVar y)) ->
+        -- TODO: This is probably not 100% correct for various
+        -- shadowing corner cases
+        xToYConv xToY x == y
+      (BLeaf x, BLeaf y) -> x == y
+      (BApp x, BApp y) -> goRecurse x y
+      (BGetField x, BGetField y) -> goRecurse x y
+      (BRecExtend x, BRecExtend y) -> goRecurse x y
+      (_, _) -> False
+      where
+        goRecurse x y = maybe False Foldable.and $ match (go xToY) x y

@@ -5,28 +5,27 @@ module Lamdu.Suggest
 import Control.Monad (replicateM)
 import Control.Monad.Trans.State (State, state)
 import Data.String (IsString(..))
+import Control.Applicative (Applicative(..), (<$>))
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.Val (Val(..))
 import System.Random (RandomGen, random)
 import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Val as V
+
+suggestValueWith :: Applicative f => f V.Var -> Type -> f (Val ())
+suggestValueWith _ T.TVar{}                  = pure P.hole
+suggestValueWith _ T.TInst{}                 = pure P.hole
+suggestValueWith mkVar (T.TRecord composite) = suggestRecordWith mkVar composite
+suggestValueWith mkVar (T.TFun _ r)          =
+  P.abs <$> mkVar <*> pure S.any <*> suggestValueWith mkVar r
+
+suggestRecordWith :: Applicative f => f V.Var -> T.Composite T.Product -> f (Val ())
+suggestRecordWith _ T.CVar{}          = pure P.hole
+suggestRecordWith _ T.CEmpty          = pure P.recEmpty
+suggestRecordWith mkVar (T.CExtend f t r) =
+  P.recExtend f <$> suggestValueWith mkVar t <*> suggestRecordWith mkVar r
 
 suggestValue :: RandomGen g => Type -> State g (Val ())
-suggestValue T.TVar{}              = return P.hole
-suggestValue T.TInst{}             = return P.hole
-suggestValue (T.TRecord composite) = suggestRecord composite
-suggestValue (T.TFun _ r)          = do
-                                       param <-
-                                         fmap fromString $
-                                         replicateM 16 $ state random
-                                       res <- suggestValue r
-                                       return $ P.abs param S.any res
-
-suggestRecord :: RandomGen g => T.Composite T.Product -> State g (Val ())
-suggestRecord T.CVar{}          = return P.hole
-suggestRecord T.CEmpty          = return P.recEmpty
-suggestRecord (T.CExtend f t r) = do
-                                    fv <- suggestValue t
-                                    rv <- suggestRecord r
-                                    return $ P.recExtend f fv rv
+suggestValue = suggestValueWith ((fmap fromString . replicateM 16 . state) random)

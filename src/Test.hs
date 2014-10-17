@@ -1,11 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Control.Arrow ((&&&))
 import Control.Lens (zoom)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad.State (StateT(..), runState, modify', get)
+import Control.Monad.State (StateT(..), state, runState, evalState, modify', get)
+import Data.String (IsString(..))
 import Data.Traversable (traverse)
-import Lamdu.Infer
+import Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import Lamdu.Expr.Val (Val(..))
+import Lamdu.Infer
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
@@ -13,6 +16,7 @@ import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
+import qualified Lamdu.Suggest as Suggest
 import qualified Text.PrettyPrint as PP
 
 eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
@@ -89,6 +93,16 @@ exps =
   , "x" $= int 1 $ Val () $ V.BLeaf $ V.LHole
   ]
 
+suggestTypes :: [Type]
+suggestTypes =
+  [ T.int ~> T.int
+  , T.int ~> T.int ~> T.int
+  , TRecord CEmpty
+  , TVar "a" ~> TRecord CEmpty
+  , TVar "a" ~> TRecord (CExtend "x" T.int (CExtend "y" (T.int ~> T.int) CEmpty))
+  , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
+  ]
+
 test :: Val () -> IO ()
 test e =
     case result of
@@ -114,5 +128,16 @@ test e =
             let t = e' ^. V.payload . _1 . plType
             return (t, e')
 
+testSuggest :: Type -> IO ()
+testSuggest typ =
+  print $ V.pPrintUnannotated val <+> PP.text "suggested by" <+> pPrint typ
+  where
+    val =
+      evalState (Suggest.suggestValueWith fresh typ)
+      [fromString ('x':show (n::Integer)) | n <- [0..]]
+    fresh = state $ head &&& tail
+
 main :: IO ()
-main = mapM_ test exps
+main =
+  do  mapM_ test exps
+      mapM_ testSuggest suggestTypes

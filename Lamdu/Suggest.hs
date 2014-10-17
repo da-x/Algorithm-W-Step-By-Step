@@ -1,14 +1,10 @@
 module Lamdu.Suggest
-  ( suggestValue
+  ( suggestValueWith, suggestRecordWith
   ) where
 
-import Control.Monad (replicateM)
-import Control.Monad.Trans.State (State, state)
-import Data.String (IsString(..))
 import Control.Applicative (Applicative(..), (<$>))
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.Val (Val(..))
-import System.Random (RandomGen, random)
 import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
@@ -26,6 +22,3 @@ suggestRecordWith _ T.CVar{}          = pure P.hole
 suggestRecordWith _ T.CEmpty          = pure P.recEmpty
 suggestRecordWith mkVar (T.CExtend f t r) =
   P.recExtend f <$> suggestValueWith mkVar t <*> suggestRecordWith mkVar r
-
-suggestValue :: RandomGen g => Type -> State g (Val ())
-suggestValue = suggestValueWith ((fmap fromString . replicateM 16 . state) random)

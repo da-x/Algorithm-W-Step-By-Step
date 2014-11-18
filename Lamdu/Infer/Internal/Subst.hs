@@ -22,8 +22,14 @@ data Subst = Subst
   , substRecordTypes :: SubSubst (T.Composite T.Product)
   }
 
-unionDisjoint :: Ord k => Map k a -> Map k a -> Map k a
-unionDisjoint = Map.unionWith (error "Given non-disjoint maps!")
+unionDisjoint :: (Show a, Show k, Ord k) => Map k a -> Map k a -> Map k a
+unionDisjoint =
+  Map.unionWithKey $ \k v0 v1 ->
+  error $ concat
+  [ "Given non-disjoint maps! Key=", show k
+  , " V0=", show v0
+  , " V1=", show v1
+  ]
 
 instance Monoid Subst where
   mempty = Subst Map.empty Map.empty

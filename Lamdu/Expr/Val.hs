@@ -80,7 +80,6 @@ instance Match GetField where
 
 data Lam expr = Lam
   { _lamParamId :: Var
-  , _lamParamTypeConstraint :: Scheme
   , _lamResult :: expr
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
@@ -131,17 +130,10 @@ pPrintPrecBody lvl prec b =
   BLeaf LHole               -> PP.text "?"
   BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
                                    pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-  BAbs (Lam n t e)          -> prettyParen (0 < prec) $
+  BAbs (Lam n e)            -> prettyParen (0 < prec) $
                                PP.char '\\' <> pPrint n <+>
-                               ( if nullTemplate t
-                                 then mempty
-                                 else PP.text "::" <+> pPrint t
-                               ) <+>
                                PP.text "->" <+>
                                pPrint e
-    where
-      nullTemplate (Scheme vars c (T.TVar v)) = c == mempty && TypeVars.singleton v == vars
-      nullTemplate _ = False
   BGetField (GetField e n)  -> prettyParen (12 < prec) $
                                pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
   BLeaf LRecEmpty           -> PP.text "V{}"
@@ -178,9 +170,8 @@ alphaEq =
       fromMaybe x $ Map.lookup x xToY
     go xToY (Val _ xBody) (Val _ yBody) =
       case (xBody, yBody) of
-      (BAbs (Lam xvar xparamTypeConstraint xresult),
-       BAbs (Lam yvar yparamTypeConstraint yresult)) ->
-        Scheme.alphaEq xparamTypeConstraint yparamTypeConstraint &&
+      (BAbs (Lam xvar xresult),
+       BAbs (Lam yvar yresult)) ->
         go (Map.insert xvar yvar xToY) xresult yresult
       (BLeaf (LVar x), BLeaf (LVar y)) ->
         -- TODO: This is probably not 100% correct for various

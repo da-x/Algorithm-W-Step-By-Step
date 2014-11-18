@@ -17,7 +17,6 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Pure as P
-import qualified Lamdu.Expr.Scheme as S
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 
@@ -25,7 +24,7 @@ import qualified Lamdu.Expr.Val as V
 -- TODO: TCon "->" instead of TFun
 
 lambda :: V.Var -> (Val () -> Val ()) -> Val ()
-lambda varName mkBody = P.abs varName S.any (mkBody (P.var varName))
+lambda varName mkBody = P.abs varName (mkBody (P.var varName))
 
 lambdaRecord :: [T.Tag] -> ([Val ()] -> Val ()) -> Val ()
 lambdaRecord names mkBody =

@@ -117,11 +117,11 @@ inferInternal f globals =
                Just sigma   -> Scheme.instantiate sigma
         V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
         V.LRecEmpty -> return $ T.TRecord T.CEmpty
-      V.BAbs (V.Lam n paramTypeTemplate e) ->
-        do  tv <- Scheme.instantiate paramTypeTemplate
+      V.BAbs (V.Lam n e) ->
+        do  tv <- M.newInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- M.listenSubst $ go locals' e
-            return $ mkResult (V.BAbs (V.Lam n paramTypeTemplate e')) $ T.TFun (Subst.apply s1 tv) t1
+            return $ mkResult (V.BAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
       V.BApp (V.Apply e1 e2) ->
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1

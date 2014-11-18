@@ -5,14 +5,13 @@ module Lamdu.Expr.Pure
 import Prelude hiding (abs)
 
 import Data.Monoid (Monoid(..))
-import Lamdu.Expr.Scheme (Scheme)
 import Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 
-abs :: Monoid a => V.Var -> Scheme -> Val a -> Val a
-abs name template body =
-  Val mempty $ V.BAbs $ V.Lam name template body
+abs :: Monoid a => V.Var -> Val a -> Val a
+abs name body =
+  Val mempty $ V.BAbs $ V.Lam name body
 
 leaf :: Monoid a => V.Leaf -> Val a
 leaf = Val mempty . V.BLeaf

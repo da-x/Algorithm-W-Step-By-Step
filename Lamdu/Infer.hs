@@ -139,8 +139,9 @@ inferInternal f globals =
             return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
       V.BRecExtend (V.RecExtend name e1 e2) ->
         do  ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-            ((t2, e2'), _) <- M.listenSubst $ go (Subst.apply s1 locals) e2
-            rest <-
+            ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
+            (rest, s3) <-
+              M.listenSubst $
               case t2 of
               T.TRecord x ->
                 -- In case t2 is already inferred as a TRecord,
@@ -156,7 +157,8 @@ inferInternal f globals =
                 let tve = T.liftVar tv
                 ((), s) <- M.listenSubst $ unify t2 $ T.TRecord tve
                 return $ Subst.apply s tve
+            let t1' = Subst.apply s3 $ Subst.apply s2 t1
             return $ mkResult (V.BRecExtend (V.RecExtend name e1' e2')) $
-              T.TRecord $ T.CExtend name t1 rest
+              T.TRecord $ T.CExtend name t1' rest
       where
         mkResult body' typ = (typ, Val (f typ locals pl) body')

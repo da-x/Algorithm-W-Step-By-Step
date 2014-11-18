@@ -18,6 +18,8 @@ import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Suggest as Suggest
 import qualified Text.PrettyPrint as PP
 
+import TestVals
+
 eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 eLet name val mkBody = P.app (P.abs name body) val
   where
@@ -90,6 +92,8 @@ exps =
     \f -> f $$ ("x" $= int 2) emptyRec
 
   , "x" $= int 1 $ Val () $ V.BLeaf $ V.LHole
+
+  , factorialVal, euler1Val, solveDepressedQuarticVal
   ]
 
 suggestTypes :: [Type]
@@ -123,7 +127,7 @@ test e =
     where
         result =
           (`runStateT` initialContext) . run $ do
-            e' <- infer M.empty emptyScope e
+            e' <- infer env emptyScope e
             let t = e' ^. V.payload . _1 . plType
             return (t, e')
 

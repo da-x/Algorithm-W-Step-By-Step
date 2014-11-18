@@ -50,6 +50,7 @@ benchmark bench-builder-all
   type:             exitcode-stdio-1.0
   hs-source-dirs:   src
   main-is:          benchmark.hs
+  other-modules:    TestVals
   build-depends:    base
                ,    criterion
                ,    deepseq

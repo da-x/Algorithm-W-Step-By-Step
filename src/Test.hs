@@ -93,6 +93,8 @@ exps =
 
   , "x" $= int 1 $ Val () $ V.BLeaf $ V.LHole
 
+  , lambda "x" $ \x -> list [x, x]
+
   , factorialVal, euler1Val, solveDepressedQuarticVal
   ]
 

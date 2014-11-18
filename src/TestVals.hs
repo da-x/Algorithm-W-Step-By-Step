@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TestVals (env, factorialVal, euler1Val, solveDepressedQuarticVal) where
+module TestVals (env, list, factorialVal, euler1Val, solveDepressedQuarticVal) where
 
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))

@@ -22,12 +22,15 @@ data Subst = Subst
   , substRecordTypes :: SubSubst (T.Composite T.Product)
   }
 
+unionDisjoint :: Ord k => Map k a -> Map k a -> Map k a
+unionDisjoint = Map.unionWith (error "Given non-disjoint maps!")
+
 instance Monoid Subst where
   mempty = Subst Map.empty Map.empty
   mappend (Subst t0 r0) s1@(Subst t1 r1) =
     Subst
-    (t1 `Map.union` Map.map (apply s1) t0)
-    (r1 `Map.union` Map.map (apply s1) r0)
+    (t1 `unionDisjoint` Map.map (apply s1) t0)
+    (r1 `unionDisjoint` Map.map (apply s1) r0)
 
 intersectMapSet :: Ord k => Set k -> Map k a -> Map k a
 intersectMapSet s m = Map.intersection m $ Map.fromSet (const ()) s

@@ -22,15 +22,11 @@ import Data.String (IsString(..))
 import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Lamdu.Expr.Identifier (Identifier)
-import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Tag)
 import Text.PrettyPrint ((<+>), (<>))
 import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
-import qualified Lamdu.Expr.Scheme as Scheme
-import qualified Lamdu.Expr.Type as T
-import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 newtype Var = Var { vvName :: Identifier }

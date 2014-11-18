@@ -12,6 +12,7 @@ cabal-version:       >=1.10
 
 library
   ghc-options:         -Wall -O2
+  ghc-prof-options:    -auto-all -caf-all -rtsopts
   exposed-modules:     Lamdu.Expr.Constraints
                  ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Identifier
@@ -60,11 +61,13 @@ benchmark bench-builder-all
                ,    pretty
                ,    prettyclass
                ,    mtl
-  ghc-options:      -O2 -Wall
+  ghc-options:         -O2 -Wall
+  ghc-prof-options:    -auto-all -caf-all -rtsopts
   default-language:    Haskell2010
 
 executable AlgoW
   ghc-options:         -Wall
+  ghc-prof-options:    -auto-all -caf-all -rtsopts
   main-is:             Test.hs
   -- other-modules:
   hs-source-dirs:      src

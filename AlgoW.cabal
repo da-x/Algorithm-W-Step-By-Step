@@ -52,7 +52,7 @@ benchmark bench-builder-all
   main-is:          benchmark.hs
   other-modules:    TestVals
   build-depends:    base
-               ,    criterion
+               ,    criterion >= 1.0.0.0
                ,    deepseq
                ,    AlgoW
                ,    lens

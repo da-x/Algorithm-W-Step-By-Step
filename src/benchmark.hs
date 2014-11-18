@@ -5,6 +5,7 @@ import Control.Lens (folded)
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad.State (evalStateT)
+import Criterion (Benchmarkable, whnfIO)
 import Criterion.Main (bench, defaultMain)
 import Lamdu.Expr.Val (Val)
 import Lamdu.Infer (infer, plType, initialContext, run, emptyScope)
@@ -13,13 +14,14 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 import TestVals
 
-benchInfer :: Val () -> IO ()
+benchInfer :: Val () -> Benchmarkable
 benchInfer e =
+    whnfIO $
     case (`evalStateT` initialContext) $ run $ infer env emptyScope e of
     Left err -> fail $ show $ "error:" <+> pPrint err
     Right eTyped -> evaluate $ rnf $ eTyped ^.. folded . _1 . plType
 
-benches :: [(String, IO ())]
+benches :: [(String, Benchmarkable)]
 benches =
   [ ("factorial", benchInfer factorialVal)
   , ("euler1", benchInfer euler1Val)
@@ -27,8 +29,4 @@ benches =
   ]
 
 main :: IO ()
-main =
-  defaultMain $ map makeBench benches
-  where
-    makeBench (name, f) =
-      bench name f
+main = defaultMain $ map (uncurry bench) benches

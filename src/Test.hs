@@ -91,7 +91,7 @@ exps =
   , eLet "f" (lambda "r" ("x" $= int 3)) $
     \f -> f $$ ("x" $= int 2) emptyRec
 
-  , "x" $= int 1 $ Val () $ V.BLeaf $ V.LHole
+  , "x" $= int 1 $ Val () $ V.BLeaf V.LHole
 
   , lambda "x" $ \x -> list [x, x]
 
@@ -112,7 +112,7 @@ test :: Val () -> IO ()
 test e =
     case result of
         Left err ->
-          putStrLn $ show (V.pPrintUnannotated e $+$ pPrint err)
+          print (V.pPrintUnannotated e $+$ pPrint err)
         Right ((typ, val), finalContext) -> do
           let scheme = makeScheme finalContext typ
           print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme

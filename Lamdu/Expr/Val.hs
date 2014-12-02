@@ -3,7 +3,9 @@ module Lamdu.Expr.Val
   ( Leaf(..)
   , Body(..)
   , Apply(..), applyFunc, applyArg
-  , GetField(..), Lam(..), RecExtend(..)
+  , GetField(..)
+  , Lam(..), lamParamId, lamResult
+  , RecExtend(..)
   , Val(..), body, payload, alphaEq
   , Var(..)
   , GlobalId(..)
@@ -86,6 +88,12 @@ data Lam exp = Lam
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 instance Hashable exp => Hashable (Lam exp) where hashWithSalt = gHashWithSalt
 instance Binary exp => Binary (Lam exp)
+
+lamParamId :: Lens' (Lam exp) Var
+lamParamId f (Lam paramId result) = (`Lam` result) <$> f paramId
+
+lamResult :: Lens' (Lam exp) exp
+lamResult f (Lam paramId result) = Lam paramId <$> f result
 
 data RecExtend exp = RecExtend
   { _recTag :: Tag

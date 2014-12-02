@@ -33,6 +33,7 @@ library
                ,       Lamdu.Infer.Internal.Scheme
                ,       Lamdu.Infer.Internal.Scope
                ,       Lamdu.Infer.Internal.Subst
+               ,       Data.Hashable.Generic
                ,       Data.Map.Utils
   default-language:    Haskell2010
   build-depends:       base >=4.7 && <4.8
@@ -40,6 +41,7 @@ library
                ,       containers >=0.5 && <0.6
                ,       lens >=4.1
                ,       transformers >=0.4 && <0.5
+               ,       hashable >=1.2 && <1.3
                ,       deepseq >=1.3 && <1.4
                ,       deepseq-generics >=0.1 && <0.2
                ,       prettyclass >=1.0 && <1.1

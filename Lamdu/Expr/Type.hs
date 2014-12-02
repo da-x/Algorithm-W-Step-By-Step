@@ -13,6 +13,7 @@ import Control.Applicative ((<$>), Applicative(..))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Data.Binary (Binary)
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
@@ -27,16 +28,16 @@ import qualified Data.Map.Utils as MapUtils
 import qualified Text.PrettyPrint as PP
 
 newtype Var t = Var { tvName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Id = Id { typeId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Tag = Tag { tagName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype ParamId = ParamId { typeParamId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 data Product
 

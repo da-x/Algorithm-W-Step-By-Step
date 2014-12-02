@@ -16,6 +16,8 @@ import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
 import Data.Binary (Binary)
 import Data.Foldable (Foldable)
+import Data.Hashable (Hashable(..))
+import Data.Hashable.Generic (gHashWithSalt)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
@@ -30,10 +32,10 @@ import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
 newtype Var = Var { vvName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype GlobalId = GlobalId { globalId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary)
+  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 data Leaf
   =  LVar Var
@@ -44,50 +46,55 @@ data Leaf
   deriving (Generic, Show, Eq)
 instance NFData Leaf where rnf = genericRnf
 instance Binary Leaf
+instance Hashable Leaf where hashWithSalt = gHashWithSalt
 
 class Match f where
   match :: (a -> b -> c) -> f a -> f b -> Maybe (f c)
 
-data Apply expr = Apply
-  { _applyFunc :: expr
-  , _applyArg :: expr
+data Apply exp = Apply
+  { _applyFunc :: exp
+  , _applyArg :: exp
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
+instance Hashable exp => Hashable (Apply exp) where hashWithSalt = gHashWithSalt
 instance Match Apply where
     match f (Apply f0 a0) (Apply f1 a1) = Just $ Apply (f f0 f1) (f a0 a1)
 
-applyFunc :: Lens' (Apply expr) expr
+applyFunc :: Lens' (Apply exp) exp
 applyFunc f (Apply func arg) = (`Apply` arg) <$> f func
 
-applyArg :: Lens' (Apply expr) expr
+applyArg :: Lens' (Apply exp) exp
 applyArg f (Apply func arg) = Apply func <$> f arg
 
-data GetField expr = GetField
-  { _getFieldRecord :: expr
+data GetField exp = GetField
+  { _getFieldRecord :: exp
   , _getFieldTag :: Tag
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
+instance Hashable exp => Hashable (GetField exp) where hashWithSalt = gHashWithSalt
 instance Match GetField where
     match f (GetField r0 t0) (GetField r1 t1)
       | t0 == t1 = Just $ GetField (f r0 r1) t0
       | otherwise = Nothing
 
-data Lam expr = Lam
+data Lam exp = Lam
   { _lamParamId :: Var
-  , _lamResult :: expr
+  , _lamResult :: exp
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
+instance Hashable exp => Hashable (Lam exp) where hashWithSalt = gHashWithSalt
 instance Binary exp => Binary (Lam exp)
 
-data RecExtend expr = RecExtend
+data RecExtend exp = RecExtend
   { _recTag :: Tag
-  , _recFieldVal :: expr
-  , _recRest :: expr
+  , _recFieldVal :: exp
+  , _recRest :: exp
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
+instance Hashable exp => Hashable (RecExtend exp) where hashWithSalt = gHashWithSalt
 instance Match RecExtend where
   match f (RecExtend t0 f0 r0) (RecExtend t1 f1 r1)
     | t0 == t1 = Just $ RecExtend t0 (f f0 f1) (f r0 r1)
@@ -102,6 +109,7 @@ data Body exp
   deriving (Functor, Foldable, Traversable, Generic, Show)
 -- NOTE: Careful of Eq, it's not alpha-eq!
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
+instance Hashable exp => Hashable (Body exp) where hashWithSalt = gHashWithSalt
 instance Binary exp => Binary (Body exp)
 
 data Val a = Val
@@ -109,6 +117,7 @@ data Val a = Val
   , _valBody :: !(Body (Val a))
   } deriving (Functor, Foldable, Traversable, Generic, Show)
 instance NFData a => NFData (Val a) where rnf = genericRnf
+instance Hashable a => Hashable (Val a) where hashWithSalt = gHashWithSalt
 instance Binary a => Binary (Val a)
 
 body :: Lens' (Val a) (Body (Val a))

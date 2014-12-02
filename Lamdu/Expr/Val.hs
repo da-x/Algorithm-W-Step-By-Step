@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving, RecordWildCards #-}
 module Lamdu.Expr.Val
   ( Leaf(..)
   , Body(..)
   , Apply(..), applyFunc, applyArg
   , GetField(..)
   , Lam(..), lamParamId, lamResult
-  , RecExtend(..)
+  , RecExtend(..), recTag, recFieldVal, recRest
   , Val(..), body, payload, alphaEq
   , Var(..)
   , GlobalId(..)
@@ -16,6 +16,7 @@ import Control.Applicative ((<$), (<$>))
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
 import Control.Lens (Lens')
+import Control.Lens.Operators
 import Data.Binary (Binary)
 import Data.Foldable (Foldable)
 import Data.Hashable (Hashable(..))
@@ -90,10 +91,10 @@ instance Hashable exp => Hashable (Lam exp) where hashWithSalt = gHashWithSalt
 instance Binary exp => Binary (Lam exp)
 
 lamParamId :: Lens' (Lam exp) Var
-lamParamId f (Lam paramId result) = (`Lam` result) <$> f paramId
+lamParamId f Lam {..} = f _lamParamId <&> \_lamParamId -> Lam {..}
 
 lamResult :: Lens' (Lam exp) exp
-lamResult f (Lam paramId result) = Lam paramId <$> f result
+lamResult f Lam {..} = f _lamResult <&> \_lamResult -> Lam {..}
 
 data RecExtend exp = RecExtend
   { _recTag :: Tag
@@ -107,6 +108,15 @@ instance Match RecExtend where
   match f (RecExtend t0 f0 r0) (RecExtend t1 f1 r1)
     | t0 == t1 = Just $ RecExtend t0 (f f0 f1) (f r0 r1)
     | otherwise = Nothing
+
+recTag :: Lens' (RecExtend exp) Tag
+recTag f RecExtend {..} = f _recTag <&> \_recTag -> RecExtend {..}
+
+recFieldVal :: Lens' (RecExtend exp) exp
+recFieldVal f RecExtend {..} = f _recFieldVal <&> \_recFieldVal -> RecExtend {..}
+
+recRest :: Lens' (RecExtend exp) exp
+recRest f RecExtend {..} = f _recRest <&> \_recRest -> RecExtend {..}
 
 data Body exp
   =  BApp {-# UNPACK #-}!(Apply exp)

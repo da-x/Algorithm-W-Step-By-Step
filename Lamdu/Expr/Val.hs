@@ -3,7 +3,7 @@ module Lamdu.Expr.Val
   ( Leaf(..)
   , Body(..)
   , Apply(..), applyFunc, applyArg
-  , GetField(..)
+  , GetField(..), getFieldRecord, getFieldTag
   , Lam(..), lamParamId, lamResult
   , RecExtend(..), recTag, recFieldVal, recRest
   , Val(..), body, payload, alphaEq
@@ -81,6 +81,12 @@ instance Match GetField where
     match f (GetField r0 t0) (GetField r1 t1)
       | t0 == t1 = Just $ GetField (f r0 r1) t0
       | otherwise = Nothing
+
+getFieldRecord :: Lens' (GetField exp) exp
+getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
+
+getFieldTag :: Lens' (GetField exp) Tag
+getFieldTag f GetField {..} = f _getFieldTag <&> \_getFieldTag -> GetField {..}
 
 data Lam exp = Lam
   { _lamParamId :: Var

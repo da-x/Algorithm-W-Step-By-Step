@@ -96,6 +96,12 @@ exps =
   , lambda "x" $ \x -> list [x, x]
 
   , factorialVal, euler1Val, solveDepressedQuarticVal
+
+  , eLet "open"
+    ( lambda "x" $ \x ->
+      eLet "y" (x $. "x") $
+      \_y -> x ) $ \open ->
+    open $$ ("x" $= int 0 $ emptyRec)
   ]
 
 suggestTypes :: [Type]

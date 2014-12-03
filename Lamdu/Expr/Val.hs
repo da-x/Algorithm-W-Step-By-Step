@@ -57,7 +57,7 @@ class Match f where
 data Apply exp = Apply
   { _applyFunc :: exp
   , _applyArg :: exp
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
 instance Hashable exp => Hashable (Apply exp) where hashWithSalt = gHashWithSalt
@@ -73,7 +73,7 @@ applyArg f (Apply func arg) = Apply func <$> f arg
 data GetField exp = GetField
   { _getFieldRecord :: exp
   , _getFieldTag :: Tag
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
 instance Hashable exp => Hashable (GetField exp) where hashWithSalt = gHashWithSalt
@@ -91,7 +91,7 @@ getFieldTag f GetField {..} = f _getFieldTag <&> \_getFieldTag -> GetField {..}
 data Lam exp = Lam
   { _lamParamId :: Var
   , _lamResult :: exp
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (Lam exp) where rnf = genericRnf
 instance Hashable exp => Hashable (Lam exp) where hashWithSalt = gHashWithSalt
 instance Binary exp => Binary (Lam exp)
@@ -106,7 +106,7 @@ data RecExtend exp = RecExtend
   { _recTag :: Tag
   , _recFieldVal :: exp
   , _recRest :: exp
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (RecExtend exp) where rnf = genericRnf
 instance Binary exp => Binary (RecExtend exp)
 instance Hashable exp => Hashable (RecExtend exp) where hashWithSalt = gHashWithSalt
@@ -130,7 +130,7 @@ data Body exp
   |  BGetField {-# UNPACK #-}!(GetField exp)
   |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
   |  BLeaf Leaf
-  deriving (Functor, Foldable, Traversable, Generic, Show)
+  deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 -- NOTE: Careful of Eq, it's not alpha-eq!
 instance NFData exp => NFData (Body exp) where rnf = genericRnf
 instance Hashable exp => Hashable (Body exp) where hashWithSalt = gHashWithSalt
@@ -139,7 +139,7 @@ instance Binary exp => Binary (Body exp)
 data Val a = Val
   { _valPayload :: a
   , _valBody :: !(Body (Val a))
-  } deriving (Functor, Foldable, Traversable, Generic, Show)
+  } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData a => NFData (Val a) where rnf = genericRnf
 instance Hashable a => Hashable (Val a) where hashWithSalt = gHashWithSalt
 instance Binary a => Binary (Val a)

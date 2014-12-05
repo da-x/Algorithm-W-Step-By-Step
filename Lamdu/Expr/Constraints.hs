@@ -32,7 +32,7 @@ type TypeVarConstraints = ()
 
 newtype Constraints = Constraints
   { productVarConstraints :: Map T.ProductVar ProductVarConstraints
-  } deriving (Generic, Eq, Show)
+  } deriving (Generic, Eq, Ord, Show)
 
 instance NFData Constraints where
   rnf = genericRnf

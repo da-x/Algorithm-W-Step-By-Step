@@ -31,11 +31,12 @@ import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 data InferState = InferState { inferSupply :: Int }
+  deriving (Eq, Ord)
 
 data Results = Results
   { subst :: {-# UNPACK #-} !Subst
   , constraints :: !Constraints
-  }
+  } deriving (Eq, Ord)
 
 emptyResults :: Results
 emptyResults = Results mempty mempty
@@ -55,7 +56,7 @@ intersectResults tvs (Results s c) =
 data Context = Context
   { ctxResults :: {-# UNPACK #-} !Results
   , ctxState :: {-# UNPACK #-} !InferState
-  }
+  } deriving (Eq, Ord)
 
 initialContext :: Context
 initialContext =

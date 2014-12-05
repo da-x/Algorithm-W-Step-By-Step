@@ -20,7 +20,7 @@ import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 newtype Scope = Scope { typeOfVar :: Map V.Var Type }
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq, Ord)
 
 instance NFData Scope where rnf = genericRnf
 instance Binary Scope

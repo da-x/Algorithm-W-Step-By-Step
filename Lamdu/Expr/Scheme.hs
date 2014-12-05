@@ -33,7 +33,7 @@ data Scheme = Scheme
   { schemeForAll :: TypeVars
   , schemeConstraints :: Constraints
   , schemeType :: Type
-  } deriving (Generic, Show)
+  } deriving (Generic, Show, Eq, Ord)
 
 -- a Consistent List is an assoc list where each key is never
 -- associated to non-eq values

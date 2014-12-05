@@ -25,6 +25,7 @@ library
                  ,     Lamdu.Infer
                  ,     Lamdu.Infer.Error
                  ,     Lamdu.Infer.Load
+                 ,     Lamdu.Infer.Memo
                  ,     Lamdu.Infer.Unify
                  ,     Lamdu.Infer.Update
                  ,     Lamdu.Suggest
@@ -42,6 +43,7 @@ library
                ,       lens >=4.1
                ,       transformers >=0.4 && <0.5
                ,       hashable >=1.2 && <1.3
+               ,       uglymemo ==0.1.*
                ,       deepseq >=1.3 && <1.4
                ,       deepseq-generics >=0.1 && <0.2
                ,       prettyclass >=1.0 && <1.1

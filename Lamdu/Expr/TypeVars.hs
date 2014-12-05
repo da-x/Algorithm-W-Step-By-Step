@@ -18,7 +18,7 @@ import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
 
 data TypeVars = TypeVars (Set (T.Var Type)) (Set T.ProductVar)
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 instance NFData TypeVars where
   rnf = genericRnf
 instance Monoid TypeVars where

@@ -74,10 +74,11 @@ type VarMatches = ([(Var Type, Var Type)], [(ProductVar, ProductVar)])
 
 matchVars :: Type -> Type -> Maybe VarMatches
 matchVars (TVar tv0)         (TVar tv1)         = Just ([(tv0, tv1)], [])
-matchVars (TFun a0 b0)       (TFun a1 b1)       = matchVars a0 a1 `mappend` matchVars b0 b1
+matchVars (TFun a0 b0)       (TFun a1 b1)       = mappend <$> matchVars a0 a1 <*> matchVars b0 b1
 matchVars (TInst i0 params0) (TInst i1 params1)
   | i0 == i1 =
-    mconcat . Map.elems =<< MapUtils.match matchVars params0 params1
+    fmap mconcat . sequence . Map.elems =<<
+    MapUtils.match matchVars params0 params1
 matchVars (TRecord c0) (TRecord c1) = matchProductVars c0 c1
 matchVars _ _ = Nothing
 

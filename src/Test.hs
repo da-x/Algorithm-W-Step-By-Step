@@ -3,7 +3,7 @@ import Control.Arrow ((&&&))
 import Control.Lens (zoom)
 import Control.Lens.Operators
 import Control.Lens.Tuple
-import Control.Monad.State (StateT(..), state, runState, evalState, modify', get)
+import Control.Monad.State (StateT(..), state, runState, evalState, modify, get)
 import Data.String (IsString(..))
 import Data.Traversable (traverse)
 import Lamdu.Expr.Type ((~>), Type(..), Composite(..))
@@ -122,10 +122,10 @@ test e =
         Right ((typ, val), finalContext) -> do
           let scheme = makeScheme finalContext typ
           print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme
-          let next = modify' (+1) >> get
+          let next = modify (+1) >> get
               tag x =
                 do  n <- zoom _1 next
-                    zoom _2 $ modify' $ M.insert n x
+                    zoom _2 $ modify $ M.insert n x
                     return n
           let (taggedVal, (_, types)) =
                 runState (traverse (tag . _plType . fst) val) (0::Int, M.empty)

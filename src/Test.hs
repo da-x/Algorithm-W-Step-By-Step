@@ -46,6 +46,8 @@ infixl 3 $=
 ($=) :: T.Tag -> Val () -> Val () -> Val ()
 ($=) = P.recExtend
 
+{-# ANN module ("HLint: ignore Use const" :: String) #-}
+
 exps :: [Val ()]
 exps =
   [ eLet "id" (lambda "x" id) id

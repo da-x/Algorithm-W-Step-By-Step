@@ -82,6 +82,8 @@ instance Match GetField where
       | t0 == t1 = Just $ GetField (f r0 r1) t0
       | otherwise = Nothing
 
+{-# ANN module "HLint: ignore Use const" #-}
+
 getFieldRecord :: Lens' (GetField exp) exp
 getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
 

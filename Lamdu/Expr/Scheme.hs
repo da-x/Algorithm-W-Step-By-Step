@@ -26,6 +26,7 @@ import qualified Data.Set as Set
 import qualified Data.Tuple as Tuple
 import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.Type.Match as TypeMatch
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
@@ -56,7 +57,7 @@ fromDoublyConsistentList pairs =
 alphaEq :: Scheme -> Scheme -> Bool
 alphaEq (Scheme aForall aConstraints aType)
         (Scheme bForall bConstraints bType) =
-  case T.matchVars aType bType of
+  case TypeMatch.matchVars aType bType of
     Just (tvPairs, ctvPairs)
       | Just tvMap <- fromDoublyConsistentList tvPairs
       , Just ctvMap <- fromDoublyConsistentList ctvPairs

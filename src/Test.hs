@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Control.Applicative
 import Control.Arrow ((&&&))
 import Control.Lens (zoom)
 import Control.Lens.Operators
@@ -9,12 +10,15 @@ import Data.Traversable (traverse)
 import Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import Lamdu.Expr.Val (Val(..))
 import Lamdu.Infer
+import Lamdu.Infer.Update
+import Lamdu.Infer.Unify
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as M
 import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
+import qualified Lamdu.Infer.Recursive as Recursive
 import qualified Lamdu.Suggest as Suggest
 import qualified Text.PrettyPrint as PP
 
@@ -106,6 +110,18 @@ exps =
     open $$ ("x" $= int 0 $ emptyRec)
   ]
 
+recurseVar :: V.Var
+recurseVar = V.Var "Recurse"
+
+recurse :: V.Val ()
+recurse = P.var recurseVar
+
+recursiveExps :: [Val ()]
+recursiveExps =
+    [ eLet "id" (lambda "x" id) id
+    , recurse
+    ]
+
 suggestTypes :: [Type]
 suggestTypes =
   [ T.int ~> T.int
@@ -116,30 +132,49 @@ suggestTypes =
   , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
   ]
 
-test :: Val () -> IO ()
-test e =
-    case result of
-        Left err ->
-          print (V.pPrintUnannotated e $+$ pPrint err)
-        Right ((typ, val), finalContext) -> do
-          let scheme = makeScheme finalContext typ
-          print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme
-          let next = modify (+1) >> get
-              tag x =
-                do  n <- zoom _1 next
-                    zoom _2 $ modify $ M.insert n x
-                    return n
-          let (taggedVal, (_, types)) =
-                runState (traverse (tag . _plType . fst) val) (0::Int, M.empty)
-          print $ pPrint taggedVal
-          let indent = PP.hcat $ replicate 4 PP.space
-          mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
+runAndPrint :: Val a -> Infer (Type, Val (Payload, b)) -> IO ()
+runAndPrint e =
+    printResult . (`runStateT` initialContext) . run
     where
-        result =
-          (`runStateT` initialContext) . run $ do
-            e' <- infer env emptyScope e
-            let t = e' ^. V.payload . _1 . plType
-            return (t, e')
+        printResult (Left err) = print (V.pPrintUnannotated e $+$ pPrint err)
+        printResult (Right ((typ, val), finalContext)) =
+            do
+                let scheme = makeScheme finalContext typ
+                print $ V.pPrintUnannotated val <+> PP.text "::" <+> pPrint scheme
+                let next = modify (+1) >> get
+                    tag x =
+                      do  n <- zoom _1 next
+                          zoom _2 $ modify $ M.insert n x
+                          return n
+                let (taggedVal, (_, types)) =
+                      runState (traverse (tag . _plType . fst) val) (0::Int, M.empty)
+                print $ pPrint taggedVal
+                let indent = PP.hcat $ replicate 4 PP.space
+                mapM_ (\(k, t) -> print $ indent <> pPrint k <+> "=" <+> pPrint t) $ M.toList types
+
+inferType :: Scope -> Val a -> Infer (Type, Val (Payload, a))
+inferType scope e =
+    do
+        e' <- infer env scope e
+        let t = e' ^. V.payload . _1 . plType
+        return (t, e')
+
+test :: Val () -> IO ()
+test e = runAndPrint e $ inferType emptyScope e
+
+inferInto :: Payload -> Val a -> Infer (Type, Val (Payload, a))
+inferInto pl val =
+    do
+        (inferredType, inferredVal) <- inferType (pl ^. plScope) val
+        unify inferredType (pl ^. plType)
+        (,) inferredType <$> updateInferredVal inferredVal
+
+testRecursive :: Val () -> IO ()
+testRecursive e =
+    runAndPrint e $
+    do
+        recursivePos <- Recursive.inferEnv recurseVar emptyScope
+        inferInto recursivePos e
 
 testSuggest :: Type -> IO ()
 testSuggest typ =
@@ -152,5 +187,10 @@ testSuggest typ =
 
 main :: IO ()
 main =
-  do  mapM_ test exps
-      mapM_ testSuggest suggestTypes
+    do
+        putStrLn "Expression types:"
+        mapM_ test exps
+        putStrLn "Recursive expression types:"
+        mapM_ testRecursive recursiveExps
+        putStrLn "Suggested values from types:"
+        mapM_ testSuggest suggestTypes

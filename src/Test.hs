@@ -24,32 +24,6 @@ import qualified Text.PrettyPrint as PP
 
 import TestVals
 
-eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
-eLet name val mkBody = P.app (P.abs name body) val
-  where
-    body = mkBody $ P.var name
-
-lambda :: V.Var -> (Val () -> Val ()) -> Val ()
-lambda name mkBody = P.abs name $ mkBody $ P.var name
-
-int :: Integer -> Val ()
-int = P.litInt
-
-emptyRec :: Val ()
-emptyRec = P.recEmpty
-
-infixl 4 $$
-($$) :: Val () -> Val () -> Val ()
-($$) = P.app
-
-infixl 9 $.
-($.) :: Val () -> T.Tag -> Val ()
-($.) = P.getField
-
-infixl 3 $=
-($=) :: T.Tag -> Val () -> Val () -> Val ()
-($=) = P.recExtend
-
 {-# ANN module ("HLint: ignore Use const" :: String) #-}
 
 exps :: [Val ()]
@@ -60,44 +34,44 @@ exps =
 
   , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id'
 
-  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id' $$ int 2
+  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id' $$ P.litInt 2
 
   , eLet "id" (lambda "x" (\x -> x $$ x)) id
 
   , lambda "m" $ \m ->
     eLet "y" m $ \y ->
-    eLet "x" (y $$ int 3) id
+    eLet "x" (y $$ P.litInt 3) id
 
-  , int 2 $$ int 2
+  , P.litInt 2 $$ P.litInt 2
 
   , lambda "a" $ \a ->
     eLet "x"
     ( lambda "b"
-      ( \_ -> eLet "y" (lambda "c" (\_ -> a $$ int 1))
-        (\y -> y $$ int 2) )
-    ) $ \x -> x $$ int 3
+      ( \_ -> eLet "y" (lambda "c" (\_ -> a $$ P.litInt 1))
+        (\y -> y $$ P.litInt 2) )
+    ) $ \x -> x $$ P.litInt 3
 
   , lambda "a" $ \a -> lambda "b" $ \b -> b $$ (a $$ (a $$ b))
 
   , lambda "vec" $ \vec ->
     "newX" $= (vec $. "x") $
     "newY" $= (vec $. "y") $
-    emptyRec
+    P.recEmpty
 
-  , eLet "vec" ("x" $= int 5 $ "y" $= int 7 $ emptyRec) ($. "x")
+  , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "x")
 
-  , eLet "vec" ("x" $= int 5 $ "y" $= int 7 $ emptyRec) ($. "z")
+  , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "z")
 
   , lambda "x" $ \x -> "prev" $= (x $. "cur") $ x
 
-  , "x" $= int 2 $ "x" $= int 3 $ emptyRec
+  , "x" $= P.litInt 2 $ "x" $= P.litInt 3 $ P.recEmpty
 
-  , lambda "r" ("x" $= int 2) $$ ("x" $= int 3) emptyRec
+  , lambda "r" ("x" $= P.litInt 2) $$ ("x" $= P.litInt 3) P.recEmpty
 
-  , eLet "f" (lambda "r" ("x" $= int 3)) $
-    \f -> f $$ ("x" $= int 2) emptyRec
+  , eLet "f" (lambda "r" ("x" $= P.litInt 3)) $
+    \f -> f $$ ("x" $= P.litInt 2) P.recEmpty
 
-  , "x" $= int 1 $ Val () $ V.BLeaf V.LHole
+  , "x" $= P.litInt 1 $ P.hole
 
   , lambda "x" $ \x -> list [x, x]
 
@@ -107,7 +81,11 @@ exps =
     ( lambda "x" $ \x ->
       eLet "y" (x $. "x") $
       \_y -> x ) $ \open ->
-    open $$ ("x" $= int 0 $ emptyRec)
+    open $$ ("x" $= P.litInt 0 $ P.recEmpty)
+
+  , P.global "fix" $$ lambda "f"
+    ( \f -> P.hole $$ (f $$ (f $$ (P.global "zipWith" $$ P.hole $$ P.hole $$ P.hole)))
+    )
   ]
 
 recurseVar :: V.Var

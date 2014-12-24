@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TestVals (env, list, factorialVal, euler1Val, solveDepressedQuarticVal) where
+module TestVals
+  ( env, list, factorialVal, euler1Val, solveDepressedQuarticVal
+  , lambda, lambdaRecord, whereItem, record, eRecord
+  , eLet, ($$), ($$:), ($.), ($=)
+  ) where
 
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Scheme (Scheme(..))
-import Lamdu.Expr.Type (Type)
+import Lamdu.Expr.Type (Type, (~>))
 import Lamdu.Expr.Val (Val)
 import Lamdu.Infer (TypeVars(..))
 import qualified Data.Map as Map
@@ -17,8 +21,13 @@ import qualified Lamdu.Expr.Val as V
 -- TODO: $$ to be type-classed for TApp vs BApp
 -- TODO: TCon "->" instead of TFun
 
+eLet :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
+eLet name val mkBody = P.app (P.abs name body) val
+  where
+    body = mkBody $ P.var name
+
 lambda :: V.Var -> (Val () -> Val ()) -> Val ()
-lambda varName mkBody = P.abs varName (mkBody (P.var varName))
+lambda varName mkBody = P.abs varName $ mkBody $ P.var varName
 
 lambdaRecord :: [T.Tag] -> ([Val ()] -> Val ()) -> Val ()
 lambdaRecord names mkBody =
@@ -42,15 +51,13 @@ infixl 4 $$:
 ($$:) :: Val () -> [(T.Tag, Val ())] -> Val ()
 func $$: fields = func $$ eRecord fields
 
-infixr 4 ~>
-(~>) :: Type -> Type -> Type
-(~>) = T.TFun
+infixl 9 $.
+($.) :: Val () -> T.Tag -> Val ()
+($.) = P.getField
 
-getDef :: V.GlobalId -> Val ()
-getDef = P.global
-
-literalInteger :: Integer -> Val ()
-literalInteger = P.litInt
+infixl 3 $=
+($=) :: T.Tag -> Val () -> Val () -> Val ()
+($=) = P.recExtend
 
 integerType :: Type
 integerType = T.TInst "Int" Map.empty
@@ -93,44 +100,46 @@ env = Map.fromList
   , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
   , ("sqrt",   forAll ["a"] $ \ [a] -> a ~> a)
   , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
+  , ("zipWith",forAll ["a","b","c"] $ \ [a,b,c] ->
+               (a ~> b ~> c) ~> listOf a ~> listOf b ~> listOf c )
   ]
 
 list :: [Val ()] -> Val ()
-list [] = getDef "[]"
+list [] = P.global "[]"
 list items@(_x:_) =
   foldr cons nil items
   where
-    cons h t = getDef ":" $$: [("head", h), ("tail", t)]
-    nil = getDef "[]"
+    cons h t = P.global ":" $$: [("head", h), ("tail", t)]
+    nil = P.global "[]"
 
 factorialVal :: Val ()
 factorialVal =
-  getDef "fix" $$
+  P.global "fix" $$
   lambda "loop"
   ( \loop ->
     lambda "x" $ \x ->
-    getDef "if" $$:
-    [ ( "condition", getDef "==" $$
-        infixArgs x (literalInteger 0) )
-    , ( "then", literalInteger 1 )
-    , ( "else", getDef "*" $$
-        infixArgs x (loop $$ (getDef "-" $$ infixArgs x (literalInteger 1)))
+    P.global "if" $$:
+    [ ( "condition", P.global "==" $$
+        infixArgs x (P.litInt 0) )
+    , ( "then", P.litInt 1 )
+    , ( "else", P.global "*" $$
+        infixArgs x (loop $$ (P.global "-" $$ infixArgs x (P.litInt 1)))
       )
     ]
   )
 
 euler1Val :: Val ()
 euler1Val =
-  getDef "sum" $$
-  ( getDef "filter" $$:
-    [ ("from", getDef ".." $$ infixArgs (literalInteger 1) (literalInteger 1000))
+  P.global "sum" $$
+  ( P.global "filter" $$:
+    [ ("from", P.global ".." $$ infixArgs (P.litInt 1) (P.litInt 1000))
     , ( "predicate",
         lambda "x" $ \x ->
-        getDef "||" $$ infixArgs
-        ( getDef "==" $$ infixArgs
-          (literalInteger 0) (getDef "%" $$ infixArgs x (literalInteger 3)) )
-        ( getDef "==" $$ infixArgs
-          (literalInteger 0) (getDef "%" $$ infixArgs x (literalInteger 5)) )
+        P.global "||" $$ infixArgs
+        ( P.global "==" $$ infixArgs
+          (P.litInt 0) (P.global "%" $$ infixArgs x (P.litInt 3)) )
+        ( P.global "==" $$ infixArgs
+          (P.litInt 0) (P.global "%" $$ infixArgs x (P.litInt 5)) )
       )
     ]
   )
@@ -138,42 +147,42 @@ euler1Val =
 solveDepressedQuarticVal :: Val ()
 solveDepressedQuarticVal =
   lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
-  whereItem "solvePoly" (getDef "id")
+  whereItem "solvePoly" (P.global "id")
   $ \solvePoly ->
   whereItem "sqrts"
   ( lambda "x" $ \x ->
     whereItem "r"
-    ( getDef "sqrt" $$ x
+    ( P.global "sqrt" $$ x
     ) $ \r ->
-    list [r, getDef "negate" $$ r]
+    list [r, P.global "negate" $$ r]
   )
   $ \sqrts ->
-  getDef "if" $$:
-  [ ("condition", getDef "==" $$ infixArgs d (literalInteger 0))
+  P.global "if" $$:
+  [ ("condition", P.global "==" $$ infixArgs d (P.litInt 0))
   , ( "then",
-      getDef "concat" $$
-      ( getDef "map" $$:
-        [ ("list", solvePoly $$ list [e, c, literalInteger 1])
+      P.global "concat" $$
+      ( P.global "map" $$:
+        [ ("list", solvePoly $$ list [e, c, P.litInt 1])
         , ("mapping", sqrts)
         ]
       )
     )
   , ( "else",
-      getDef "concat" $$
-      ( getDef "map" $$:
-        [ ( "list", sqrts $$ (getDef "head" $$ (solvePoly $$ list
-            [ getDef "negate" $$ (d %* d)
-            , (c %* c) %- (literalInteger 4 %* e)
-            , literalInteger 2 %* c
-            , literalInteger 1
+      P.global "concat" $$
+      ( P.global "map" $$:
+        [ ( "list", sqrts $$ (P.global "head" $$ (solvePoly $$ list
+            [ P.global "negate" $$ (d %* d)
+            , (c %* c) %- (P.litInt 4 %* e)
+            , P.litInt 2 %* c
+            , P.litInt 1
             ]))
           )
         , ( "mapping",
             lambda "x" $ \x ->
             solvePoly $$ list
             [ (c %+ (x %* x)) %- (d %/ x)
-            , literalInteger 2 %* x
-            , literalInteger 2
+            , P.litInt 2 %* x
+            , P.litInt 2
             ]
           )
         ]
@@ -181,7 +190,7 @@ solveDepressedQuarticVal =
     )
   ]
   where
-    x %+ y = getDef "+" $$ infixArgs x y
-    x %- y = getDef "-" $$ infixArgs x y
-    x %* y = getDef "*" $$ infixArgs x y
-    x %/ y = getDef "/" $$ infixArgs x y
+    x %+ y = P.global "+" $$ infixArgs x y
+    x %- y = P.global "-" $$ infixArgs x y
+    x %* y = P.global "*" $$ infixArgs x y
+    x %/ y = P.global "/" $$ infixArgs x y

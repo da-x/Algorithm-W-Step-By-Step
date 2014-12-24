@@ -11,6 +11,8 @@ import Data.Monoid (Monoid(..))
 import Data.Set (Set)
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
+import Text.PrettyPrint (text, vcat, (<>))
+import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
@@ -22,14 +24,18 @@ data Subst = Subst
   , substRecordTypes :: SubSubst (T.Composite T.Product)
   }
 
-unionDisjoint :: (Show a, Show k, Ord k) => Map k a -> Map k a -> Map k a
-unionDisjoint =
-  Map.unionWithKey $ \k v0 v1 ->
-  error $ concat
-  [ "Given non-disjoint maps! Key=", show k
-  , " V0=", show v0
-  , " V1=", show v1
-  ]
+unionDisjoint :: (Pretty a, Pretty k, Ord k) => Map k a -> Map k a -> Map k a
+unionDisjoint m1 m2 =
+  Map.unionWithKey collision m1 m2
+  where
+    collision k v0 v1 =
+      error $ show $ vcat
+      [ text "Given non-disjoint maps! Key=" <> pPrint k
+      , text " V0=" <> pPrint v0
+      , text " V1=" <> pPrint v1
+      , text " in " <> pPrint (Map.toList m1)
+      , text " vs " <> pPrint (Map.toList m2)
+      ]
 
 instance Monoid Subst where
   mempty = Subst Map.empty Map.empty

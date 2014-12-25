@@ -22,7 +22,10 @@ import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 unify :: Type -> Type -> Infer ()
-unify = unifyGeneric
+unify x y =
+  do
+    s <- M.getSubst
+    unifyGeneric (Subst.apply s x) (Subst.apply s y)
 {-# INLINE unify #-}
 
 class CanSubst t => Unify t where

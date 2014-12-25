@@ -28,7 +28,7 @@ import Lamdu.Infer.Internal.Monad (Infer(..))
 import Lamdu.Infer.Internal.Scheme (makeScheme)
 import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import Lamdu.Infer.Internal.Subst (CanSubst(..))
-import Lamdu.Infer.Unify (unify)
+import Lamdu.Infer.Internal.Unify (unifyUnsafe)
 import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars
@@ -126,7 +126,7 @@ inferInternal f globals =
         do  tv <- M.newInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
-            ((), s3) <- M.listenSubst $ unify (Subst.apply s2 t1) (T.TFun t2 tv)
+            ((), s3) <- M.listenSubst $ unifyUnsafe (Subst.apply s2 t1) (T.TFun t2 tv)
             return $ mkResult (V.BApp (V.Apply e1' e2')) $ Subst.apply s3 tv
       V.BGetField (V.GetField e name) ->
         do  tv <- M.newInferredVar "a"
@@ -134,7 +134,7 @@ inferInternal f globals =
             M.tellConstraint tvRecName name
             ((t, e'), s) <- M.listenSubst $ go locals e
             ((), su) <-
-              M.listenSubst $ unify (Subst.apply s t) $
+              M.listenSubst $ unifyUnsafe (Subst.apply s t) $
               T.TRecord $ T.CExtend name tv $ T.liftVar tvRecName
             return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
       V.BRecExtend (V.RecExtend name e1 e2) ->
@@ -155,7 +155,7 @@ inferInternal f globals =
                 tv <- M.newInferredVarName "r"
                 M.tellConstraint tv name
                 let tve = T.liftVar tv
-                ((), s) <- M.listenSubst $ unify t2 $ T.TRecord tve
+                ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
                 return $ Subst.apply s tve
             let t1' = Subst.apply s3 $ Subst.apply s2 t1
             return $ mkResult (V.BRecExtend (V.RecExtend name e1' e2')) $

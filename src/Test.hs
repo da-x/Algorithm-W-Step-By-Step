@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 import Control.Applicative
 import Control.Arrow ((&&&))
 import Control.Lens (zoom)
@@ -10,7 +11,6 @@ import Data.Traversable (traverse)
 import Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import Lamdu.Expr.Val (Val(..))
 import Lamdu.Infer
-import Lamdu.Infer.Update
 import Lamdu.Infer.Unify
 import Text.PrettyPrint ((<>), (<+>), ($+$))
 import Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -19,6 +19,7 @@ import qualified Lamdu.Expr.Pure as P
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Recursive as Recursive
+import qualified Lamdu.Infer.Update as Update
 import qualified Lamdu.Suggest as Suggest
 import qualified Text.PrettyPrint as PP
 
@@ -145,7 +146,7 @@ inferInto pl val =
     do
         (inferredType, inferredVal) <- inferType (pl ^. plScope) val
         unify inferredType (pl ^. plType)
-        (,) inferredType <$> updateInferredVal inferredVal & liftInfer
+        (,) inferredType <$> Update.inferredVal inferredVal & Update.liftInfer
 
 testRecursive :: Val () -> IO ()
 testRecursive e =

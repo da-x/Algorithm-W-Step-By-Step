@@ -145,7 +145,7 @@ inferInto pl val =
     do
         (inferredType, inferredVal) <- inferType (pl ^. plScope) val
         unify inferredType (pl ^. plType)
-        (,) inferredType <$> updateInferredVal inferredVal
+        (,) inferredType <$> updateInferredVal inferredVal & liftInfer
 
 testRecursive :: Val () -> IO ()
 testRecursive e =

@@ -1,24 +1,33 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Lamdu.Infer.Update
-  ( Subst.CanSubst, update, updateInferredVal
+  ( Update(..), liftInfer
+  , Subst.CanSubst, update, updateInferredVal
   ) where
 
+import Control.Applicative (Applicative)
+import Control.Lens.Operators
 import Control.Lens.Tuple
 import Data.Traversable (traverse)
 import Lamdu.Expr.Val (Val)
-import Lamdu.Infer (Infer)
+import Lamdu.Infer (Infer(..))
+import qualified Control.Monad.Trans.State as State
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
+
+newtype Update a = Update { runUpdate :: Infer.Context -> a }
+  deriving (Functor, Applicative, Monad)
+
+liftInfer :: Update a -> Infer a
+liftInfer = Infer . State.gets . runUpdate
 
 -- | When inferring expressions in a non-empty scope, or unifying
 -- different types, existing type expressions may refer to "old" type
 -- variables that have known substitutions. To update old types to
 -- contain knowledge from all accumulated substitutions, use this
 -- action.
-update :: Subst.CanSubst a => a -> Infer a
-update typ =
-  do  s <- M.getSubst
-      return $ Subst.apply s typ
+update :: Subst.CanSubst a => a -> Update a
+update t = Update $ \ctx -> Subst.apply (M.subst (M.ctxResults ctx)) t
 
-updateInferredVal :: Val (Infer.Payload, a) -> Infer (Val (Infer.Payload, a))
-updateInferredVal = (traverse . _1) update
+updateInferredVal :: Val (Infer.Payload, a) -> Update (Val (Infer.Payload, a))
+updateInferredVal = traverse . _1 %%~ update

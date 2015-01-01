@@ -8,7 +8,7 @@ module Lamdu.Infer.Internal.Monad
   , tell, tellSubst, tellSubsts, tellConstraint, tellConstraints
   , listen, listenNoTell
   , getConstraints, getSubst
-  , newInferredVar, newInferredVarName
+  , freshInferredVar, freshInferredVarName
   , listenSubst
   ) where
 
@@ -112,16 +112,16 @@ listenNoTell (Infer (StateT act)) =
     Right ((y, ctxResults c1), c1 { ctxResults = ctxResults c0} )
 {-# INLINE listenNoTell #-}
 
-newInferredVarName :: IsString v => String -> Infer v
-newInferredVarName prefix =
+freshInferredVarName :: String -> Infer (T.Var t)
+freshInferredVarName prefix =
   Infer $
   do  oldCtx <- State.get
       let oldSupply = inferSupply (ctxState oldCtx)
       State.put oldCtx{ctxState = (ctxState oldCtx){inferSupply = oldSupply+1}}
       return $ fromString $ prefix ++ show oldSupply
 
-newInferredVar :: T.LiftVar t => String -> Infer t
-newInferredVar = fmap T.liftVar . newInferredVarName
+freshInferredVar :: T.LiftVar t => String -> Infer t
+freshInferredVar = fmap T.liftVar . freshInferredVarName
 
 listenSubst :: Infer a -> Infer (a, Subst)
 listenSubst x = listen x <&> _2 %~ subst

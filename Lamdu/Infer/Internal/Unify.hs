@@ -54,7 +54,7 @@ unifyFlatPartials ::
   (Map T.Tag Type, T.Var (T.Composite p)) ->
   Infer ()
 unifyFlatPartials (tfields, tname) (ufields, uname) =
-  do  restTv <- M.newInferredVar "r"
+  do  restTv <- M.freshInferredVar "r"
       ((), s1) <-
         M.listenSubst $ varBind tname $
         Map.foldWithKey T.CExtend restTv uniqueUFields

@@ -6,7 +6,6 @@ module Lamdu.Infer.Internal.Scheme
 import Control.Applicative ((<$>))
 import Data.Map (Map)
 import Data.Set (Set)
-import Data.String (IsString(..))
 import Lamdu.Expr.Scheme (Scheme(..))
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
@@ -23,14 +22,14 @@ import qualified Lamdu.Infer.Internal.Subst as Subst
 makeScheme :: M.Context -> Type -> Scheme
 makeScheme = Scheme.make . M.constraints . M.ctxResults
 
-mkInstantiateSubstPart :: (IsString v, Ord v) => String -> Set v -> Infer (Map v v)
+mkInstantiateSubstPart :: String -> Set (T.Var t) -> Infer (Map (T.Var t) (T.Var t))
 mkInstantiateSubstPart prefix =
   fmap Map.fromList . mapM f . Set.toList
   where
     f oldVar =
       do
-        newVarExpr <- M.newInferredVarName prefix
-        return (oldVar, newVarExpr)
+        freshVarExpr <- M.freshInferredVarName prefix
+        return (oldVar, freshVarExpr)
 
 instantiate :: Scheme -> Infer Type
 instantiate (Scheme (TypeVars tv rv) constraints t) =

@@ -7,6 +7,8 @@ module Lamdu.Infer
   , Payload(..), plScope, plType
   , M.Context, M.initialContext
   , Infer(..)
+  , M.freshInferredVarName
+  , M.freshInferredVar
   ) where
 
 import Control.Applicative ((<$), (<$>))
@@ -106,7 +108,7 @@ inferInternal f globals =
       V.BLeaf leaf ->
         mkResult (V.BLeaf leaf) <$>
         case leaf of
-        V.LHole -> M.newInferredVar "h"
+        V.LHole -> M.freshInferredVar "h"
         V.LVar n ->
             case Scope.lookupTypeOf n locals of
                Nothing      -> M.throwError $ Err.UnboundVariable n
@@ -118,19 +120,19 @@ inferInternal f globals =
         V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
         V.LRecEmpty -> return $ T.TRecord T.CEmpty
       V.BAbs (V.Lam n e) ->
-        do  tv <- M.newInferredVar "a"
+        do  tv <- M.freshInferredVar "a"
             let locals' = Scope.insertTypeOf n tv locals
             ((t1, e'), s1) <- M.listenSubst $ go locals' e
             return $ mkResult (V.BAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
       V.BApp (V.Apply e1 e2) ->
-        do  tv <- M.newInferredVar "a"
+        do  tv <- M.freshInferredVar "a"
             ((t1, e1'), s1) <- M.listenSubst $ go locals e1
             ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
             ((), s3) <- M.listenSubst $ unifyUnsafe (Subst.apply s2 t1) (T.TFun t2 tv)
             return $ mkResult (V.BApp (V.Apply e1' e2')) $ Subst.apply s3 tv
       V.BGetField (V.GetField e name) ->
-        do  tv <- M.newInferredVar "a"
-            tvRecName <- M.newInferredVarName "r"
+        do  tv <- M.freshInferredVar "a"
+            tvRecName <- M.freshInferredVarName "r"
             M.tellConstraint tvRecName name
             ((t, e'), s) <- M.listenSubst $ go locals e
             ((), su) <-
@@ -152,7 +154,7 @@ inferInternal f globals =
                 DoesNotHaveTag -> return x
                 MayHaveTag var -> x <$ M.tellConstraint var name
               _ -> do
-                tv <- M.newInferredVarName "r"
+                tv <- M.freshInferredVarName "r"
                 M.tellConstraint tv name
                 let tve = T.liftVar tv
                 ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve

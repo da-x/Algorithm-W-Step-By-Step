@@ -3,41 +3,51 @@ module Lamdu.Infer.Internal.Scheme
   , instantiate
   ) where
 
-import Control.Applicative ((<$>))
-import Data.Map (Map)
-import Data.Set (Set)
-import Lamdu.Expr.Scheme (Scheme(..))
-import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.TypeVars (TypeVars(..))
-import Lamdu.Infer.Internal.Monad (Infer)
-import Lamdu.Infer.Internal.Subst (Subst(..))
+import           Control.Lens.Operators
+import           Control.Monad (liftM)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Constraints as Constraints
+import           Lamdu.Expr.Scheme (Scheme(..))
 import qualified Lamdu.Expr.Scheme as Scheme
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.TypeVars (TypeVars(..))
+import           Lamdu.Infer.Internal.Monad (InferCtx)
 import qualified Lamdu.Infer.Internal.Monad as M
+import           Lamdu.Infer.Internal.Subst (Subst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
+{-# INLINE makeScheme #-}
 makeScheme :: M.Context -> Type -> Scheme
 makeScheme = Scheme.make . M._constraints . M._ctxResults
 
-mkInstantiateSubstPart :: String -> Set (T.Var t) -> Infer (Map (T.Var t) (T.Var t))
+{-# INLINE mkInstantiateSubstPart #-}
+mkInstantiateSubstPart ::
+  Monad m => String -> Set (T.Var t) -> InferCtx m (Map (T.Var t) (T.Var t))
 mkInstantiateSubstPart prefix =
-  fmap Map.fromList . mapM f . Set.toList
-  where
-    f oldVar =
-      do
-        freshVarExpr <- M.freshInferredVarName prefix
-        return (oldVar, freshVarExpr)
+    liftM Map.fromList . mapM f . Set.toList
+    where
+        f oldVar =
+            do
+                freshVarExpr <- M.freshInferredVarName prefix
+                return (oldVar, freshVarExpr)
 
-instantiate :: Scheme -> Infer Type
+{-# INLINE instantiate #-}
+instantiate :: Monad m => Scheme -> InferCtx m Type
 instantiate (Scheme (TypeVars tv rv) constraints t) =
-  do
-    recordSubsts <- mkInstantiateSubstPart "k" rv
-    subst <-
-      (`Subst` fmap T.liftVar recordSubsts) .
-      fmap T.liftVar
-      <$> mkInstantiateSubstPart "i" tv
-    M.tellConstraints $ Constraints.applyRenames recordSubsts constraints
-    return $ Subst.apply subst t
+    do
+        recordSubsts <- mkInstantiateSubstPart "k" rv
+        typeVarSubsts <- mkInstantiateSubstPart "i" tv
+        let subst =
+                typeVarSubsts
+                & fmap T.liftVar
+                & (`Subst` fmap T.liftVar recordSubsts)
+            constraints' = Constraints.applyRenames recordSubsts constraints
+        -- Avoid tell for these new constraints, because they refer to
+        -- fresh variables, no need to apply the ordinary expensive
+        -- and error-emitting tell
+        M.Infer $ M.ctxResults . M.constraints <>= constraints'
+        return $ Subst.apply subst t

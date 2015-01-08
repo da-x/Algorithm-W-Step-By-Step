@@ -3,14 +3,14 @@ module Lamdu.Infer.Recursive
   ( inferEnv
   ) where
 
-import Lamdu.Infer (Infer)
-import Lamdu.Infer.Internal.Monad (freshInferredVar)
+import Lamdu.Infer (InferCtx, freshInferredVar)
 import Lamdu.Infer.Internal.Scope (Scope)
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Scope as Scope
 
-inferEnv :: V.Var -> Scope -> Infer Infer.Payload
+{-# INLINE inferEnv #-}
+inferEnv :: Monad m => V.Var -> Scope -> InferCtx m Infer.Payload
 inferEnv recurseVar scope =
   do
     recursiveType <- freshInferredVar "recurse"

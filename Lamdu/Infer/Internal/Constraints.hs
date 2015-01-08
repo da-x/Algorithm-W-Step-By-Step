@@ -12,12 +12,12 @@ import qualified Lamdu.Expr.Type as T
 
 applySubst ::
   Subst -> Constraints -> Either Error Constraints
-applySubst (Subst _ recordSubsts) (Constraints c) =
+applySubst (Subst _ rtvSubsts) (Constraints c) =
   Constraints . Map.fromListWith Set.union . concat <$>
   mapM onConstraint (Map.toList c)
   where
     onConstraint (var, forbidden) =
-      case Map.lookup var recordSubsts of
+      case Map.lookup var rtvSubsts of
       Nothing -> Right [(var, forbidden)]
       Just recType ->
         go recType

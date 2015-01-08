@@ -6,40 +6,40 @@ module Lamdu.Infer
   , Scope, emptyScope, Scope.scopeToTypeMap
   , Payload(..), plScope, plType
   , M.Context, M.initialContext
-  , Infer(..)
+  , M.InferCtx(..), Infer
   , M.freshInferredVarName
   , M.freshInferredVar
   ) where
 
-import Control.Applicative ((<$), (<$>))
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens')
-import Control.Lens.Operators
-import Control.Lens.Tuple
-import Data.Binary (Binary)
-import Data.Map (Map)
-import Data.Monoid (Monoid(..), (<>))
-import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
-import Lamdu.Expr.Scheme (Scheme)
-import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.TypeVars (TypeVars(..))
-import Lamdu.Expr.Val (Val(..))
-import Lamdu.Infer.Internal.Monad (Infer(..))
-import Lamdu.Infer.Internal.Scheme (makeScheme)
-import Lamdu.Infer.Internal.Scope (Scope, emptyScope)
-import Lamdu.Infer.Internal.Subst (CanSubst(..))
-import Lamdu.Infer.Internal.Unify (unifyUnsafe)
+import           Control.Applicative ((<$), (<$>))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Control.Lens (Lens')
+import           Control.Lens.Operators
+import           Control.Lens.Tuple
+import           Data.Binary (Binary)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Monoid (Monoid(..), (<>))
+import           Data.Typeable (Typeable)
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Scheme (Scheme)
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TypeVars
+import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
+import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
+import           Lamdu.Infer.Internal.Scheme (makeScheme)
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
+import           Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import qualified Lamdu.Infer.Internal.Scope as Scope
+import           Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
+import           Lamdu.Infer.Internal.Unify (unifyUnsafe)
 
 data Payload = Payload
   { _plType :: Type
@@ -76,7 +76,7 @@ inferSubst globals rootScope val =
 
 -- All accessed global IDs are supposed to be extracted from the
 -- expression to build this global scope. This is slightly hacky but
--- much faster than a polymorphic monad underlying the Infer monad
+-- much faster than a polymorphic monad underlying the InferCtx monad
 -- allowing global access.
 -- Use loadInfer for a safer interface
 infer ::

@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
 module Lamdu.Infer.Internal.Monad
-  ( Results(..), emptyResults, intersectResults
+  ( Results(..), subst, constraints, emptyResults, intersectResults
   , Context(..), initialContext
   , InferState(..)
   , Infer(..)
@@ -13,6 +13,7 @@ module Lamdu.Infer.Internal.Monad
   ) where
 
 import Control.Applicative (Applicative(..))
+import Control.Lens (Lens')
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad.Trans.State (StateT(..))
@@ -33,9 +34,17 @@ import qualified Lamdu.Infer.Internal.Subst as Subst
 data InferState = InferState { inferSupply :: Int }
 
 data Results = Results
-  { subst :: {-# UNPACK #-} !Subst
-  , constraints :: !Constraints
+  { _subst :: {-# UNPACK #-} !Subst
+  , _constraints :: !Constraints
   }
+
+subst :: Lens' Results Subst
+subst f Results {..} = f _subst <&> \_subst -> Results {..}
+{-# INLINE subst #-}
+
+constraints :: Lens' Results Constraints
+constraints f Results {..} = f _constraints <&> \_constraints -> Results {..}
+{-# INLINE constraints #-}
 
 emptyResults :: Results
 emptyResults = Results mempty mempty
@@ -82,13 +91,13 @@ tell w =
 {-# INLINE tell #-}
 
 tellSubsts :: Subst -> Infer ()
-tellSubsts s = tell $ emptyResults { subst = s }
+tellSubsts s = tell $ emptyResults { _subst = s }
 
 tellSubst :: Subst.HasVar t => T.Var t -> t -> Infer ()
-tellSubst v t = tell $ emptyResults { subst = Subst.new v t }
+tellSubst v t = tell $ emptyResults { _subst = Subst.new v t }
 
 tellConstraints :: Constraints -> Infer ()
-tellConstraints x = tell $ emptyResults { constraints = x }
+tellConstraints x = tell $ emptyResults { _constraints = x }
 
 tellConstraint :: T.ProductVar -> T.Tag -> Infer ()
 tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.singleton tag)
@@ -124,10 +133,10 @@ freshInferredVar :: T.LiftVar t => String -> Infer t
 freshInferredVar = fmap T.liftVar . freshInferredVarName
 
 listenSubst :: Infer a -> Infer (a, Subst)
-listenSubst x = listen x <&> _2 %~ subst
+listenSubst x = listen x <&> _2 %~ _subst
 
 getConstraints :: Infer Constraints
-getConstraints = Infer $ State.gets (constraints . ctxResults)
+getConstraints = Infer $ State.gets (_constraints . ctxResults)
 
 getSubst :: Infer Subst
-getSubst = Infer $ State.gets (subst . ctxResults)
+getSubst = Infer $ State.gets (_subst . ctxResults)

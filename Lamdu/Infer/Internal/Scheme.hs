@@ -20,7 +20,7 @@ import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 makeScheme :: M.Context -> Type -> Scheme
-makeScheme = Scheme.make . M.constraints . M.ctxResults
+makeScheme = Scheme.make . M._constraints . M.ctxResults
 
 mkInstantiateSubstPart :: String -> Set (T.Var t) -> Infer (Map (T.Var t) (T.Var t))
 mkInstantiateSubstPart prefix =

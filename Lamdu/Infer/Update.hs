@@ -27,7 +27,7 @@ liftInfer = Infer . State.gets . run
 -- contain knowledge from all accumulated substitutions, use this
 -- action.
 update :: Subst.CanSubst a => a -> Update a
-update t = Update $ \ctx -> Subst.apply (M.subst (M.ctxResults ctx)) t
+update t = Update $ \ctx -> Subst.apply (M._subst (M.ctxResults ctx)) t
 
 inferredVal :: Val (Infer.Payload, a) -> Update (Val (Infer.Payload, a))
 inferredVal = traverse . _1 %%~ update

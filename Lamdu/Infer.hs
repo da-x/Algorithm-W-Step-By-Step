@@ -70,7 +70,7 @@ inferSubst globals rootScope val =
   do  prevSubst <- M.getSubst
       let rootScope' = Subst.apply prevSubst rootScope
       (inferredVal, newResults) <- M.listen $ inferInternal mkPayload globals rootScope' val
-      return (rootScope', inferredVal <&> _1 %~ Subst.apply (M.subst newResults))
+      return (rootScope', inferredVal <&> _1 %~ Subst.apply (M._subst newResults))
   where
       mkPayload typ scope dat = (Payload typ scope, dat)
 
@@ -83,8 +83,7 @@ infer ::
   Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Val (Payload, a))
 infer globals scope val =
   do  ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
-      M.tell $ results
-        { M.subst = Subst.intersect (TypeVars.free scope') $ M.subst results }
+      M.tell $ results & M.subst %~ Subst.intersect (TypeVars.free scope')
       return val'
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (T.Var (T.Composite p))

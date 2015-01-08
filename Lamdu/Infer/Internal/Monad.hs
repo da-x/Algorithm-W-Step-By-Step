@@ -3,7 +3,7 @@ module Lamdu.Infer.Internal.Monad
   ( Results(..), subst, constraints, emptyResults, intersectResults
   , Context(..), ctxResults, ctxState, initialContext
   , InferState(..)
-  , InferCtx(..)
+  , InferCtx(..), inferCtx
   , Infer
   , throwError
   , tell, tellSubst, tellSubsts, tellConstraint, tellConstraints
@@ -94,6 +94,14 @@ initialContext =
 -- associativity/performance issues of WriterT
 newtype InferCtx m a = Infer { run :: StateT Context m a }
   deriving (Functor, Applicative, Monad)
+
+inferCtx ::
+  Lens.Iso
+  (InferCtx m a)
+  (InferCtx n b)
+  (StateT Context m a)
+  (StateT Context n b)
+inferCtx = Lens.iso run Infer
 
 type Infer = InferCtx (Either Error)
 

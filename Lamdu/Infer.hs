@@ -6,7 +6,7 @@ module Lamdu.Infer
   , Scope, emptyScope, Scope.scopeToTypeMap
   , Payload(..), plScope, plType
   , M.Context, M.initialContext
-  , M.InferCtx(..), Infer
+  , M.InferCtx(..), M.inferCtx, Infer
   , M.freshInferredVarName
   , M.freshInferredVar
   ) where

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
 module Lamdu.Infer.Internal.Monad
   ( Results(..), subst, constraints, emptyResults, intersectResults
-  , Context(..), initialContext
+  , Context(..), ctxResults, ctxState, initialContext
   , InferState(..)
   , Infer(..)
   , throwError
@@ -23,6 +23,7 @@ import Lamdu.Expr.Constraints (Constraints(..))
 import Lamdu.Expr.TypeVars (TypeVars)
 import Lamdu.Infer.Error (Error)
 import Lamdu.Infer.Internal.Subst (Subst)
+import qualified Control.Lens as Lens
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -31,7 +32,11 @@ import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
-data InferState = InferState { inferSupply :: Int }
+newtype InferState = InferState { _inferSupply :: Int }
+
+inferSupply :: Lens.Iso' InferState Int
+inferSupply = Lens.iso _inferSupply InferState
+{-# INLINE inferSupply #-}
 
 data Results = Results
   { _subst :: {-# UNPACK #-} !Subst
@@ -62,15 +67,23 @@ intersectResults tvs (Results s c) =
   Results (Subst.intersect tvs s) (Constraints.intersect tvs c)
 
 data Context = Context
-  { ctxResults :: {-# UNPACK #-} !Results
-  , ctxState :: {-# UNPACK #-} !InferState
+  { _ctxResults :: {-# UNPACK #-} !Results
+  , _ctxState :: {-# UNPACK #-} !InferState
   }
+
+ctxResults :: Lens' Context Results
+ctxResults f Context {..} = f _ctxResults <&> \_ctxResults -> Context {..}
+{-# INLINE ctxResults #-}
+
+ctxState :: Lens' Context InferState
+ctxState f Context {..} = f _ctxState <&> \_ctxState -> Context {..}
+{-# INLINE ctxState #-}
 
 initialContext :: Context
 initialContext =
   Context
-  { ctxResults = emptyResults
-  , ctxState = InferState { inferSupply = 0 }
+  { _ctxResults = emptyResults
+  , _ctxState = InferState { _inferSupply = 0 }
   }
 
 -- We use StateT, but it is composed of an actual stateful fresh
@@ -86,8 +99,8 @@ tell :: Results -> Infer ()
 tell w =
   Infer $ StateT $ \c ->
   do
-    !newRes <- appendResults (ctxResults c) w
-    Right ((), c { ctxResults = newRes} )
+    !newRes <- appendResults (_ctxResults c) w
+    Right ((), c { _ctxResults = newRes} )
 {-# INLINE tell #-}
 
 tellSubsts :: Subst -> Infer ()
@@ -106,9 +119,9 @@ listen :: Infer a -> Infer (a, Results)
 listen (Infer (StateT act)) =
   Infer $ StateT $ \c0 ->
   do
-    (y, c1) <- act c0 { ctxResults = emptyResults }
-    !w <- appendResults (ctxResults c0) (ctxResults c1)
-    Right ((y, w), c1 { ctxResults = w} )
+    (y, c1) <- act c0 { _ctxResults = emptyResults }
+    !w <- appendResults (_ctxResults c0) (_ctxResults c1)
+    Right ((y, w), c1 { _ctxResults = w} )
 {-# INLINE listen #-}
 
 -- Duplicate of listen because building one on top of the other has a
@@ -117,16 +130,14 @@ listenNoTell :: Infer a -> Infer (a, Results)
 listenNoTell (Infer (StateT act)) =
   Infer $ StateT $ \c0 ->
   do
-    (y, c1) <- act c0 { ctxResults = emptyResults }
-    Right ((y, ctxResults c1), c1 { ctxResults = ctxResults c0} )
+    (y, c1) <- act c0 { _ctxResults = emptyResults }
+    Right ((y, _ctxResults c1), c1 { _ctxResults = _ctxResults c0} )
 {-# INLINE listenNoTell #-}
 
 freshInferredVarName :: String -> Infer (T.Var t)
 freshInferredVarName prefix =
   Infer $
-  do  oldCtx <- State.get
-      let oldSupply = inferSupply (ctxState oldCtx)
-      State.put oldCtx{ctxState = (ctxState oldCtx){inferSupply = oldSupply+1}}
+  do  oldSupply <- Lens.zoom (ctxState . inferSupply) $ State.get <* (id += 1)
       return $ fromString $ prefix ++ show oldSupply
 
 freshInferredVar :: T.LiftVar t => String -> Infer t
@@ -136,7 +147,7 @@ listenSubst :: Infer a -> Infer (a, Subst)
 listenSubst x = listen x <&> _2 %~ _subst
 
 getConstraints :: Infer Constraints
-getConstraints = Infer $ State.gets (_constraints . ctxResults)
+getConstraints = Infer $ State.gets (_constraints . _ctxResults)
 
 getSubst :: Infer Subst
-getSubst = Infer $ State.gets (_subst . ctxResults)
+getSubst = Infer $ State.gets (_subst . _ctxResults)

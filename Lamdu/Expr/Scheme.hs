@@ -1,6 +1,7 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, PatternGuards #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings, PatternGuards, RecordWildCards #-}
 module Lamdu.Expr.Scheme
-  ( Scheme(..), make, mono, any
+  ( Scheme(..), schemeForAll, schemeConstraints, schemeType
+  , make, mono, any
   , alphaEq
   ) where
 
@@ -8,6 +9,7 @@ import Prelude hiding (any)
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
+import Control.Lens (Lens')
 import Control.Lens.Operators
 import Control.Lens.Tuple
 import Control.Monad (guard)
@@ -31,10 +33,19 @@ import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Text.PrettyPrint as PP
 
 data Scheme = Scheme
-  { schemeForAll :: TypeVars
-  , schemeConstraints :: Constraints
-  , schemeType :: Type
+  { _schemeForAll :: TypeVars
+  , _schemeConstraints :: Constraints
+  , _schemeType :: Type
   } deriving (Generic, Show)
+
+schemeForAll :: Lens' Scheme TypeVars
+schemeForAll f Scheme{..} = f _schemeForAll <&> \_schemeForAll -> Scheme{..}
+
+schemeConstraints :: Lens' Scheme Constraints
+schemeConstraints f Scheme{..} = f _schemeConstraints <&> \_schemeConstraints -> Scheme{..}
+
+schemeType :: Lens' Scheme Type
+schemeType f Scheme{..} = f _schemeType <&> \_schemeType -> Scheme{..}
 
 -- a Consistent List is an assoc list where each key is never
 -- associated to non-eq values
@@ -82,9 +93,9 @@ make c t =
 mono :: Type -> Scheme
 mono x =
   Scheme
-  { schemeForAll = mempty
-  , schemeConstraints = mempty
-  , schemeType = x
+  { _schemeForAll = mempty
+  , _schemeConstraints = mempty
+  , _schemeType = x
   }
 
 any :: Scheme

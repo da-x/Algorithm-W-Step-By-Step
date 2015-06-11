@@ -3,9 +3,8 @@ module Lamdu.Infer.Internal.Unify
   ( unifyUnsafe
   ) where
 
-import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State (StateT, execStateT)
+import Control.Monad.Trans.State (StateT, evalStateT)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Type (Type)
@@ -86,9 +85,9 @@ unifyChild t u =
         ((), s) <- lift $ M.listenSubst $ unifyGeneric (Subst.apply old t) (Subst.apply old u)
         State.put (old `mappend` s)
 
-unifyIntersection :: (Unify a, Ord k) => Map k a -> Map k a -> Infer Subst
+unifyIntersection :: (Unify a, Ord k) => Map k a -> Map k a -> Infer ()
 unifyIntersection tfields ufields =
-    (`execStateT` mempty) . Foldable.sequence_ $
+    (`evalStateT` mempty) . Foldable.sequence_ $
     Map.intersectionWith unifyChild tfields ufields
 
 unifyFlattened ::
@@ -97,7 +96,7 @@ unifyFlattened
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =
     do
-        s <- unifyIntersection tfields ufields
+        ((), s) <- M.listenSubst $ unifyIntersection tfields ufields
         case (tvar, uvar) of
             (Nothing   , Nothing   ) -> unifyFlatFulls tfields ufields
             (Just tname, Just uname) -> unifyFlatPartials s (tfields, tname) (ufields, uname)
@@ -125,7 +124,7 @@ instance Unify Type where
         (Subst.apply s1 r)
         (Subst.apply s1 r')
   unifyGeneric (T.TInst c0 p0) (T.TInst c1 p1)
-    | c0 == c1 && Map.keys p0 == Map.keys p1 = void $ unifyIntersection p0 p1
+    | c0 == c1 && Map.keys p0 == Map.keys p1 = unifyIntersection p0 p1
   unifyGeneric (T.TVar u) t                =  varBind u t
   unifyGeneric t (T.TVar u)                =  varBind u t
   unifyGeneric (T.TRecord x) (T.TRecord y) =  unifyGeneric x y

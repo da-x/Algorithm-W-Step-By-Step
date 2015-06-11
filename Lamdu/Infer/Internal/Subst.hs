@@ -22,7 +22,7 @@ type SubSubst t = Map (T.Var t) t
 data Subst = Subst
   { substTypes :: SubSubst Type
   , substRecordTypes :: SubSubst (T.Composite T.Product)
-  }
+  } deriving Show
 
 unionDisjoint :: (Pretty a, Pretty k, Ord k) => Map k a -> Map k a -> Map k a
 unionDisjoint m1 m2 =

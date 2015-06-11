@@ -111,6 +111,23 @@ suggestTypes =
   , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
   ]
 
+unifies :: [(Type, Type)]
+unifies =
+    [ ( ( TRecord $
+          CExtend "z" (TVar "b") $
+          CExtend "x" (TVar "c") $
+          CExtend "y" (TVar "d") $
+          CEmpty
+        ) ~> TVar "e"
+      , ( TRecord $
+          CExtend "x" T.int $
+          CExtend "y" (TVar "a") $
+          CExtend "z" (TVar "a") $
+          CVar "r"
+        ) ~> TVar "a"
+      )
+    ]
+
 runAndPrint :: Val a -> Infer (Type, Val (Payload, b)) -> IO ()
 runAndPrint e =
     printResult . (`runStateT` initialContext) . run
@@ -157,12 +174,23 @@ testRecursive e =
 
 testSuggest :: Type -> IO ()
 testSuggest typ =
-  print $ V.pPrintUnannotated val <+> PP.text "suggested by" <+> pPrint typ
-  where
-    val =
-      evalState (Suggest.suggestValueWith fresh typ)
-      [fromString ('x':show (n::Integer)) | n <- [0..]]
-    fresh = state $ head &&& tail
+    print $ V.pPrintUnannotated val <+> PP.text "suggested by" <+> pPrint typ
+    where
+        val =
+            evalState (Suggest.suggestValueWith fresh typ)
+            [fromString ('x':show (n::Integer)) | n <- [0..]]
+        fresh = state $ head &&& tail
+
+testUnify :: Type -> Type -> IO ()
+testUnify x y =
+    do
+        unify x y
+        Update.update x & Update.liftInfer
+    & printResult . (`runStateT` initialContext) . run
+    where
+        printCase = pPrint x <+> PP.text "=" <+> pPrint y <+> PP.text ":"
+        printResult (Left err) = print $ printCase $+$ pPrint err
+        printResult (Right (res, _ctx)) = print $ printCase $+$ pPrint res
 
 main :: IO ()
 main =
@@ -173,3 +201,5 @@ main =
         mapM_ testRecursive recursiveExps
         putStrLn "Suggested values from types:"
         mapM_ testSuggest suggestTypes
+        putStrLn "Unify:"
+        mapM_ (uncurry testUnify) unifies

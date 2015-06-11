@@ -3,8 +3,9 @@ module Lamdu.Infer.Internal.Unify
   ( unifyUnsafe
   ) where
 
+import Control.Monad (void)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State (StateT, evalStateT)
+import Control.Monad.Trans.State (StateT, execStateT)
 import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Lamdu.Expr.Type (Type)
@@ -35,30 +36,35 @@ closedRecord fields = FlatComposite.toComposite (FlatComposite fields Nothing)
 
 unifyFlatToPartial ::
   Subst.CompositeHasVar p =>
-  (Map T.Tag Type, T.Var (T.Composite p)) -> Map T.Tag Type ->
+  Subst -> (Map T.Tag Type, T.Var (T.Composite p)) -> Map T.Tag Type ->
   Infer ()
-unifyFlatToPartial (tfields, tname) ufields
+unifyFlatToPartial s (tfields, tname) ufields
   | not (Map.null uniqueTFields) =
     M.throwError $
     Err.TypesDoNotUnity
     (pPrint (FlatComposite.toComposite (FlatComposite tfields (Just tname))))
     (pPrint (closedRecord ufields))
-  | otherwise = varBind tname $ FlatComposite.toComposite $ FlatComposite uniqueUFields Nothing
+  | otherwise =
+      varBind tname $
+      Subst.apply s $
+      FlatComposite.toComposite $ FlatComposite uniqueUFields Nothing
   where
     uniqueTFields = tfields `Map.difference` ufields
     uniqueUFields = ufields `Map.difference` tfields
 
 unifyFlatPartials ::
   Subst.CompositeHasVar p =>
+  Subst ->
   (Map T.Tag Type, T.Var (T.Composite p)) ->
   (Map T.Tag Type, T.Var (T.Composite p)) ->
   Infer ()
-unifyFlatPartials (tfields, tname) (ufields, uname) =
+unifyFlatPartials s0 (tfields, tname) (ufields, uname) =
   do  restTv <- M.freshInferredVar "r"
       ((), s1) <-
         M.listenSubst $ varBind tname $
+        Subst.apply s0 $
         Map.foldWithKey T.CExtend restTv uniqueUFields
-      varBind uname $ Subst.apply s1 $
+      varBind uname $ Subst.apply (mappend s0 s1) $
         Map.foldWithKey T.CExtend restTv uniqueTFields
   where
     uniqueTFields = tfields `Map.difference` ufields
@@ -80,8 +86,10 @@ unifyChild t u =
         ((), s) <- lift $ M.listenSubst $ unifyGeneric (Subst.apply old t) (Subst.apply old u)
         State.put (old `mappend` s)
 
-unifyIntersection :: (Unify a, Ord k) => Map k a -> Map k a -> Infer ()
-unifyIntersection tfields ufields = (`evalStateT` mempty) . Foldable.sequence_ $ Map.intersectionWith unifyChild tfields ufields
+unifyIntersection :: (Unify a, Ord k) => Map k a -> Map k a -> Infer Subst
+unifyIntersection tfields ufields =
+    (`execStateT` mempty) . Foldable.sequence_ $
+    Map.intersectionWith unifyChild tfields ufields
 
 unifyFlattened ::
   Subst.CompositeHasVar p => FlatComposite p -> FlatComposite p -> Infer ()
@@ -89,12 +97,12 @@ unifyFlattened
   (FlatComposite tfields tvar)
   (FlatComposite ufields uvar) =
     do
-        unifyIntersection tfields ufields
+        s <- unifyIntersection tfields ufields
         case (tvar, uvar) of
             (Nothing   , Nothing   ) -> unifyFlatFulls tfields ufields
-            (Just tname, Just uname) -> unifyFlatPartials (tfields, tname) (ufields, uname)
-            (Just tname, Nothing   ) -> unifyFlatToPartial (tfields, tname) ufields
-            (Nothing   , Just uname) -> unifyFlatToPartial (ufields, uname) tfields
+            (Just tname, Just uname) -> unifyFlatPartials s (tfields, tname) (ufields, uname)
+            (Just tname, Nothing   ) -> unifyFlatToPartial s (tfields, tname) ufields
+            (Nothing   , Just uname) -> unifyFlatToPartial s (ufields, uname) tfields
 
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
@@ -117,7 +125,7 @@ instance Unify Type where
         (Subst.apply s1 r)
         (Subst.apply s1 r')
   unifyGeneric (T.TInst c0 p0) (T.TInst c1 p1)
-    | c0 == c1 && Map.keys p0 == Map.keys p1 = unifyIntersection p0 p1
+    | c0 == c1 && Map.keys p0 == Map.keys p1 = void $ unifyIntersection p0 p1
   unifyGeneric (T.TVar u) t                =  varBind u t
   unifyGeneric t (T.TVar u)                =  varBind u t
   unifyGeneric (T.TRecord x) (T.TRecord y) =  unifyGeneric x y

@@ -139,7 +139,7 @@ listen (Infer (StateT act)) =
   do
     (y, c1) <- act c0 { _ctxResults = emptyResults }
     !w <- appendResults (_ctxResults c0) (_ctxResults c1)
-    Right ((y, w), c1 { _ctxResults = w} )
+    Right ((y, _ctxResults c1), c1 { _ctxResults = w} )
 {-# INLINE listen #-}
 
 -- Duplicate of listen because building one on top of the other has a

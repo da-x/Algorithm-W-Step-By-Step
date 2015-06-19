@@ -155,13 +155,14 @@ listenNoTell (Infer (StateT act)) =
 freshInferredVarName :: Monad m => String -> InferCtx m (T.Var t)
 freshInferredVarName prefix =
     Infer $
-    do  oldSupply <-
-                Lens.zoom (ctxState . inferSupply) $
-                do
-                        old <- State.get
-                        id += 1
-                        return old
-            return $ fromString $ prefix ++ show oldSupply
+    do
+        oldSupply <-
+            Lens.zoom (ctxState . inferSupply) $
+            do
+                old <- State.get
+                id += 1
+                return old
+        return $ fromString $ prefix ++ show oldSupply
 {-# INLINE freshInferredVarName #-}
 
 freshInferredVar :: Monad m => T.LiftVar t => String -> InferCtx m t

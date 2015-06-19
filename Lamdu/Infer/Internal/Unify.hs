@@ -58,13 +58,14 @@ unifyFlatPartials ::
     (Map T.Tag Type, T.Var (T.Composite p)) ->
     Infer ()
 unifyFlatPartials s0 (tfields, tname) (ufields, uname) =
-    do  restTv <- M.freshInferredVar "r"
-            ((), s1) <-
-                M.listenSubst $ varBind tname $
-                Subst.apply s0 $
-                Map.foldWithKey T.CExtend restTv uniqueUFields
-            varBind uname $ Subst.apply (mappend s0 s1) $
-                Map.foldWithKey T.CExtend restTv uniqueTFields
+    do
+        restTv <- M.freshInferredVar "r"
+        ((), s1) <-
+            M.listenSubst $ varBind tname $
+            Subst.apply s0 $
+            Map.foldWithKey T.CExtend restTv uniqueUFields
+        varBind uname $ Subst.apply (mappend s0 s1) $
+            Map.foldWithKey T.CExtend restTv uniqueTFields
     where
         uniqueTFields = tfields `Map.difference` ufields
         uniqueUFields = ufields `Map.difference` tfields
@@ -81,14 +82,15 @@ unifyFlatFulls tfields ufields
 
 unifyChild :: Unify t => t -> t -> StateT Subst Infer ()
 unifyChild t u =
-        do  old <- State.get
-                ((), s) <- lift $ M.listenSubst $ unifyGeneric (Subst.apply old t) (Subst.apply old u)
-                State.put (old `mappend` s)
+    do
+        old <- State.get
+        ((), s) <- lift $ M.listenSubst $ unifyGeneric (Subst.apply old t) (Subst.apply old u)
+        State.put (old `mappend` s)
 
 unifyIntersection :: (Unify a, Ord k) => Map k a -> Map k a -> Infer ()
 unifyIntersection tfields ufields =
-        (`evalStateT` mempty) . Foldable.sequence_ $
-        Map.intersectionWith unifyChild tfields ufields
+    (`evalStateT` mempty) . Foldable.sequence_ $
+    Map.intersectionWith unifyChild tfields ufields
 
 unifyFlattened ::
     Subst.CompositeHasVar p => FlatComposite p -> FlatComposite p -> Infer ()
@@ -137,14 +139,17 @@ instance Subst.CompositeHasVar p => Unify (T.Composite p) where
     unifyGeneric T.CEmpty T.CEmpty       =  return ()
     unifyGeneric (T.CVar u) t            =  varBind u t
     unifyGeneric t (T.CVar u)            =  varBind u t
-    unifyGeneric t@(T.CExtend f0 t0 r0)
-                u@(T.CExtend f1 t1 r1)
-                | f0 == f1              =  do  ((), s) <- M.listenSubst $ unifyGeneric t0 t1
-                                                                              unifyGeneric (Subst.apply s r0)
-                                                                                          (Subst.apply s r1)
-                | otherwise             =  unifyFlattened
-                                                                      (FlatComposite.fromComposite t)
-                                                                      (FlatComposite.fromComposite u)
+    unifyGeneric
+        t@(T.CExtend f0 t0 r0)
+        u@(T.CExtend f1 t1 r1)
+        | f0 == f1 =
+              do
+                  ((), s) <- M.listenSubst $ unifyGeneric t0 t1
+                  unifyGeneric (Subst.apply s r0) (Subst.apply s r1)
+        | otherwise =
+              unifyFlattened
+              (FlatComposite.fromComposite t)
+              (FlatComposite.fromComposite u)
     unifyGeneric t1 t2                   =  dontUnify t1 t2
 
     varBind u (T.CVar t) | t == u = return ()

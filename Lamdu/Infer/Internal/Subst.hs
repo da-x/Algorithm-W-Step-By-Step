@@ -4,6 +4,8 @@ module Lamdu.Infer.Internal.Subst
     , CanSubst(..)
     ) where
 
+import Prelude hiding (null)
+
 import Control.Applicative ((<$>))
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
@@ -24,6 +26,9 @@ data Subst = Subst
     , substRecordTypes :: SubSubst (T.Composite T.Product)
     } deriving Show
 
+null :: Subst -> Bool
+null (Subst x y) = Map.null x && Map.null y
+
 unionDisjoint :: (Pretty a, Pretty k, Ord k) => Map k a -> Map k a -> Map k a
 unionDisjoint m1 m2 =
     Map.unionWithKey collision m1 m2
@@ -39,7 +44,9 @@ unionDisjoint m1 m2 =
 
 instance Monoid Subst where
     mempty = Subst Map.empty Map.empty
-    mappend (Subst t0 r0) s1@(Subst t1 r1) =
+    mappend s0@(Subst t0 r0) s1@(Subst t1 r1)
+        | null s1 = s0
+        | otherwise =
         Subst
         (t1 `unionDisjoint` Map.map (apply s1) t0)
         (r1 `unionDisjoint` Map.map (apply s1) r0)

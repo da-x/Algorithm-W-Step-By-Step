@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scope
-  ( Scope, emptyScope
-  , fromTypeMap, scopeToTypeMap
-  , insertTypeOf
-  , lookupTypeOf
-  ) where
+    ( Scope, emptyScope
+    , fromTypeMap, scopeToTypeMap
+    , insertTypeOf
+    , lookupTypeOf
+    ) where
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
@@ -20,16 +20,16 @@ import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 newtype Scope = Scope { typeOfVar :: Map V.Var Type }
-  deriving (Generic, Show)
+    deriving (Generic, Show)
 
 instance NFData Scope where rnf = genericRnf
 instance Binary Scope
 
 instance TypeVars.Free Scope where
-  free (Scope env) = mconcat $ map TypeVars.free $ Map.elems env
+    free (Scope env) = mconcat $ map TypeVars.free $ Map.elems env
 
 instance CanSubst Scope where
-  apply s (Scope env) = Scope $ Map.map (Subst.apply s) env
+    apply s (Scope env) = Scope $ Map.map (Subst.apply s) env
 
 emptyScope :: Scope
 emptyScope = Scope Map.empty

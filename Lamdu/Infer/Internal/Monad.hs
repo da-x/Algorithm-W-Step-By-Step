@@ -1,17 +1,17 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
 module Lamdu.Infer.Internal.Monad
-  ( Results(..), subst, constraints, emptyResults, intersectResults
-  , Context(..), ctxResults, ctxState, initialContext
-  , InferState(..)
-  , InferCtx(..), inferCtx
-  , Infer
-  , throwError
-  , tell, tellSubst, tellSubsts, tellConstraint, tellConstraints
-  , listen, listenNoTell
-  , getConstraints, getSubst
-  , freshInferredVar, freshInferredVarName
-  , listenSubst
-  ) where
+    ( Results(..), subst, constraints, emptyResults, intersectResults
+    , Context(..), ctxResults, ctxState, initialContext
+    , InferState(..)
+    , InferCtx(..), inferCtx
+    , Infer
+    , throwError
+    , tell, tellSubst, tellSubsts, tellConstraint, tellConstraints
+    , listen, listenNoTell
+    , getConstraints, getSubst
+    , freshInferredVar, freshInferredVarName
+    , listenSubst
+    ) where
 
 import           Control.Applicative (Applicative(..))
 import           Control.Lens (Lens')
@@ -41,9 +41,9 @@ inferSupply = Lens.iso _inferSupply InferState
 {-# INLINE inferSupply #-}
 
 data Results = Results
-  { _subst :: {-# UNPACK #-} !Subst
-  , _constraints :: !Constraints
-  }
+    { _subst :: {-# UNPACK #-} !Subst
+    , _constraints :: !Constraints
+    }
 
 subst :: Lens' Results Subst
 subst f Results {..} = f _subst <&> \_subst -> Results {..}
@@ -59,20 +59,20 @@ emptyResults = Results mempty mempty
 
 appendResults :: Results -> Results -> Either Error Results
 appendResults (Results s0 c0) (Results s1 c1) =
-  do
-    c0' <- Constraints.applySubst s1 c0
-    return $ Results (mappend s0 s1) (mappend c0' c1)
+    do
+        c0' <- Constraints.applySubst s1 c0
+        return $ Results (mappend s0 s1) (mappend c0' c1)
 {-# INLINE appendResults #-}
 
 intersectResults :: TypeVars -> Results -> Results
 intersectResults tvs (Results s c) =
-  Results (Subst.intersect tvs s) (Constraints.intersect tvs c)
+    Results (Subst.intersect tvs s) (Constraints.intersect tvs c)
 {-# INLINE intersectResults #-}
 
 data Context = Context
-  { _ctxResults :: {-# UNPACK #-} !Results
-  , _ctxState :: {-# UNPACK #-} !InferState
-  }
+    { _ctxResults :: {-# UNPACK #-} !Results
+    , _ctxState :: {-# UNPACK #-} !InferState
+    }
 
 ctxResults :: Lens' Context Results
 ctxResults f Context {..} = f _ctxResults <&> \_ctxResults -> Context {..}
@@ -84,23 +84,23 @@ ctxState f Context {..} = f _ctxState <&> \_ctxState -> Context {..}
 
 initialContext :: Context
 initialContext =
-  Context
-  { _ctxResults = emptyResults
-  , _ctxState = InferState { _inferSupply = 0 }
-  }
+    Context
+    { _ctxResults = emptyResults
+    , _ctxState = InferState { _inferSupply = 0 }
+    }
 
 -- We use StateT, but it is composed of an actual stateful fresh
 -- supply and a component used as a writer avoiding the
 -- associativity/performance issues of WriterT
 newtype InferCtx m a = Infer { run :: StateT Context m a }
-  deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad)
 
 inferCtx ::
-  Lens.Iso
-  (InferCtx m a)
-  (InferCtx n b)
-  (StateT Context m a)
-  (StateT Context n b)
+    Lens.Iso
+    (InferCtx m a)
+    (InferCtx n b)
+    (StateT Context m a)
+    (StateT Context n b)
 inferCtx = Lens.iso run Infer
 
 type Infer = InferCtx (Either Error)
@@ -111,10 +111,10 @@ throwError = Infer . StateT . const . Left
 
 tell :: Results -> Infer ()
 tell w =
-  Infer $ StateT $ \c ->
-  do
-    !newRes <- appendResults (_ctxResults c) w
-    Right ((), c { _ctxResults = newRes} )
+    Infer $ StateT $ \c ->
+    do
+        !newRes <- appendResults (_ctxResults c) w
+        Right ((), c { _ctxResults = newRes} )
 {-# INLINE tell #-}
 
 tellSubsts :: Subst -> Infer ()
@@ -135,33 +135,33 @@ tellConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.sing
 
 listen :: Infer a -> Infer (a, Results)
 listen (Infer (StateT act)) =
-  Infer $ StateT $ \c0 ->
-  do
-    (y, c1) <- act c0 { _ctxResults = emptyResults }
-    !w <- appendResults (_ctxResults c0) (_ctxResults c1)
-    Right ((y, _ctxResults c1), c1 { _ctxResults = w} )
+    Infer $ StateT $ \c0 ->
+    do
+        (y, c1) <- act c0 { _ctxResults = emptyResults }
+        !w <- appendResults (_ctxResults c0) (_ctxResults c1)
+        Right ((y, _ctxResults c1), c1 { _ctxResults = w} )
 {-# INLINE listen #-}
 
 -- Duplicate of listen because building one on top of the other has a
 -- large (~15%) performance penalty.
 listenNoTell :: Monad m => InferCtx m a -> InferCtx m (a, Results)
 listenNoTell (Infer (StateT act)) =
-  Infer $ StateT $ \c0 ->
-  do
-    (y, c1) <- act c0 { _ctxResults = emptyResults }
-    return ((y, _ctxResults c1), c1 { _ctxResults = _ctxResults c0} )
+    Infer $ StateT $ \c0 ->
+    do
+        (y, c1) <- act c0 { _ctxResults = emptyResults }
+        return ((y, _ctxResults c1), c1 { _ctxResults = _ctxResults c0} )
 {-# INLINE listenNoTell #-}
 
 freshInferredVarName :: Monad m => String -> InferCtx m (T.Var t)
 freshInferredVarName prefix =
-  Infer $
-  do  oldSupply <-
-        Lens.zoom (ctxState . inferSupply) $
-        do
-            old <- State.get
-            id += 1
-            return old
-      return $ fromString $ prefix ++ show oldSupply
+    Infer $
+    do  oldSupply <-
+                Lens.zoom (ctxState . inferSupply) $
+                do
+                        old <- State.get
+                        id += 1
+                        return old
+            return $ fromString $ prefix ++ show oldSupply
 {-# INLINE freshInferredVarName #-}
 
 freshInferredVar :: Monad m => T.LiftVar t => String -> InferCtx m t

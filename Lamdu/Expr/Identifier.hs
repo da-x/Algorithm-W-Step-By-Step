@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
 
 module Lamdu.Expr.Identifier
-  ( Identifier(..)
-  ) where
+    ( Identifier(..)
+    ) where
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
@@ -16,7 +16,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Text.PrettyPrint as PP
 
 newtype Identifier = Identifier ByteString
-  deriving (Eq, Ord, Generic, Show, Binary, Hashable)
+    deriving (Eq, Ord, Generic, Show, Binary, Hashable)
 instance NFData Identifier    where rnf = genericRnf
 instance IsString Identifier  where fromString = Identifier . fromString
 instance Pretty Identifier    where pPrint (Identifier x) = PP.text $ BS.unpack x

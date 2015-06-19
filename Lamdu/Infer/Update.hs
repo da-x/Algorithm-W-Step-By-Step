@@ -1,8 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Lamdu.Infer.Update
-  ( Update(..), liftInfer
-  , Subst.CanSubst, update, inferredVal
-  ) where
+    ( Update(..), liftInfer
+    , Subst.CanSubst, update, inferredVal
+    ) where
 
 import Control.Applicative (Applicative)
 import Control.Lens.Operators
@@ -15,7 +15,7 @@ import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 newtype Update a = Update { run :: Infer.Context -> a }
-  deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad)
 
 liftInfer :: Monad m => Update a -> M.InferCtx m a
 liftInfer = M.Infer . State.gets . run

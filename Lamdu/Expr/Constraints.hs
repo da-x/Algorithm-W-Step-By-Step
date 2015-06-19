@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.Constraints
-  ( Constraints(..)
-  , ForbiddenFields
-  , applyRenames
-  , intersect
-  , getProductVarConstraints, ProductVarConstraints
-  , getTypeVarConstraints, TypeVarConstraints
-  ) where
+    ( Constraints(..)
+    , ForbiddenFields
+    , applyRenames
+    , intersect
+    , getProductVarConstraints, ProductVarConstraints
+    , getTypeVarConstraints, TypeVarConstraints
+    ) where
 
 import Control.DeepSeq (NFData(..))
 import Control.DeepSeq.Generics (genericRnf)
@@ -31,47 +31,47 @@ type ProductVarConstraints = ForbiddenFields
 type TypeVarConstraints = ()
 
 newtype Constraints = Constraints
-  { productVarConstraints :: Map T.ProductVar ProductVarConstraints
-  } deriving (Generic, Eq, Show)
+    { productVarConstraints :: Map T.ProductVar ProductVarConstraints
+    } deriving (Generic, Eq, Show)
 
 instance NFData Constraints where
-  rnf = genericRnf
+    rnf = genericRnf
 
 instance Monoid Constraints where
-  mempty = Constraints Map.empty
-  mappend (Constraints x) (Constraints y) = Constraints $ Map.unionWith mappend x y
+    mempty = Constraints Map.empty
+    mappend (Constraints x) (Constraints y) = Constraints $ Map.unionWith mappend x y
 
 instance Pretty Constraints where
-  pPrint (Constraints m)
-    | Map.null m = PP.text "NoConstraints"
-    | otherwise =
-      PP.hcat $ PP.punctuate PP.comma $ map (uncurry pPrintConstraint) $
-      Map.toList m
+    pPrint (Constraints m)
+        | Map.null m = PP.text "NoConstraints"
+        | otherwise =
+            PP.hcat $ PP.punctuate PP.comma $ map (uncurry pPrintConstraint) $
+            Map.toList m
 
 instance Binary Constraints
 
 getProductVarConstraints :: T.ProductVar -> Constraints -> ProductVarConstraints
 getProductVarConstraints tv c =
-  fromMaybe Set.empty $ Map.lookup tv $ productVarConstraints c
+    fromMaybe Set.empty $ Map.lookup tv $ productVarConstraints c
 
 getTypeVarConstraints :: T.Var T.Type -> Constraints -> TypeVarConstraints
 getTypeVarConstraints _ _ = ()
 
 pPrintConstraint :: T.ProductVar -> Set T.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =
-  PP.text "{" <>
-  (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
-  PP.text "}" <+>
-  PP.text "∉" <+> pPrint tv
+    PP.text "{" <>
+    (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
+    PP.text "}" <+>
+    PP.text "∉" <+> pPrint tv
 
 applyRenames :: Map T.ProductVar T.ProductVar -> Constraints -> Constraints
 applyRenames renames (Constraints m) =
-  Constraints $ Map.mapKeys rename m
-  where
-    rename x = fromMaybe x $ Map.lookup x renames
+    Constraints $ Map.mapKeys rename m
+    where
+        rename x = fromMaybe x $ Map.lookup x renames
 
 intersect :: TypeVars -> Constraints -> Constraints
 intersect tvs (Constraints c) =
-  Constraints (Map.filterWithKey inTVs c)
-  where
-    inTVs rtv _ = rtv `TypeVars.member` tvs
+    Constraints (Map.filterWithKey inTVs c)
+    where
+        inTVs rtv _ = rtv `TypeVars.member` tvs

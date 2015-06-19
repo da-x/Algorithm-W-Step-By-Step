@@ -29,65 +29,65 @@ import TestVals
 
 exps :: [Val ()]
 exps =
-  [ eLet "id" (lambda "x" id) id
+    [ eLet "id" (lambda "x" id) id
 
-  , eLet "id" (lambda "x" id) $ \id' -> id' $$ id'
+    , eLet "id" (lambda "x" id) $ \id' -> id' $$ id'
 
-  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id'
+    , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id'
 
-  , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id' $$ P.litInt 2
+    , eLet "id" (lambda "x" (\x -> eLet "y" x id)) $ \id' -> id' $$ id' $$ P.litInt 2
 
-  , eLet "id" (lambda "x" (\x -> x $$ x)) id
+    , eLet "id" (lambda "x" (\x -> x $$ x)) id
 
-  , lambda "m" $ \m ->
-    eLet "y" m $ \y ->
-    eLet "x" (y $$ P.litInt 3) id
+    , lambda "m" $ \m ->
+        eLet "y" m $ \y ->
+        eLet "x" (y $$ P.litInt 3) id
 
-  , P.litInt 2 $$ P.litInt 2
+    , P.litInt 2 $$ P.litInt 2
 
-  , lambda "a" $ \a ->
-    eLet "x"
-    ( lambda "b"
-      ( \_ -> eLet "y" (lambda "c" (\_ -> a $$ P.litInt 1))
-        (\y -> y $$ P.litInt 2) )
-    ) $ \x -> x $$ P.litInt 3
+    , lambda "a" $ \a ->
+        eLet "x"
+        ( lambda "b"
+            ( \_ -> eLet "y" (lambda "c" (\_ -> a $$ P.litInt 1))
+                (\y -> y $$ P.litInt 2) )
+        ) $ \x -> x $$ P.litInt 3
 
-  , lambda "a" $ \a -> lambda "b" $ \b -> b $$ (a $$ (a $$ b))
+    , lambda "a" $ \a -> lambda "b" $ \b -> b $$ (a $$ (a $$ b))
 
-  , lambda "vec" $ \vec ->
-    "newX" $= (vec $. "x") $
-    "newY" $= (vec $. "y") $
-    P.recEmpty
+    , lambda "vec" $ \vec ->
+        "newX" $= (vec $. "x") $
+        "newY" $= (vec $. "y") $
+        P.recEmpty
 
-  , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "x")
+    , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "x")
 
-  , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "z")
+    , eLet "vec" ("x" $= P.litInt 5 $ "y" $= P.litInt 7 $ P.recEmpty) ($. "z")
 
-  , lambda "x" $ \x -> "prev" $= (x $. "cur") $ x
+    , lambda "x" $ \x -> "prev" $= (x $. "cur") $ x
 
-  , "x" $= P.litInt 2 $ "x" $= P.litInt 3 $ P.recEmpty
+    , "x" $= P.litInt 2 $ "x" $= P.litInt 3 $ P.recEmpty
 
-  , lambda "r" ("x" $= P.litInt 2) $$ ("x" $= P.litInt 3) P.recEmpty
+    , lambda "r" ("x" $= P.litInt 2) $$ ("x" $= P.litInt 3) P.recEmpty
 
-  , eLet "f" (lambda "r" ("x" $= P.litInt 3)) $
-    \f -> f $$ ("x" $= P.litInt 2) P.recEmpty
+    , eLet "f" (lambda "r" ("x" $= P.litInt 3)) $
+        \f -> f $$ ("x" $= P.litInt 2) P.recEmpty
 
-  , "x" $= P.litInt 1 $ P.hole
+    , "x" $= P.litInt 1 $ P.hole
 
-  , lambda "x" $ \x -> list [x, x]
+    , lambda "x" $ \x -> list [x, x]
 
-  , factorialVal, euler1Val, solveDepressedQuarticVal
+    , factorialVal, euler1Val, solveDepressedQuarticVal
 
-  , eLet "open"
-    ( lambda "x" $ \x ->
-      eLet "y" (x $. "x") $
-      \_y -> x ) $ \open ->
-    open $$ ("x" $= P.litInt 0 $ P.recEmpty)
+    , eLet "open"
+        ( lambda "x" $ \x ->
+            eLet "y" (x $. "x") $
+            \_y -> x ) $ \open ->
+        open $$ ("x" $= P.litInt 0 $ P.recEmpty)
 
-  , P.global "fix" $$ lambda "f"
-    ( \f -> P.hole $$ (f $$ (f $$ (P.global "zipWith" $$ P.hole $$ P.hole $$ P.hole)))
-    )
-  ]
+    , P.global "fix" $$ lambda "f"
+        ( \f -> P.hole $$ (f $$ (f $$ (P.global "zipWith" $$ P.hole $$ P.hole $$ P.hole)))
+        )
+    ]
 
 recurseVar :: V.Var
 recurseVar = V.Var "Recurse"
@@ -103,13 +103,13 @@ recursiveExps =
 
 suggestTypes :: [Type]
 suggestTypes =
-  [ T.int ~> T.int
-  , T.int ~> T.int ~> T.int
-  , TRecord CEmpty
-  , TVar "a" ~> TRecord CEmpty
-  , TVar "a" ~> TRecord (CExtend "x" T.int (CExtend "y" (T.int ~> T.int) CEmpty))
-  , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
-  ]
+    [ T.int ~> T.int
+    , T.int ~> T.int ~> T.int
+    , TRecord CEmpty
+    , TVar "a" ~> TRecord CEmpty
+    , TVar "a" ~> TRecord (CExtend "x" T.int (CExtend "y" (T.int ~> T.int) CEmpty))
+    , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
+    ]
 
 unifies :: [(Type, Type)]
 unifies =

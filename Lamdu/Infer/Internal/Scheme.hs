@@ -1,7 +1,7 @@
 module Lamdu.Infer.Internal.Scheme
-  ( makeScheme
-  , instantiate
-  ) where
+    ( makeScheme
+    , instantiate
+    ) where
 
 import           Control.Lens.Operators
 import           Control.Monad (liftM)
@@ -26,7 +26,7 @@ makeScheme = Scheme.make . M._constraints . M._ctxResults
 
 {-# INLINE mkInstantiateSubstPart #-}
 mkInstantiateSubstPart ::
-  Monad m => String -> Set (T.Var t) -> InferCtx m (Map (T.Var t) (T.Var t))
+    Monad m => String -> Set (T.Var t) -> InferCtx m (Map (T.Var t) (T.Var t))
 mkInstantiateSubstPart prefix =
     liftM Map.fromList . mapM f . Set.toList
     where

@@ -23,10 +23,10 @@ benchInfer e =
 
 benches :: [(String, Benchmarkable)]
 benches =
-  [ ("factorial", benchInfer factorialVal)
-  , ("euler1", benchInfer euler1Val)
-  , ("solveDepressedQuartic", benchInfer solveDepressedQuarticVal)
-  ]
+    [ ("factorial", benchInfer factorialVal)
+    , ("euler1", benchInfer euler1Val)
+    , ("solveDepressedQuartic", benchInfer solveDepressedQuarticVal)
+    ]
 
 main :: IO ()
 main = defaultMain $ map (uncurry bench) benches

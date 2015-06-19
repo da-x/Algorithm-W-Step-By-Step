@@ -1,6 +1,6 @@
 module Lamdu.Expr.Pure
-  ( abs, var, global, litInt, recEmpty, app, recExtend, getField, leaf, hole
-  ) where
+    ( abs, var, global, litInt, recEmpty, app, recExtend, getField, leaf, hole
+    ) where
 
 import Prelude hiding (abs)
 
@@ -11,7 +11,7 @@ import qualified Lamdu.Expr.Val as V
 
 abs :: Monoid a => V.Var -> Val a -> Val a
 abs name body =
-  Val mempty $ V.BAbs $ V.Lam name body
+    Val mempty $ V.BAbs $ V.Lam name body
 
 leaf :: Monoid a => V.Leaf -> Val a
 leaf = Val mempty . V.BLeaf

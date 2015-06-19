@@ -1,8 +1,8 @@
 module Lamdu.Expr.FlatComposite
-  ( FlatComposite(..)
-  , fromComposite
-  , toComposite
-  ) where
+    ( FlatComposite(..)
+    , fromComposite
+    , toComposite
+    ) where
 
 import Control.Applicative ((<$>))
 import Control.Lens (Lens')
@@ -13,9 +13,9 @@ import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 
 data FlatComposite p = FlatComposite
-  { _fields :: Map T.Tag Type
-  , _extension :: Maybe (T.Var (T.Composite p)) -- TyVar of more possible fields
-  } deriving (Show)
+    { _fields :: Map T.Tag Type
+    , _extension :: Maybe (T.Var (T.Composite p)) -- TyVar of more possible fields
+    } deriving (Show)
 
 fields :: Lens' (FlatComposite p) (Map T.Tag Type)
 fields f (FlatComposite fs ext) = (`FlatComposite` ext) <$> f fs
@@ -28,4 +28,4 @@ fromComposite (T.CVar name)             = FlatComposite Map.empty (Just name)
 
 toComposite :: FlatComposite p -> T.Composite p
 toComposite (FlatComposite fs ext) =
-  Map.foldWithKey T.CExtend (maybe T.CEmpty T.CVar ext) fs
+    Map.foldWithKey T.CExtend (maybe T.CEmpty T.CVar ext) fs

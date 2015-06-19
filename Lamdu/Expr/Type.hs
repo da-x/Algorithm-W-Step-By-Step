@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr.Type
-  ( Type(..), Composite(..), Product
-  , Var(..), Id(..), Tag(..), ParamId(..)
-  , ProductVar
-  , (~>), int
-  , compositeTypes, nextLayer
-  , LiftVar(..)
-  ) where
+    ( Type(..), Composite(..), Product
+    , Var(..), Id(..), Tag(..), ParamId(..)
+    , ProductVar
+    , (~>), int
+    , compositeTypes, nextLayer
+    , LiftVar(..)
+    ) where
 
 import Control.Applicative ((<$>), Applicative(..))
 import Control.DeepSeq (NFData(..))
@@ -25,23 +25,23 @@ import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
 
 newtype Var t = Var { tvName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
+    deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Id = Id { typeId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
+    deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Tag = Tag { tagName :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
+    deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype ParamId = ParamId { typeParamId :: Identifier }
-  deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
+    deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 data Product
 
 data Composite p = CExtend Tag Type (Composite p)
-                 | CEmpty
-                 | CVar (Var (Composite p))
-  deriving (Generic, Show, Eq, Ord)
+                                  | CEmpty
+                                  | CVar (Var (Composite p))
+    deriving (Generic, Show, Eq, Ord)
 instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)
 
@@ -53,10 +53,10 @@ compositeTypes _ CEmpty = pure CEmpty
 compositeTypes _ (CVar tv) = pure (CVar tv)
 
 data Type    =  TVar (Var Type)
-             |  TFun Type Type
-             |  TInst Id (Map ParamId Type)
-             |  TRecord (Composite Product)
-  deriving (Generic, Show, Eq, Ord)
+                          |  TFun Type Type
+                          |  TInst Id (Map ParamId Type)
+                          |  TRecord (Composite Product)
+    deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
 
@@ -80,28 +80,28 @@ instance LiftVar Type          where liftVar = TVar
 instance LiftVar (Composite c) where liftVar = CVar
 
 instance Pretty Type where
-  pPrintPrec lvl prec typ =
-    case typ of
-    TVar n -> pPrint n
-    TFun t s ->
-      prettyParen (8 < prec) $
-      pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
-    TInst n ps ->
-      pPrint n <>
-      if Map.null ps then PP.empty
-      else
-        PP.text "<" <>
-        PP.hsep (List.intersperse PP.comma (map showParam (Map.toList ps))) <>
-        PP.text ">"
-      where
-        showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
-    TRecord r -> pPrint r
+    pPrintPrec lvl prec typ =
+        case typ of
+        TVar n -> pPrint n
+        TFun t s ->
+            prettyParen (8 < prec) $
+            pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
+        TInst n ps ->
+            pPrint n <>
+            if Map.null ps then PP.empty
+            else
+                PP.text "<" <>
+                PP.hsep (List.intersperse PP.comma (map showParam (Map.toList ps))) <>
+                PP.text ">"
+            where
+                showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
+        TRecord r -> pPrint r
 
 instance Pretty (Composite p) where
-  pPrint CEmpty = PP.text "T{}"
-  pPrint x =
-    PP.text "{" <+> go PP.empty x <+> PP.text "}"
-    where
-      go _   CEmpty          = PP.empty
-      go sep (CVar tv)       = sep <> pPrint tv <> PP.text "..."
-      go sep (CExtend f t r) = sep <> pPrint f <+> PP.text ":" <+> pPrint t <> go (PP.text ", ") r
+    pPrint CEmpty = PP.text "T{}"
+    pPrint x =
+        PP.text "{" <+> go PP.empty x <+> PP.text "}"
+        where
+            go _   CEmpty          = PP.empty
+            go sep (CVar tv)       = sep <> pPrint tv <> PP.text "..."
+            go sep (CExtend f t r) = sep <> pPrint f <+> PP.text ":" <+> pPrint t <> go (PP.text ", ") r

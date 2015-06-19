@@ -61,8 +61,8 @@ instance TypeVars.Free Payload where
         TypeVars.free typ <> TypeVars.free scope
 
 instance CanSubst Payload where
-    apply s (Payload typ scope) =
-        Payload (Subst.apply s typ) (Subst.apply s scope)
+    applyImpl s (Payload typ scope) =
+        Payload (Subst.applyImpl s typ) (Subst.applyImpl s scope)
 
 inferSubst ::
     Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Scope, Val (Payload, a))

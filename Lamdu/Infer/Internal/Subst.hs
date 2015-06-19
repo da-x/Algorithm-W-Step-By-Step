@@ -2,6 +2,7 @@ module Lamdu.Infer.Internal.Subst
     ( HasVar(..), CompositeHasVar
     , Subst(..), intersect
     , CanSubst(..)
+    , apply
     ) where
 
 import Prelude hiding (null)
@@ -48,8 +49,8 @@ instance Monoid Subst where
         | null s1 = s0
         | otherwise =
         Subst
-        (t1 `unionDisjoint` Map.map (apply s1) t0)
-        (r1 `unionDisjoint` Map.map (apply s1) r0)
+        (t1 `unionDisjoint` Map.map (applyImpl s1) t0)
+        (r1 `unionDisjoint` Map.map (applyImpl s1) r0)
 
 intersectMapSet :: Ord k => Set k -> Map k a -> Map k a
 intersectMapSet s m = Map.intersection m $ Map.fromSet (const ()) s
@@ -59,7 +60,8 @@ intersect (TypeVars tvs rtvs) (Subst ts rs) =
     Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
 
 class TypeVars.Free a => CanSubst a where
-    apply   :: Subst -> a -> a
+    -- This implements apply knowing the subst is non-null
+    applyImpl   :: Subst -> a -> a
 
 class (TypeVars.VarKind t, CanSubst t) => HasVar t where
     new :: T.Var t -> t -> Subst
@@ -69,15 +71,15 @@ class TypeVars.CompositeVarKind p => CompositeHasVar p where
     compositeGet :: Subst -> SubSubst (T.Composite p)
 
 instance CompositeHasVar p => CanSubst (T.Composite p) where
-    apply _ T.CEmpty          = T.CEmpty
-    apply s (T.CVar n)        = fromMaybe (T.CVar n) $ Map.lookup n (compositeGet s)
-    apply s (T.CExtend n t r) = T.CExtend n (apply s t) (apply s r)
+    applyImpl _ T.CEmpty          = T.CEmpty
+    applyImpl s (T.CVar n)        = fromMaybe (T.CVar n) $ Map.lookup n (compositeGet s)
+    applyImpl s (T.CExtend n t r) = T.CExtend n (applyImpl s t) (applyImpl s r)
 
 instance CanSubst Type where
-    apply s (T.TVar n)      = fromMaybe (T.TVar n) $ Map.lookup n (substTypes s)
-    apply s (T.TInst n p)   = T.TInst n $ apply s <$> p
-    apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)
-    apply s (T.TRecord r)   = T.TRecord $ apply s r
+    applyImpl s (T.TVar n)      = fromMaybe (T.TVar n) $ Map.lookup n (substTypes s)
+    applyImpl s (T.TInst n p)   = T.TInst n $ applyImpl s <$> p
+    applyImpl s (T.TFun t1 t2)  = T.TFun (applyImpl s t1) (applyImpl s t2)
+    applyImpl s (T.TRecord r)   = T.TRecord $ applyImpl s r
 
 instance HasVar Type where
     new tv t = Subst (Map.singleton tv t) mempty
@@ -91,3 +93,8 @@ instance CompositeHasVar T.Product where
 instance CompositeHasVar p => HasVar (T.Composite p) where
     new tv t = compositeNew $ Map.singleton tv t
     {-# INLINE new #-}
+
+apply :: CanSubst a => Subst -> a -> a
+apply subst
+    | null subst = id
+    | otherwise = applyImpl subst

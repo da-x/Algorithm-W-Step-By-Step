@@ -29,7 +29,7 @@ instance TypeVars.Free Scope where
     free (Scope env) = mconcat $ map TypeVars.free $ Map.elems env
 
 instance CanSubst Scope where
-    apply s (Scope env) = Scope $ Map.map (Subst.apply s) env
+    applyImpl s (Scope env) = Scope $ Map.map (Subst.applyImpl s) env
 
 emptyScope :: Scope
 emptyScope = Scope Map.empty

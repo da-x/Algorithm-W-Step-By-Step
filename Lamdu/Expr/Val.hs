@@ -160,20 +160,20 @@ pPrintPrecBody lvl prec b =
     BLeaf (LLiteralInteger i) -> pPrint i
     BLeaf LHole               -> PP.text "?"
     BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
-                                                                      pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
+                                 pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
     BAbs (Lam n e)            -> prettyParen (0 < prec) $
-                                                              PP.char '\\' <> pPrint n <+>
-                                                              PP.text "->" <+>
-                                                              pPrint e
+                                 PP.char '\\' <> pPrint n <+>
+                                 PP.text "->" <+>
+                                 pPrint e
     BGetField (GetField e n)  -> prettyParen (12 < prec) $
-                                                              pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
+                                 pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
     BLeaf LRecEmpty           -> PP.text "V{}"
-    BRecExtend
-        (RecExtend tag val rest)  -> PP.text "{" <+>
-                                                                  prField <>
-                                                                  PP.comma <+>
-                                                                  pPrint rest <+>
-                                                                  PP.text "}"
+    BRecExtend (RecExtend tag val rest) ->
+                                 PP.text "{" <+>
+                                 prField <>
+                                 PP.comma <+>
+                                 pPrint rest <+>
+                                 PP.text "}"
         where
             prField = pPrint tag <+> PP.text "=" <+> pPrint val
 

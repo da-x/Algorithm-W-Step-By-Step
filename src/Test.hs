@@ -92,6 +92,17 @@ exps =
     , P.absurd (P.litInt 2)
 
     , P.absurd P.hole
+
+    , lambda "x" $ \x ->
+      lambda "nothing" $ \nothing ->
+      lambda "just" $ \just ->
+      P._case "Nothing" (lambda "_" (const nothing))
+      ( lambda "nonjust" $
+        P._case "Just" just $
+        lambda "notjustornothing"
+        P.absurd
+      )
+      x
     ]
 
 recurseVar :: V.Var

@@ -1,6 +1,6 @@
 module Lamdu.Expr.Pure
     ( abs, var, global, litInt, recEmpty, app, recExtend, getField
-    , inject, absurd
+    , inject, absurd, _case
     , leaf, hole
     ) where
 
@@ -44,6 +44,10 @@ inject n r = Val mempty $ V.BInject $ V.Inject n r
 
 absurd :: Monoid a => Val a -> Val a
 absurd = Val mempty . V.BAbsurd . V.Absurd
+
+_case :: Monoid a => T.Tag -> Val a -> Val a -> Val a -> Val a
+_case tag match mismatch sumT =
+    Val mempty $ V.BCase $ V.Case tag match mismatch sumT
 
 hole :: Monoid a => Val a
 hole = leaf V.LHole

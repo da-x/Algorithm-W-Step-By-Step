@@ -25,7 +25,7 @@ import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import           Data.String (IsString(..))
-import           Lamdu.Expr.Constraints (Constraints(..))
+import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
 import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars)
@@ -130,7 +130,9 @@ tellConstraints x = tell $ emptyResults { _constraints = x }
 {-# INLINE tellConstraints #-}
 
 tellProductConstraint :: T.ProductVar -> T.Tag -> Infer ()
-tellProductConstraint v tag = tellConstraints $ Constraints $ Map.singleton v (Set.singleton tag)
+tellProductConstraint v tag =
+    tellConstraints $ Constraints $ CompositeVarConstraints $
+    Map.singleton v $ Set.singleton tag
 {-# INLINE tellProductConstraint #-}
 
 listen :: Infer a -> Infer (a, Results)

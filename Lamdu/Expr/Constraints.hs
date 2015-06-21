@@ -1,11 +1,13 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr.Constraints
     ( Constraints(..)
     , ForbiddenFields
-    , applyRenames
+    , applyProductRenames
     , intersect
-    , getProductVarConstraints, ProductVarConstraints
-    , getTypeVarConstraints, TypeVarConstraints
+    , CompositeVarConstraints(..)
+    , getProductVarConstraints
+    , TypeVarConstraints
+    , getTypeVarConstraints
     ) where
 
 import Control.DeepSeq (NFData(..))
@@ -27,51 +29,67 @@ import qualified Text.PrettyPrint as PP
 
 type ForbiddenFields = Set T.Tag
 
-type ProductVarConstraints = ForbiddenFields
 type TypeVarConstraints = ()
 
-newtype Constraints = Constraints
-    { productVarConstraints :: Map T.ProductVar ProductVarConstraints
+newtype CompositeVarConstraints t = CompositeVarConstraints
+    { compositeVarConstraints :: Map (T.Var (T.Composite t)) ForbiddenFields
     } deriving (Generic, Eq, Show)
 
-instance NFData Constraints where
+instance Monoid (CompositeVarConstraints t) where
+    mempty = CompositeVarConstraints Map.empty
+    mappend (CompositeVarConstraints x) (CompositeVarConstraints y) =
+        CompositeVarConstraints $ Map.unionWith mappend x y
+
+instance NFData (CompositeVarConstraints t) where
     rnf = genericRnf
 
-instance Monoid Constraints where
-    mempty = Constraints Map.empty
-    mappend (Constraints x) (Constraints y) = Constraints $ Map.unionWith mappend x y
-
-instance Pretty Constraints where
-    pPrint (Constraints m)
+instance Pretty (CompositeVarConstraints t) where
+    pPrint (CompositeVarConstraints m)
         | Map.null m = PP.text "NoConstraints"
         | otherwise =
             PP.hcat $ PP.punctuate PP.comma $ map (uncurry pPrintConstraint) $
             Map.toList m
 
-instance Binary Constraints
+instance Binary (CompositeVarConstraints t)
 
-getProductVarConstraints :: T.ProductVar -> Constraints -> ProductVarConstraints
+renameApply ::
+    Map (T.Var (T.Composite t)) (T.Var (T.Composite t)) ->
+    CompositeVarConstraints t -> CompositeVarConstraints t
+renameApply renames (CompositeVarConstraints m) =
+    CompositeVarConstraints (Map.mapKeys rename m)
+    where
+        rename x = fromMaybe x $ Map.lookup x renames
+
+newtype Constraints = Constraints
+    { productVarConstraints :: CompositeVarConstraints T.Product
+    } deriving (Monoid, NFData, Binary, Pretty, Generic, Eq, Show)
+
+getProductVarConstraints :: T.ProductVar -> Constraints -> ForbiddenFields
 getProductVarConstraints tv c =
-    fromMaybe Set.empty $ Map.lookup tv $ productVarConstraints c
+    fromMaybe Set.empty $ Map.lookup tv $ compositeVarConstraints $ productVarConstraints c
 
 getTypeVarConstraints :: T.Var T.Type -> Constraints -> TypeVarConstraints
 getTypeVarConstraints _ _ = ()
 
-pPrintConstraint :: T.ProductVar -> Set T.Tag -> PP.Doc
+pPrintConstraint :: T.Var t -> Set T.Tag -> PP.Doc
 pPrintConstraint tv forbiddenFields =
     PP.text "{" <>
     (PP.hsep . map pPrint . Set.toList) forbiddenFields <>
     PP.text "}" <+>
     PP.text "∉" <+> pPrint tv
 
-applyRenames :: Map T.ProductVar T.ProductVar -> Constraints -> Constraints
-applyRenames renames (Constraints m) =
-    Constraints $ Map.mapKeys rename m
+applyProductRenames :: Map T.ProductVar T.ProductVar -> Constraints -> Constraints
+applyProductRenames renames (Constraints prodConstraints) =
+    Constraints (renameApply renames prodConstraints)
+
+compositeIntersect ::
+    TypeVars.CompositeVarKind t =>
+    TypeVars -> CompositeVarConstraints t -> CompositeVarConstraints t
+compositeIntersect tvs (CompositeVarConstraints c) =
+    CompositeVarConstraints (Map.filterWithKey inTVs c)
     where
-        rename x = fromMaybe x $ Map.lookup x renames
+        inTVs rtv _ = rtv `TypeVars.member` tvs
 
 intersect :: TypeVars -> Constraints -> Constraints
 intersect tvs (Constraints c) =
-    Constraints (Map.filterWithKey inTVs c)
-    where
-        inTVs rtv _ = rtv `TypeVars.member` tvs
+    Constraints (compositeIntersect tvs c)

@@ -6,7 +6,10 @@ module Lamdu.Infer.Internal.Monad
     , InferCtx(..), inferCtx
     , Infer
     , throwError
-    , tell, tellSubst, tellSubsts, tellProductConstraint, tellConstraints
+    , tell, tellSubst, tellSubsts
+    , tellProductConstraint
+    , tellSumConstraint
+    , tellConstraints
     , listen, listenNoTell
     , getConstraints, getSubst
     , freshInferredVar, freshInferredVarName
@@ -136,6 +139,14 @@ tellProductConstraint v tag =
       CompositeVarConstraints $ Map.singleton v $ Set.singleton tag
     }
 {-# INLINE tellProductConstraint #-}
+
+tellSumConstraint :: T.SumVar -> T.Tag -> Infer ()
+tellSumConstraint v tag =
+    tellConstraints $ mempty
+    { sumVarConstraints =
+      CompositeVarConstraints $ Map.singleton v $ Set.singleton tag
+    }
+{-# INLINE tellSumConstraint #-}
 
 listen :: Infer a -> Infer (a, Results)
 listen (Infer (StateT act)) =

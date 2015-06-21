@@ -1,29 +1,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Applicative
-import Control.Arrow ((&&&))
-import Control.Lens (zoom)
-import Control.Lens.Operators
-import Control.Lens.Tuple
-import Control.Monad.State (StateT(..), state, runState, evalState, modify, get)
-import Data.String (IsString(..))
-import Data.Traversable (traverse)
-import Lamdu.Expr.Type ((~>), Type(..), Composite(..))
-import Lamdu.Expr.Val (Val(..))
-import Lamdu.Infer
-import Lamdu.Infer.Unify
-import Text.PrettyPrint ((<>), (<+>), ($+$))
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import           Control.Applicative
+import           Control.Arrow ((&&&))
+import           Control.Lens (zoom)
+import           Control.Lens.Operators
+import           Control.Lens.Tuple
+import           Control.Monad.State (StateT(..), state, runState, evalState, modify, get)
 import qualified Data.Map as M
+import           Data.String (IsString(..))
+import           Data.Traversable (traverse)
 import qualified Lamdu.Expr.Pure as P
+import           Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Infer
 import qualified Lamdu.Infer.Recursive as Recursive
+import           Lamdu.Infer.Unify
 import qualified Lamdu.Infer.Update as Update
 import qualified Lamdu.Suggest as Suggest
+import           Text.PrettyPrint ((<>), (<+>), ($+$))
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
-import TestVals
+import           TestVals
 
 {-# ANN module ("HLint: ignore Use const" :: String) #-}
 
@@ -87,6 +87,8 @@ exps =
     , P.global "fix" $$ lambda "f"
         ( \f -> P.hole $$ (f $$ (f $$ (P.global "zipWith" $$ P.hole $$ P.hole $$ P.hole)))
         )
+
+    , list [P.inject "x" (P.litInt 1), P.inject "y" (P.litInt 2), P.inject "x" P.hole]
     ]
 
 recurseVar :: V.Var

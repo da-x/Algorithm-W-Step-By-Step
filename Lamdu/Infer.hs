@@ -143,6 +143,13 @@ inferInternal f globals =
                         M.listenSubst $ unifyUnsafe (Subst.apply s t) $
                         T.TRecord $ T.CExtend name tv $ T.liftVar tvRecName
                     return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
+            V.BInject (V.Inject name e) ->
+                do
+                    (t, e') <- go locals e
+                    tvSumName <- M.freshInferredVarName "s"
+                    M.tellSumConstraint tvSumName name
+                    return $ mkResult (V.BInject (V.Inject name e')) $
+                        T.TSum $ T.CExtend name t $ T.liftVar tvSumName
             V.BRecExtend (V.RecExtend name e1 e2) ->
                 do
                     ((t1, e1'), s1) <- M.listenSubst $ go locals e1

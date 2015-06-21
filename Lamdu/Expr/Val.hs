@@ -4,6 +4,7 @@ module Lamdu.Expr.Val
     , Body(..)
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
+    , Inject(..), injectRecord, injectTag
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
     , Val(..), body, payload, alphaEq
@@ -33,6 +34,8 @@ import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
 import qualified Data.Foldable as Foldable
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as PP
+
+{-# ANN module "HLint: ignore Use const" #-}
 
 newtype Var = Var { vvName :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
@@ -82,13 +85,29 @@ instance Match GetField where
             | t0 == t1 = Just $ GetField (f r0 r1) t0
             | otherwise = Nothing
 
-{-# ANN module "HLint: ignore Use const" #-}
-
 getFieldRecord :: Lens' (GetField exp) exp
 getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
 
 getFieldTag :: Lens' (GetField exp) Tag
 getFieldTag f GetField {..} = f _getFieldTag <&> \_getFieldTag -> GetField {..}
+
+data Inject exp = Inject
+    { _injectTag :: Tag
+    , _injectVal :: exp
+    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
+instance NFData exp => NFData (Inject exp) where rnf = genericRnf
+instance Binary exp => Binary (Inject exp)
+instance Hashable exp => Hashable (Inject exp) where hashWithSalt = gHashWithSalt
+instance Match Inject where
+        match f (Inject t0 r0) (Inject t1 r1)
+            | t0 == t1 = Just $ Inject t0 (f r0 r1)
+            | otherwise = Nothing
+
+injectRecord :: Lens' (Inject exp) exp
+injectRecord f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
+
+injectTag :: Lens' (Inject exp) Tag
+injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}
 
 data Lam exp = Lam
     { _lamParamId :: Var
@@ -131,6 +150,7 @@ data Body exp
     |  BAbs {-# UNPACK #-}!(Lam exp)
     |  BGetField {-# UNPACK #-}!(GetField exp)
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
+    |  BInject {-# UNPACK #-}!(Inject exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 -- NOTE: Careful of Eq, it's not alpha-eq!
@@ -167,6 +187,8 @@ pPrintPrecBody lvl prec b =
                                  pPrint e
     BGetField (GetField e n)  -> prettyParen (12 < prec) $
                                  pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
+    BInject (Inject n e)      -> prettyParen (12 < prec) $
+                                 pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
     BLeaf LRecEmpty           -> PP.text "V{}"
     BRecExtend (RecExtend tag val rest) ->
                                  PP.text "{" <+>

@@ -66,9 +66,10 @@ fromDoublyConsistentList pairs =
         return m
 
 alphaEq :: Scheme -> Scheme -> Bool
-alphaEq (Scheme aForall aConstraints aType)
-                (Scheme bForall bConstraints bType) =
-    case TypeMatch.matchVars aType bType of
+alphaEq
+    (Scheme aForall aConstraints aType)
+    (Scheme bForall bConstraints bType) =
+        case TypeMatch.matchVars aType bType of
         Just (tvPairs, ctvPairs)
             | Just tvMap <- fromDoublyConsistentList tvPairs
             , Just ctvMap <- fromDoublyConsistentList ctvPairs
@@ -78,10 +79,10 @@ alphaEq (Scheme aForall aConstraints aType)
     where
         checkVarsMatch getTVConstraints (a, b) =
             ( a `TypeVars.member` aForall ==
-                b `TypeVars.member` bForall
+              b `TypeVars.member` bForall
             ) &&
             ( getTVConstraints a aConstraints ==
-                getTVConstraints b bConstraints
+              getTVConstraints b bConstraints
             )
 
 make :: Constraints -> Type -> Scheme

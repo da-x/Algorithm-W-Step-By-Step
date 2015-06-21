@@ -52,10 +52,11 @@ compositeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTyp
 compositeTypes _ CEmpty = pure CEmpty
 compositeTypes _ (CVar tv) = pure (CVar tv)
 
-data Type    =  TVar (Var Type)
-                          |  TFun Type Type
-                          |  TInst Id (Map ParamId Type)
-                          |  TRecord (Composite Product)
+data Type
+    = TVar (Var Type)
+    | TFun Type Type
+    | TInst Id (Map ParamId Type)
+    | TRecord (Composite Product)
     deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type

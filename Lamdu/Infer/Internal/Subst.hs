@@ -87,15 +87,17 @@ instance HasVar Type where
     new tv t = mempty { substTypes = Map.singleton tv t }
 
 instance CompositeHasVar T.Product where
+    {-# INLINE compositeGet #-}
     compositeGet = substRecordTypes
     {-# INLINE compositeNew #-}
     compositeNew v = mempty { substRecordTypes = v }
 
 instance CompositeHasVar T.Sum where
+    {-# INLINE compositeGet #-}
     compositeGet = substSumTypes
     {-# INLINE compositeNew #-}
     compositeNew v = mempty { substSumTypes = v }
 
 instance CompositeHasVar p => HasVar (T.Composite p) where
-    new tv t = compositeNew $ Map.singleton tv t
     {-# INLINE new #-}
+    new tv t = compositeNew $ Map.singleton tv t

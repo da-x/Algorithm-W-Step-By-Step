@@ -13,13 +13,14 @@ import           Lamdu.Infer.Internal.Subst (Subst(..))
 
 applySubst :: Subst -> Constraints -> Either Error Constraints
 applySubst (Subst _ rtvSubsts) (Constraints prod) =
-    Constraints <$> applySubstCompositeConstraints rtvSubsts prod
+    Constraints <$> applySubstCompositeConstraints FieldForbidden rtvSubsts prod
 
 applySubstCompositeConstraints ::
-    Map T.ProductVar (T.Composite T.Product) ->
-    CompositeVarConstraints T.Product ->
-    Either Error (CompositeVarConstraints T.Product)
-applySubstCompositeConstraints rtvSubsts (CompositeVarConstraints m) =
+    (T.Tag -> T.Var (T.Composite t) -> T.Composite t -> err) ->
+    Map (T.Var (T.Composite t)) (T.Composite t) ->
+    CompositeVarConstraints t ->
+    Either err (CompositeVarConstraints t)
+applySubstCompositeConstraints fieldForbidden rtvSubsts (CompositeVarConstraints m) =
     CompositeVarConstraints . Map.fromListWith Set.union . concat <$>
     mapM onConstraint (Map.toList m)
     where
@@ -32,5 +33,5 @@ applySubstCompositeConstraints rtvSubsts (CompositeVarConstraints m) =
                     go T.CEmpty             = Right []
                     go (T.CVar newVar)      = Right [(newVar, forbidden)]
                     go (T.CExtend f _ rest)
-                        | Set.member f forbidden = Left $ FieldForbidden f var recType
+                        | Set.member f forbidden = Left $ fieldForbidden f var recType
                         | otherwise              = go rest

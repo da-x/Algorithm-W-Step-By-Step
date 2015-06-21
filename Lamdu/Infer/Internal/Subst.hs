@@ -24,10 +24,11 @@ type SubSubst t = Map (T.Var t) t
 data Subst = Subst
     { substTypes :: SubSubst Type
     , substRecordTypes :: SubSubst (T.Composite T.Product)
+    , substSumTypes :: SubSubst (T.Composite T.Sum)
     } deriving Show
 
 null :: Subst -> Bool
-null (Subst x y) = Map.null x && Map.null y
+null (Subst t r s) = Map.null t && Map.null r && Map.null s
 
 unionDisjoint :: (Pretty a, Pretty k, Ord k) => Map k a -> Map k a -> Map k a
 unionDisjoint m1 m2 =
@@ -43,20 +44,21 @@ unionDisjoint m1 m2 =
             ]
 
 instance Monoid Subst where
-    mempty = Subst Map.empty Map.empty
-    mappend s0@(Subst t0 r0) s1@(Subst t1 r1)
-        | null s1 = s0
+    mempty = Subst Map.empty Map.empty Map.empty
+    mappend subst0@(Subst t0 r0 s0) subst1@(Subst t1 r1 s1)
+        | null subst1 = subst0
         | otherwise =
         Subst
-        (t1 `unionDisjoint` Map.map (apply s1) t0)
-        (r1 `unionDisjoint` Map.map (apply s1) r0)
+        (t1 `unionDisjoint` Map.map (apply subst1) t0)
+        (r1 `unionDisjoint` Map.map (apply subst1) r0)
+        (s1 `unionDisjoint` Map.map (apply subst1) s0)
 
 intersectMapSet :: Ord k => Set k -> Map k a -> Map k a
 intersectMapSet s m = Map.intersection m $ Map.fromSet (const ()) s
 
 intersect :: TypeVars -> Subst -> Subst
-intersect (TypeVars tvs rtvs) (Subst ts rs) =
-    Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs)
+intersect (TypeVars tvs rtvs stvs) (Subst ts rs ss) =
+    Subst (intersectMapSet tvs ts) (intersectMapSet rtvs rs) (intersectMapSet stvs ss)
 
 class TypeVars.Free a => CanSubst a where
     apply   :: Subst -> a -> a
@@ -80,13 +82,18 @@ instance CanSubst Type where
     apply s (T.TRecord r)   = T.TRecord $ apply s r
 
 instance HasVar Type where
-    new tv t = Subst (Map.singleton tv t) mempty
     {-# INLINE new #-}
+    new tv t = mempty { substTypes = Map.singleton tv t }
 
 instance CompositeHasVar T.Product where
-    {-# INLINE compositeNew #-}
     compositeGet = substRecordTypes
-    compositeNew = Subst mempty
+    {-# INLINE compositeNew #-}
+    compositeNew v = mempty { substRecordTypes = v }
+
+instance CompositeHasVar T.Sum where
+    compositeGet = substSumTypes
+    {-# INLINE compositeNew #-}
+    compositeNew v = mempty { substSumTypes = v }
 
 instance CompositeHasVar p => HasVar (T.Composite p) where
     new tv t = compositeNew $ Map.singleton tv t

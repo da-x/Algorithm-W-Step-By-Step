@@ -2,7 +2,7 @@
 module Lamdu.Expr.Constraints
     ( Constraints(..)
     , ForbiddenFields
-    , applyProductRenames
+    , applyRenames
     , intersect
     , CompositeVarConstraints(..)
     , getProductVarConstraints
@@ -40,8 +40,7 @@ instance Monoid (CompositeVarConstraints t) where
     mappend (CompositeVarConstraints x) (CompositeVarConstraints y) =
         CompositeVarConstraints $ Map.unionWith mappend x y
 
-instance NFData (CompositeVarConstraints t) where
-    rnf = genericRnf
+instance NFData (CompositeVarConstraints t) where rnf = genericRnf
 
 instance Pretty (CompositeVarConstraints t) where
     pPrint (CompositeVarConstraints m)
@@ -60,9 +59,22 @@ renameApply renames (CompositeVarConstraints m) =
     where
         rename x = fromMaybe x $ Map.lookup x renames
 
-newtype Constraints = Constraints
+data Constraints = Constraints
     { productVarConstraints :: CompositeVarConstraints T.Product
-    } deriving (Monoid, NFData, Binary, Pretty, Generic, Eq, Show)
+    , sumVarConstraints :: CompositeVarConstraints T.Sum
+    } deriving (Generic, Eq, Show)
+
+instance Monoid Constraints where
+    mempty = Constraints mempty mempty
+    mappend (Constraints p0 s0) (Constraints p1 s1) =
+        Constraints (mappend p0 p1) (mappend s0 s1)
+
+instance Binary Constraints
+instance NFData Constraints where rnf = genericRnf
+instance Pretty Constraints where
+    pPrint (Constraints p s) =
+        PP.text "{" <> pPrint p <> PP.text "}" <>
+        PP.text "[" <> pPrint s <> PP.text "]"
 
 getProductVarConstraints :: T.ProductVar -> Constraints -> ForbiddenFields
 getProductVarConstraints tv c =
@@ -78,9 +90,14 @@ pPrintConstraint tv forbiddenFields =
     PP.text "}" <+>
     PP.text "∉" <+> pPrint tv
 
-applyProductRenames :: Map T.ProductVar T.ProductVar -> Constraints -> Constraints
-applyProductRenames renames (Constraints prodConstraints) =
-    Constraints (renameApply renames prodConstraints)
+applyRenames ::
+    Map T.ProductVar T.ProductVar ->
+    Map T.SumVar T.SumVar ->
+    Constraints -> Constraints
+applyRenames prodRenames sumRenames (Constraints prodConstraints sumConstraints) =
+    Constraints
+    (renameApply prodRenames prodConstraints)
+    (renameApply sumRenames sumConstraints)
 
 compositeIntersect ::
     TypeVars.CompositeVarKind t =>
@@ -91,5 +108,5 @@ compositeIntersect tvs (CompositeVarConstraints c) =
         inTVs rtv _ = rtv `TypeVars.member` tvs
 
 intersect :: TypeVars -> Constraints -> Constraints
-intersect tvs (Constraints c) =
-    Constraints (compositeIntersect tvs c)
+intersect tvs (Constraints p s) =
+    Constraints (compositeIntersect tvs p) (compositeIntersect tvs s)

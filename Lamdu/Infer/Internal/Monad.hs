@@ -131,8 +131,10 @@ tellConstraints x = tell $ emptyResults { _constraints = x }
 
 tellProductConstraint :: T.ProductVar -> T.Tag -> Infer ()
 tellProductConstraint v tag =
-    tellConstraints $ Constraints $ CompositeVarConstraints $
-    Map.singleton v $ Set.singleton tag
+    tellConstraints $ mempty
+    { productVarConstraints =
+      CompositeVarConstraints $ Map.singleton v $ Set.singleton tag
+    }
 {-# INLINE tellProductConstraint #-}
 
 listen :: Infer a -> Infer (a, Results)

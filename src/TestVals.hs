@@ -67,7 +67,7 @@ boolType = T.TInst "Bool" Map.empty
 
 forAll :: [T.Var Type] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
-    Scheme (TypeVars (Set.fromList tvs) Set.empty) mempty $ mkType $ map T.TVar tvs
+    Scheme mempty { typeVars = Set.fromList tvs } mempty $ mkType $ map T.TVar tvs
 
 listOf :: Type -> Type
 listOf = T.TInst "List" . Map.singleton "elem"

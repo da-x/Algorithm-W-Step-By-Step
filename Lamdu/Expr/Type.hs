@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr.Type
-    ( Type(..), Composite(..), Product
+    ( Type(..), Composite(..)
+    , Product, Sum
     , Var(..), Id(..), Tag(..), ParamId(..)
-    , ProductVar
+    , ProductVar, SumVar
     , (~>), int
     , compositeTypes, nextLayer
     , LiftVar(..)
@@ -37,6 +38,7 @@ newtype ParamId = ParamId { typeParamId :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 data Product
+data Sum
 
 data Composite p = CExtend Tag Type (Composite p)
                                   | CEmpty
@@ -46,6 +48,7 @@ instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)
 
 type ProductVar = Var (Composite Product)
+type SumVar = Var (Composite Sum)
 
 compositeTypes :: Lens.Traversal' (Composite p) Type
 compositeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypes f rest

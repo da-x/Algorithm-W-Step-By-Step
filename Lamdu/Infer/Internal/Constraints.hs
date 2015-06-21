@@ -2,18 +2,20 @@ module Lamdu.Infer.Internal.Constraints
     ( applySubst
     ) where
 
-import           Control.Applicative ((<$>))
+import           Control.Applicative (Applicative(..), (<$>))
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
 import qualified Lamdu.Expr.Type as T
-import           Lamdu.Infer.Error (Error(FieldForbidden))
+import           Lamdu.Infer.Error (Error(FieldForbidden, AltForbidden))
 import           Lamdu.Infer.Internal.Subst (Subst(..))
 
 applySubst :: Subst -> Constraints -> Either Error Constraints
-applySubst (Subst _ rtvSubsts) (Constraints prod) =
-    Constraints <$> applySubstCompositeConstraints FieldForbidden rtvSubsts prod
+applySubst (Subst _ rtvSubsts stvSubsts) (Constraints prodC sumC) =
+    Constraints
+    <$> applySubstCompositeConstraints FieldForbidden rtvSubsts prodC
+    <*> applySubstCompositeConstraints AltForbidden stvSubsts sumC
 
 applySubstCompositeConstraints ::
     (T.Tag -> T.Var (T.Composite t) -> T.Composite t -> err) ->

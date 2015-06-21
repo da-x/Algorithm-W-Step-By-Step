@@ -37,15 +37,17 @@ mkInstantiateSubstPart prefix =
 
 {-# INLINE instantiate #-}
 instantiate :: Monad m => Scheme -> InferCtx m Type
-instantiate (Scheme (TypeVars tv rv) constraints t) =
+instantiate (Scheme (TypeVars tv rv sv) constraints t) =
     do
-        recordSubsts <- mkInstantiateSubstPart "k" rv
         typeVarSubsts <- mkInstantiateSubstPart "i" tv
+        recordSubsts <- mkInstantiateSubstPart "k" rv
+        sumSubsts <- mkInstantiateSubstPart "s" sv
         let subst =
-                typeVarSubsts
-                & fmap T.liftVar
-                & (`Subst` fmap T.liftVar recordSubsts)
-            constraints' = Constraints.applyProductRenames recordSubsts constraints
+                Subst
+                (fmap T.liftVar typeVarSubsts)
+                (fmap T.liftVar recordSubsts)
+                (fmap T.liftVar sumSubsts)
+            constraints' = Constraints.applyRenames recordSubsts sumSubsts constraints
         -- Avoid tell for these new constraints, because they refer to
         -- fresh variables, no need to apply the ordinary expensive
         -- and error-emitting tell

@@ -20,20 +20,21 @@ import qualified Lamdu.Expr.Type as T
 data TypeVars = TypeVars
     { typeVars :: Set (T.Var Type)
     , productTypeVars :: Set T.ProductVar
+    , sumTypeVars :: Set T.SumVar
     }
     deriving (Eq, Generic, Show)
 instance NFData TypeVars where
     rnf = genericRnf
 instance Monoid TypeVars where
-    mempty = TypeVars mempty mempty
-    mappend (TypeVars t0 r0) (TypeVars t1 r1) =
-        TypeVars (mappend t0 t1) (mappend r0 r1)
+    mempty = TypeVars mempty mempty mempty
+    mappend (TypeVars t0 r0 s0) (TypeVars t1 r1 s1) =
+        TypeVars (mappend t0 t1) (mappend r0 r1) (mappend s0 s1)
 
 instance Binary TypeVars
 
 difference :: TypeVars -> TypeVars -> TypeVars
-difference (TypeVars t0 r0) (TypeVars t1 r1) =
-    TypeVars (Set.difference t0 t1) (Set.difference r0 r1)
+difference (TypeVars t0 r0 s0) (TypeVars t1 r1 s1) =
+    TypeVars (Set.difference t0 t1) (Set.difference r0 r1) (Set.difference s0 s1)
 
 class Free t where free :: t -> TypeVars
 
@@ -53,16 +54,20 @@ class T.LiftVar t => VarKind t where
     singleton :: T.Var t -> TypeVars
 
 instance VarKind Type where
-    member v (TypeVars vs _) = v `Set.member` vs
-    singleton v = TypeVars (Set.singleton v) mempty
+    member v tvs = v `Set.member` typeVars tvs
+    singleton v = mempty { typeVars = Set.singleton v }
 
 class CompositeVarKind p where
     compositeMember :: T.Var (T.Composite p) -> TypeVars -> Bool
     compositeSingleton :: T.Var (T.Composite p) -> TypeVars
 
 instance CompositeVarKind T.Product where
-    compositeMember v (TypeVars _ vs) = v `Set.member` vs
-    compositeSingleton = TypeVars mempty . Set.singleton
+    compositeMember v tvs = v `Set.member` productTypeVars tvs
+    compositeSingleton v = mempty { productTypeVars = Set.singleton v }
+
+instance CompositeVarKind T.Sum where
+    compositeMember v tvs = v `Set.member` sumTypeVars tvs
+    compositeSingleton v = mempty { sumTypeVars = Set.singleton v }
 
 instance CompositeVarKind p => VarKind (T.Composite p) where
     member = compositeMember

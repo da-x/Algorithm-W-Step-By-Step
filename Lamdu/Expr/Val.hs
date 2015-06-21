@@ -5,6 +5,7 @@ module Lamdu.Expr.Val
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
     , Inject(..), injectRecord, injectTag
+    , Absurd(..), absurdSum
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
     , Val(..), body, payload, alphaEq
@@ -109,6 +110,18 @@ injectRecord f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
 injectTag :: Lens' (Inject exp) Tag
 injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}
 
+data Absurd exp = Absurd
+    { _absurdSum :: exp
+    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
+instance NFData exp => NFData (Absurd exp) where rnf = genericRnf
+instance Binary exp => Binary (Absurd exp)
+instance Hashable exp => Hashable (Absurd exp) where hashWithSalt = gHashWithSalt
+instance Match Absurd where
+    match f (Absurd s0) (Absurd s1) = Just $ Absurd (f s0 s1)
+
+absurdSum :: Lens' (Absurd exp) exp
+absurdSum f Absurd {..} = f _absurdSum <&> \_absurdSum -> Absurd {..}
+
 data Lam exp = Lam
     { _lamParamId :: Var
     , _lamResult :: exp
@@ -151,6 +164,7 @@ data Body exp
     |  BGetField {-# UNPACK #-}!(GetField exp)
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
     |  BInject {-# UNPACK #-}!(Inject exp)
+    |  BAbsurd {-# UNPACK #-}!(Absurd exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 -- NOTE: Careful of Eq, it's not alpha-eq!
@@ -189,6 +203,7 @@ pPrintPrecBody lvl prec b =
                                  pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
     BInject (Inject n e)      -> prettyParen (12 < prec) $
                                  pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
+    BAbsurd (Absurd e)        -> PP.text "absurd[" <> pPrint e <> PP.text "]"
     BLeaf LRecEmpty           -> PP.text "V{}"
     BRecExtend (RecExtend tag val rest) ->
                                  PP.text "{" <+>

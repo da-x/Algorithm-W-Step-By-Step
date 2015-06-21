@@ -150,6 +150,12 @@ inferInternal f globals =
                     M.tellSumConstraint tvSumName name
                     return $ mkResult (V.BInject (V.Inject name e')) $
                         T.TSum $ T.CExtend name t $ T.liftVar tvSumName
+            V.BAbsurd (V.Absurd e) ->
+                do
+                    (t, e') <- go locals e
+                    unifyUnsafe t $ T.TSum T.CEmpty
+                    tv <- M.freshInferredVar "a"
+                    return $ mkResult (V.BAbsurd (V.Absurd e')) tv
             V.BRecExtend (V.RecExtend name e1 e2) ->
                 do
                     ((t1, e1'), s1) <- M.listenSubst $ go locals e1

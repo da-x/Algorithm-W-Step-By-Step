@@ -1,5 +1,7 @@
 module Lamdu.Expr.Pure
-    ( abs, var, global, litInt, recEmpty, app, recExtend, getField, inject, leaf, hole
+    ( abs, var, global, litInt, recEmpty, app, recExtend, getField
+    , inject, absurd
+    , leaf, hole
     ) where
 
 import Prelude hiding (abs)
@@ -39,6 +41,9 @@ getField r n = Val mempty $ V.BGetField $ V.GetField r n
 
 inject :: Monoid a => T.Tag -> Val a -> Val a
 inject n r = Val mempty $ V.BInject $ V.Inject n r
+
+absurd :: Monoid a => Val a -> Val a
+absurd = Val mempty . V.BAbsurd . V.Absurd
 
 hole :: Monoid a => Val a
 hole = leaf V.LHole

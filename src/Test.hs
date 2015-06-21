@@ -89,6 +89,9 @@ exps =
         )
 
     , list [P.inject "x" (P.litInt 1), P.inject "y" (P.litInt 2), P.inject "x" P.hole]
+    , P.absurd (P.litInt 2)
+
+    , P.absurd P.hole
     ]
 
 recurseVar :: V.Var

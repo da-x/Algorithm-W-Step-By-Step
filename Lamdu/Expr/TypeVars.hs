@@ -17,7 +17,10 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Type as T
 
-data TypeVars = TypeVars (Set (T.Var Type)) (Set T.ProductVar)
+data TypeVars = TypeVars
+    { typeVars :: Set (T.Var Type)
+    , productTypeVars :: Set T.ProductVar
+    }
     deriving (Eq, Generic, Show)
 instance NFData TypeVars where
     rnf = genericRnf

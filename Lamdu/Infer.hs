@@ -137,7 +137,7 @@ inferInternal f globals =
                 do
                     tv <- M.freshInferredVar "a"
                     tvRecName <- M.freshInferredVarName "r"
-                    M.tellConstraint tvRecName name
+                    M.tellProductConstraint tvRecName name
                     ((t, e'), s) <- M.listenSubst $ go locals e
                     ((), su) <-
                         M.listenSubst $ unifyUnsafe (Subst.apply s t) $
@@ -157,10 +157,10 @@ inferInternal f globals =
                             case hasTag name x of
                             HasTag -> M.throwError $ Err.FieldAlreadyInRecord name x
                             DoesNotHaveTag -> return x
-                            MayHaveTag var -> x <$ M.tellConstraint var name
+                            MayHaveTag var -> x <$ M.tellProductConstraint var name
                         _ -> do
                             tv <- M.freshInferredVarName "r"
-                            M.tellConstraint tv name
+                            M.tellProductConstraint tv name
                             let tve = T.liftVar tv
                             ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
                             return $ Subst.apply s tve

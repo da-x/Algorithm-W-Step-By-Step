@@ -60,6 +60,7 @@ data Type
     | TFun Type Type
     | TInst Id (Map ParamId Type)
     | TRecord (Composite Product)
+    | TSum (Composite Sum)
     deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
@@ -70,6 +71,7 @@ nextLayer _ (TVar tv) = pure (TVar tv)
 nextLayer f (TFun a r) = TFun <$> f a <*> f r
 nextLayer f (TInst tid m) = TInst tid <$> Lens.traverse f m
 nextLayer f (TRecord p) = TRecord <$> compositeTypes f p
+nextLayer f (TSum s) = TSum <$> compositeTypes f s
 
 -- The type of LiteralInteger
 int :: Type
@@ -99,7 +101,8 @@ instance Pretty Type where
                 PP.text ">"
             where
                 showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
-        TRecord r -> pPrint r
+        TRecord r -> PP.text "*" <> pPrint r
+        TSum s -> PP.text "+" <> pPrint s
 
 instance Pretty (Composite p) where
     pPrint CEmpty = PP.text "T{}"

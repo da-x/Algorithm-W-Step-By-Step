@@ -12,6 +12,8 @@ import qualified Lamdu.Expr.Val as V
 suggestValueWith :: Applicative f => f V.Var -> Type -> f (Val ())
 suggestValueWith _ T.TVar{}                  = pure P.hole
 suggestValueWith _ T.TInst{}                 = pure P.hole
+-- TODO: Special case sum of 1?
+suggestValueWith _ T.TSum {}                 = pure P.hole
 suggestValueWith mkVar (T.TRecord composite) = suggestRecordWith mkVar composite
 suggestValueWith mkVar (T.TFun _ r)          =
     P.abs <$> mkVar <*> suggestValueWith mkVar r

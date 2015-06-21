@@ -80,6 +80,7 @@ instance CanSubst Type where
     apply s (T.TInst n p)   = T.TInst n $ apply s <$> p
     apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)
     apply s (T.TRecord r)   = T.TRecord $ apply s r
+    apply s (T.TSum r)      = T.TSum $ apply s r
 
 instance HasVar Type where
     {-# INLINE new #-}

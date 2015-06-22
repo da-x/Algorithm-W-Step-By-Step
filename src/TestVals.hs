@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module TestVals
-    ( env, list, factorialVal, euler1Val, solveDepressedQuarticVal
+    ( env
+    , list
+    , factorialVal, euler1Val, solveDepressedQuarticVal
     , lambda, lambdaRecord, whereItem, record, eRecord
     , eLet, ($$), ($$:), ($.), ($=)
     ) where
@@ -72,6 +74,13 @@ forAll tvs mkType =
 listOf :: Type -> Type
 listOf = T.TInst "List" . Map.singleton "elem"
 
+maybeOf :: Type -> Type
+maybeOf t =
+    T.TSum $
+    T.CExtend "Nothing" (record []) $
+    T.CExtend "Just" t $
+    T.CEmpty
+
 infixType :: Type -> Type -> Type -> Type
 infixType a b c = record [("l", a), ("r", b)] ~> c
 
@@ -102,6 +111,10 @@ env = Map.fromList
     , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
     , ("zipWith",forAll ["a","b","c"] $ \ [a,b,c] ->
                               (a ~> b ~> c) ~> listOf a ~> listOf b ~> listOf c )
+    , ("Just",   forAll ["a"] $ \ [a] -> a ~> maybeOf a)
+    , ("Nothing",forAll ["a"] $ \ [a] -> maybeOf a)
+    , ("maybe",  forAll ["a", "b"] $ \ [a, b] -> b ~> (a ~> b) ~> maybeOf a ~> b)
+    , ("plus1",  forAll [] $ \ [] -> integerType ~> integerType)
     ]
 
 list :: [Val ()] -> Val ()

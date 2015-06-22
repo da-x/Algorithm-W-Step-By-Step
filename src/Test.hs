@@ -91,12 +91,16 @@ exps =
     , list [P.inject "x" (P.litInt 1), P.inject "y" (P.litInt 2), P.inject "x" P.hole]
     , P.absurd
 
-    , lambda "nothing" $ \nothing ->
-      lambda "just" $ \just ->
-      P._case "Nothing" (lambda "_" (const nothing))
-      ( P._case "Just" just $
-        P.absurd
-      )
+    , --maybe:
+      lambda "nothing" $ \nothingHandler ->
+      lambda "just" $ \justHandler ->
+      P._case "Nothing" (lambda "_" (const nothingHandler)) $
+      P._case "Just" justHandler $
+      P.absurd
+
+    , "a" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Just" $$ P.litInt 1)) $
+      "b" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Nothing")) $
+      P.recEmpty
     ]
 
 recurseVar :: V.Var

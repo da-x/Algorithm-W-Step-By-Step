@@ -154,35 +154,40 @@ inferInternal f globals =
                     M.tellSumConstraint tvSumName name
                     return $ mkResult (V.BInject (V.Inject name e')) $
                         T.TSum $ T.CExtend name t $ T.liftVar tvSumName
-            V.BCase (V.Case name m mm s) ->
+            V.BCase (V.Case name m mm) ->
                 do
-                    ((tm, m'), s1) <- M.listenSubst $ go locals m
-                    let locals' = Subst.apply s1 locals
-                    ((tmm, mm'), s2) <- M.listenSubst $ go locals' mm
-                    let locals'' = Subst.apply s2 locals'
-                        tm' = Subst.apply s2 tm
-                    ((ts, s'), s3) <- M.listenSubst $ go locals'' s
-                    let tmm' = Subst.apply s3 tmm
+                    ((p1_tm, m'), p1_s) <- M.listenSubst $ go locals m
+                    let p1 = Subst.apply p1_s
+                    -- p1
+                    ((p2_tmm, mm'), p2_s) <- M.listenSubst $ go (p1 locals) mm
+                    let p2 = Subst.apply p2_s
+                        p2_tm = p2 p1_tm
+                    -- p2
+                    p2_tv <- M.freshInferredVar "a"
+                    p2_tvRes <- M.freshInferredVar "res"
+                    -- type(match) `unify` a->res
+                    ((), p3_s) <-
+                        M.listenSubst $ unifyUnsafe p2_tm $ T.TFun p2_tv p2_tvRes
+                    let p3 x = Subst.apply p3_s x
+                        p3_tv    = p3 p2_tv
+                        p3_tvRes = p3 p2_tvRes
+                        p3_tmm   = p3 p2_tmm
+                    -- p3
+                    -- new sum type var "s":
                     tvSumName <- M.freshInferredVarName "s"
                     M.tellSumConstraint tvSumName name
-                    let tvSum = T.liftVar tvSumName
-                    tv <- M.freshInferredVar "a"
-                    -- sum type `unify` [ name : a | s ]
-                    ((), su1) <-
-                        M.listenSubst $ unifyUnsafe ts $
-                        T.TSum $ T.CExtend name tv tvSum
-                    let tv' = Subst.apply su1 tv
-                        tvSum' = Subst.apply su1 tvSum
-                    -- type(match) `unify` a->res
-                    tvRes <- M.freshInferredVar "res"
-                    ((), su2) <- M.listenSubst $ unifyUnsafe tm' (T.TFun tv' tvRes)
-                    let tvRes' = Subst.apply su2 tvRes
+                    let p3_tvSum = T.liftVar tvSumName
                     -- type(mismatch) `unify` [ s ]->res
-                    ((), su3) <-
-                        M.listenSubst $ unifyUnsafe tmm' $
-                        T.TFun (T.TSum tvSum') tvRes'
-                    let tvRes'' = Subst.apply su3 tvRes'
-                    return $ mkResult (V.BCase (V.Case name m' mm' s')) tvRes''
+                    ((), p4_s) <-
+                        M.listenSubst $ unifyUnsafe p3_tmm $
+                        T.TFun (T.TSum p3_tvSum) p3_tvRes
+                    let p4 x = Subst.apply p4_s x
+                        p4_tvSum = p4 p3_tvSum
+                        p4_tvRes = p4 p3_tvRes
+                        p4_tv    = p4 p3_tv
+                    -- p4
+                    return $ mkResult (V.BCase (V.Case name m' mm')) $
+                        T.TFun (T.TSum (T.CExtend name p4_tv p4_tvSum)) p4_tvRes
             V.BRecExtend (V.RecExtend name e1 e2) ->
                 do
                     ((t1, e1'), s1) <- M.listenSubst $ go locals e1

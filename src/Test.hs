@@ -91,15 +91,12 @@ exps =
     , list [P.inject "x" (P.litInt 1), P.inject "y" (P.litInt 2), P.inject "x" P.hole]
     , P.absurd
 
-    , lambda "x" $ \x ->
-      lambda "nothing" $ \nothing ->
+    , lambda "nothing" $ \nothing ->
       lambda "just" $ \just ->
       P._case "Nothing" (lambda "_" (const nothing))
-      ( lambda "nonjust" $
-        P._case "Just" just $
+      ( P._case "Just" just $
         P.absurd
       )
-      x
     ]
 
 recurseVar :: V.Var

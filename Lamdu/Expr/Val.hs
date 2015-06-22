@@ -5,7 +5,7 @@ module Lamdu.Expr.Val
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
     , Inject(..), injectRecord, injectTag
-    , Case(..), caseTag, caseMatch, caseMismatch, caseSum
+    , Case(..), caseTag, caseMatch, caseMismatch
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
     , Val(..), body, payload, alphaEq
@@ -115,14 +115,13 @@ data Case exp = Case
     { _caseTag :: Tag
     , _caseMatch :: exp
     , _caseMismatch :: exp
-    , _caseSum :: exp
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (Case exp) where rnf = genericRnf
 instance Binary exp => Binary (Case exp)
 instance Hashable exp => Hashable (Case exp) where hashWithSalt = gHashWithSalt
 instance Match Case where
-    match f (Case t0 h0 hr0 s0) (Case t1 h1 hr1 s1)
-        | t0 == t1 = Just $ Case t0 (f h0 h1) (f hr0 hr1) (f s0 s1)
+    match f (Case t0 h0 hr0) (Case t1 h1 hr1)
+        | t0 == t1 = Just $ Case t0 (f h0 h1) (f hr0 hr1)
         | otherwise = Nothing
 
 caseTag :: Lens' (Case exp) Tag
@@ -133,9 +132,6 @@ caseMatch f Case {..} = f _caseMatch <&> \_caseMatch -> Case {..}
 
 caseMismatch :: Lens' (Case exp) exp
 caseMismatch f Case {..} = f _caseMismatch <&> \_caseMismatch -> Case {..}
-
-caseSum :: Lens' (Case exp) exp
-caseSum f Case {..} = f _caseSum <&> \_caseSum -> Case {..}
 
 data Lam exp = Lam
     { _lamParamId :: Var
@@ -219,9 +215,9 @@ pPrintPrecBody lvl prec b =
                                  pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
     BInject (Inject n e)      -> prettyParen (12 < prec) $
                                  pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
-    BCase (Case n m mm s)     -> prettyParen (0 < prec) $
+    BCase (Case n m mm)       -> prettyParen (0 < prec) $
                                  PP.vcat
-                                 [ PP.text "case" <+> pPrint s <+> PP.text "of"
+                                 [ PP.text "case of"
                                  , pPrint n <> PP.text " -> " <> pPrint m
                                  , PP.text "_" <> PP.text " -> " <> pPrint mm
                                  ]

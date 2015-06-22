@@ -45,9 +45,8 @@ inject n r = Val mempty $ V.BInject $ V.Inject n r
 absurd :: Monoid a => Val a
 absurd = leaf V.LAbsurd
 
-_case :: Monoid a => T.Tag -> Val a -> Val a -> Val a -> Val a
-_case tag match mismatch sumT =
-    Val mempty $ V.BCase $ V.Case tag match mismatch sumT
+_case :: Monoid a => T.Tag -> Val a -> Val a -> Val a
+_case tag match mismatch = Val mempty $ V.BCase $ V.Case tag match mismatch
 
 hole :: Monoid a => Val a
 hole = leaf V.LHole

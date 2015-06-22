@@ -105,7 +105,7 @@ instance Pretty Type where
         TSum s -> PP.text "+" <> pPrint s
 
 instance Pretty (Composite p) where
-    pPrint CEmpty = PP.text "T{}"
+    pPrint CEmpty = PP.text "{}"
     pPrint x =
         PP.text "{" <+> go PP.empty x <+> PP.text "}"
         where

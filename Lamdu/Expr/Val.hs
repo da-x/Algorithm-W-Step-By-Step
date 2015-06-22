@@ -221,7 +221,7 @@ pPrintPrecBody lvl prec b =
                                  , pPrint n <> PP.text " -> " <> pPrint m
                                  , PP.text "_" <> PP.text " -> " <> pPrint mm
                                  ]
-    BLeaf LRecEmpty           -> PP.text "V{}"
+    BLeaf LRecEmpty           -> PP.text "{}"
     BRecExtend (RecExtend tag val rest) ->
                                  PP.text "{" <+>
                                  prField <>

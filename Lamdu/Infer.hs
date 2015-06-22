@@ -97,6 +97,143 @@ hasTag tag (T.CExtend t _ r)
     | tag == t  = HasTag
     | otherwise = hasTag tag r
 
+type InferHandler a b =
+    (Scope -> a -> Infer (Type, b)) -> Scope ->
+    M.InferCtx (Either Err.Error) (V.Body b, Type)
+
+{-# INLINE inferLeaf #-}
+inferLeaf :: Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
+inferLeaf globals leaf = \_go locals ->
+    case leaf of
+    V.LHole -> M.freshInferredVar "h"
+    V.LVar n ->
+        case Scope.lookupTypeOf n locals of
+        Nothing      -> M.throwError $ Err.UnboundVariable n
+        Just t       -> return t
+    V.LGlobal n ->
+        case Map.lookup n globals of
+        Nothing      -> M.throwError $ Err.MissingGlobal n
+        Just sigma   -> Scheme.instantiate sigma
+    V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
+    V.LRecEmpty -> return $ T.TRecord T.CEmpty
+    V.LAbsurd ->
+        do
+            tv <- M.freshInferredVar "a"
+            return $ T.TFun (T.TSum T.CEmpty) tv
+    <&> (,) (V.BLeaf leaf)
+
+{-# INLINE inferAbs #-}
+inferAbs :: V.Lam a -> InferHandler a b
+inferAbs (V.Lam n e) = \go locals ->
+    do
+        tv <- M.freshInferredVar "a"
+        let locals' = Scope.insertTypeOf n tv locals
+        ((t1, e'), s1) <- M.listenSubst $ go locals' e
+        return (V.BAbs (V.Lam n e'), T.TFun (Subst.apply s1 tv) t1)
+
+{-# INLINE inferApply #-}
+inferApply :: V.Apply a -> InferHandler a b
+inferApply (V.Apply e1 e2) = \go locals ->
+    do
+        tv <- M.freshInferredVar "a"
+        ((t1, e1'), s1) <- M.listenSubst $ go locals e1
+        ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
+        ((), s3) <- M.listenSubst $ unifyUnsafe (Subst.apply s2 t1) (T.TFun t2 tv)
+        return (V.BApp (V.Apply e1' e2'), Subst.apply s3 tv)
+
+{-# INLINE inferGetField #-}
+inferGetField :: V.GetField a -> InferHandler a b
+inferGetField (V.GetField e name) = \go locals ->
+    do
+        tv <- M.freshInferredVar "a"
+        tvRecName <- M.freshInferredVarName "r"
+        M.tellProductConstraint tvRecName name
+        ((t, e'), s) <- M.listenSubst $ go locals e
+        ((), su) <-
+            M.listenSubst $ unifyUnsafe (Subst.apply s t) $
+            T.TRecord $ T.CExtend name tv $ T.liftVar tvRecName
+        return (V.BGetField (V.GetField e' name), Subst.apply su tv)
+
+{-# INLINE inferInject #-}
+inferInject :: V.Inject a -> InferHandler a b
+inferInject (V.Inject name e) = \go locals ->
+    do
+        (t, e') <- go locals e
+        tvSumName <- M.freshInferredVarName "s"
+        M.tellSumConstraint tvSumName name
+        return
+            ( V.BInject (V.Inject name e')
+            , T.TSum $ T.CExtend name t $ T.liftVar tvSumName
+            )
+
+{-# INLINE inferCase #-}
+inferCase :: V.Case a -> InferHandler a b
+inferCase (V.Case name m mm) = \go locals ->
+    do
+        ((p1_tm, m'), p1_s) <- M.listenSubst $ go locals m
+        let p1 = Subst.apply p1_s
+        -- p1
+        ((p2_tmm, mm'), p2_s) <- M.listenSubst $ go (p1 locals) mm
+        let p2 = Subst.apply p2_s
+            p2_tm = p2 p1_tm
+        -- p2
+        p2_tv <- M.freshInferredVar "a"
+        p2_tvRes <- M.freshInferredVar "res"
+        -- type(match) `unify` a->res
+        ((), p3_s) <-
+            M.listenSubst $ unifyUnsafe p2_tm $ T.TFun p2_tv p2_tvRes
+        let p3 x = Subst.apply p3_s x
+            p3_tv    = p3 p2_tv
+            p3_tvRes = p3 p2_tvRes
+            p3_tmm   = p3 p2_tmm
+        -- p3
+        -- new sum type var "s":
+        tvSumName <- M.freshInferredVarName "s"
+        M.tellSumConstraint tvSumName name
+        let p3_tvSum = T.liftVar tvSumName
+        -- type(mismatch) `unify` [ s ]->res
+        ((), p4_s) <-
+            M.listenSubst $ unifyUnsafe p3_tmm $
+            T.TFun (T.TSum p3_tvSum) p3_tvRes
+        let p4 x = Subst.apply p4_s x
+            p4_tvSum = p4 p3_tvSum
+            p4_tvRes = p4 p3_tvRes
+            p4_tv    = p4 p3_tv
+        -- p4
+        return
+            ( V.BCase (V.Case name m' mm')
+            , T.TFun (T.TSum (T.CExtend name p4_tv p4_tvSum)) p4_tvRes
+            )
+
+{-# INLINE inferRecExtend #-}
+inferRecExtend :: V.RecExtend a -> InferHandler a b
+inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
+    do
+        ((t1, e1'), s1) <- M.listenSubst $ go locals e1
+        ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
+        (rest, s3) <-
+            M.listenSubst $
+            case t2 of
+            T.TRecord x ->
+                -- In case t2 is already inferred as a TRecord,
+                -- verify it doesn't already have this field,
+                -- and avoid unnecessary unify from other case
+                case hasTag name x of
+                HasTag -> M.throwError $ Err.FieldAlreadyInRecord name x
+                DoesNotHaveTag -> return x
+                MayHaveTag var -> x <$ M.tellProductConstraint var name
+            _ -> do
+                tv <- M.freshInferredVarName "r"
+                M.tellProductConstraint tv name
+                let tve = T.liftVar tv
+                ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
+                return $ Subst.apply s tve
+        let t1' = Subst.apply s3 $ Subst.apply s2 t1
+        return
+            ( V.BRecExtend (V.RecExtend name e1' e2')
+            , T.TRecord $ T.CExtend name t1' rest
+            )
+
 inferInternal ::
     (Type -> Scope -> a -> b) ->
     Map V.GlobalId Scheme -> Scope -> Val a ->
@@ -105,112 +242,13 @@ inferInternal f globals =
     (fmap . fmap) snd . go
     where
         go locals (Val pl body) =
-            case body of
-            V.BLeaf leaf ->
-                mkResult (V.BLeaf leaf) <$>
-                case leaf of
-                V.LHole -> M.freshInferredVar "h"
-                V.LVar n ->
-                    case Scope.lookupTypeOf n locals of
-                    Nothing      -> M.throwError $ Err.UnboundVariable n
-                    Just t       -> return t
-                V.LGlobal n ->
-                    case Map.lookup n globals of
-                    Nothing      -> M.throwError $ Err.MissingGlobal n
-                    Just sigma   -> Scheme.instantiate sigma
-                V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
-                V.LRecEmpty -> return $ T.TRecord T.CEmpty
-                V.LAbsurd ->
-                    do
-                        tv <- M.freshInferredVar "a"
-                        return $ T.TFun (T.TSum T.CEmpty) tv
-            V.BAbs (V.Lam n e) ->
-                do
-                    tv <- M.freshInferredVar "a"
-                    let locals' = Scope.insertTypeOf n tv locals
-                    ((t1, e'), s1) <- M.listenSubst $ go locals' e
-                    return $ mkResult (V.BAbs (V.Lam n e')) $ T.TFun (Subst.apply s1 tv) t1
-            V.BApp (V.Apply e1 e2) ->
-                do
-                    tv <- M.freshInferredVar "a"
-                    ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-                    ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
-                    ((), s3) <- M.listenSubst $ unifyUnsafe (Subst.apply s2 t1) (T.TFun t2 tv)
-                    return $ mkResult (V.BApp (V.Apply e1' e2')) $ Subst.apply s3 tv
-            V.BGetField (V.GetField e name) ->
-                do
-                    tv <- M.freshInferredVar "a"
-                    tvRecName <- M.freshInferredVarName "r"
-                    M.tellProductConstraint tvRecName name
-                    ((t, e'), s) <- M.listenSubst $ go locals e
-                    ((), su) <-
-                        M.listenSubst $ unifyUnsafe (Subst.apply s t) $
-                        T.TRecord $ T.CExtend name tv $ T.liftVar tvRecName
-                    return $ mkResult (V.BGetField (V.GetField e' name)) $ Subst.apply su tv
-            V.BInject (V.Inject name e) ->
-                do
-                    (t, e') <- go locals e
-                    tvSumName <- M.freshInferredVarName "s"
-                    M.tellSumConstraint tvSumName name
-                    return $ mkResult (V.BInject (V.Inject name e')) $
-                        T.TSum $ T.CExtend name t $ T.liftVar tvSumName
-            V.BCase (V.Case name m mm) ->
-                do
-                    ((p1_tm, m'), p1_s) <- M.listenSubst $ go locals m
-                    let p1 = Subst.apply p1_s
-                    -- p1
-                    ((p2_tmm, mm'), p2_s) <- M.listenSubst $ go (p1 locals) mm
-                    let p2 = Subst.apply p2_s
-                        p2_tm = p2 p1_tm
-                    -- p2
-                    p2_tv <- M.freshInferredVar "a"
-                    p2_tvRes <- M.freshInferredVar "res"
-                    -- type(match) `unify` a->res
-                    ((), p3_s) <-
-                        M.listenSubst $ unifyUnsafe p2_tm $ T.TFun p2_tv p2_tvRes
-                    let p3 x = Subst.apply p3_s x
-                        p3_tv    = p3 p2_tv
-                        p3_tvRes = p3 p2_tvRes
-                        p3_tmm   = p3 p2_tmm
-                    -- p3
-                    -- new sum type var "s":
-                    tvSumName <- M.freshInferredVarName "s"
-                    M.tellSumConstraint tvSumName name
-                    let p3_tvSum = T.liftVar tvSumName
-                    -- type(mismatch) `unify` [ s ]->res
-                    ((), p4_s) <-
-                        M.listenSubst $ unifyUnsafe p3_tmm $
-                        T.TFun (T.TSum p3_tvSum) p3_tvRes
-                    let p4 x = Subst.apply p4_s x
-                        p4_tvSum = p4 p3_tvSum
-                        p4_tvRes = p4 p3_tvRes
-                        p4_tv    = p4 p3_tv
-                    -- p4
-                    return $ mkResult (V.BCase (V.Case name m' mm')) $
-                        T.TFun (T.TSum (T.CExtend name p4_tv p4_tvSum)) p4_tvRes
-            V.BRecExtend (V.RecExtend name e1 e2) ->
-                do
-                    ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-                    ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
-                    (rest, s3) <-
-                        M.listenSubst $
-                        case t2 of
-                        T.TRecord x ->
-                            -- In case t2 is already inferred as a TRecord,
-                            -- verify it doesn't already have this field,
-                            -- and avoid unnecessary unify from other case
-                            case hasTag name x of
-                            HasTag -> M.throwError $ Err.FieldAlreadyInRecord name x
-                            DoesNotHaveTag -> return x
-                            MayHaveTag var -> x <$ M.tellProductConstraint var name
-                        _ -> do
-                            tv <- M.freshInferredVarName "r"
-                            M.tellProductConstraint tv name
-                            let tve = T.liftVar tv
-                            ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
-                            return $ Subst.apply s tve
-                    let t1' = Subst.apply s3 $ Subst.apply s2 t1
-                    return $ mkResult (V.BRecExtend (V.RecExtend name e1' e2')) $
-                        T.TRecord $ T.CExtend name t1' rest
-            where
-                mkResult body' typ = (typ, Val (f typ locals pl) body')
+            ( case body of
+              V.BLeaf leaf -> inferLeaf globals leaf
+              V.BAbs lam -> inferAbs lam
+              V.BApp app -> inferApply app
+              V.BGetField getField -> inferGetField getField
+              V.BInject inject -> inferInject inject
+              V.BCase case_ -> inferCase case_
+              V.BRecExtend recExtend -> inferRecExtend recExtend
+            ) go locals
+            <&> \(body', typ) -> (typ, Val (f typ locals pl) body')

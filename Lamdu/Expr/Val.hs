@@ -5,7 +5,6 @@ module Lamdu.Expr.Val
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
     , Inject(..), injectRecord, injectTag
-    , Absurd(..), absurdSum
     , Case(..), caseTag, caseMatch, caseMismatch, caseSum
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
@@ -51,6 +50,7 @@ data Leaf
     |  LHole
     |  LLiteralInteger Integer
     |  LRecEmpty
+    |  LAbsurd
     deriving (Generic, Show, Eq)
 instance NFData Leaf where rnf = genericRnf
 instance Binary Leaf
@@ -110,18 +110,6 @@ injectRecord f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
 
 injectTag :: Lens' (Inject exp) Tag
 injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}
-
-data Absurd exp = Absurd
-    { _absurdSum :: exp
-    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
-instance NFData exp => NFData (Absurd exp) where rnf = genericRnf
-instance Binary exp => Binary (Absurd exp)
-instance Hashable exp => Hashable (Absurd exp) where hashWithSalt = gHashWithSalt
-instance Match Absurd where
-    match f (Absurd s0) (Absurd s1) = Just $ Absurd (f s0 s1)
-
-absurdSum :: Lens' (Absurd exp) exp
-absurdSum f Absurd {..} = f _absurdSum <&> \_absurdSum -> Absurd {..}
 
 data Case exp = Case
     { _caseTag :: Tag
@@ -191,7 +179,6 @@ data Body exp
     |  BGetField {-# UNPACK #-}!(GetField exp)
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
     |  BInject {-# UNPACK #-}!(Inject exp)
-    |  BAbsurd {-# UNPACK #-}!(Absurd exp)
     |  BCase {-# UNPACK #-}!(Case exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
@@ -221,6 +208,7 @@ pPrintPrecBody lvl prec b =
     BLeaf (LGlobal tag)       -> pPrint tag
     BLeaf (LLiteralInteger i) -> pPrint i
     BLeaf LHole               -> PP.text "?"
+    BLeaf LAbsurd             -> PP.text "absurd"
     BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
                                  pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
     BAbs (Lam n e)            -> prettyParen (0 < prec) $
@@ -231,7 +219,6 @@ pPrintPrecBody lvl prec b =
                                  pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
     BInject (Inject n e)      -> prettyParen (12 < prec) $
                                  pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
-    BAbsurd (Absurd e)        -> PP.text "absurd[" <> pPrint e <> PP.text "]"
     BCase (Case n m mm s)     -> prettyParen (0 < prec) $
                                  PP.vcat
                                  [ PP.text "case" <+> pPrint s <+> PP.text "of"

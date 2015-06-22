@@ -89,9 +89,7 @@ exps =
         )
 
     , list [P.inject "x" (P.litInt 1), P.inject "y" (P.litInt 2), P.inject "x" P.hole]
-    , P.absurd (P.litInt 2)
-
-    , P.absurd P.hole
+    , P.absurd
 
     , lambda "x" $ \x ->
       lambda "nothing" $ \nothing ->
@@ -99,7 +97,6 @@ exps =
       P._case "Nothing" (lambda "_" (const nothing))
       ( lambda "nonjust" $
         P._case "Just" just $
-        lambda "notjustornothing"
         P.absurd
       )
       x

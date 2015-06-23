@@ -70,8 +70,8 @@ inferSubst globals rootScope val =
     do
         prevSubst <- M.getSubst
         let rootScope' = Subst.apply prevSubst rootScope
-        (inferredVal, newResults) <- M.listen $ inferInternal mkPayload globals rootScope' val
-        return (rootScope', inferredVal <&> _1 %~ Subst.apply (M._subst newResults))
+        (inferredVal, s) <- M.listenSubst $ inferInternal mkPayload globals rootScope' val
+        return (rootScope', inferredVal <&> _1 %~ Subst.apply s)
     where
         mkPayload typ scope dat = (Payload typ scope, dat)
 

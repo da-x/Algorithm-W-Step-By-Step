@@ -1,0 +1,24 @@
+Running 1 benchmarks...
+Benchmark bench-builder-all: RUNNING...
+benchmarking factorial
+time                 45.60 μs   (45.50 μs .. 45.71 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 45.57 μs   (45.50 μs .. 45.70 μs)
+std dev              300.1 ns   (220.4 ns .. 419.7 ns)
+
+
+benchmarking euler1
+time                 62.47 μs   (62.32 μs .. 62.61 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 62.40 μs   (62.21 μs .. 62.65 μs)
+std dev              716.5 ns   (546.0 ns .. 1.083 μs)
+
+
+benchmarking solveDepressedQuartic
+time                 723.2 μs   (722.1 μs .. 724.4 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 723.8 μs   (722.5 μs .. 725.5 μs)
+std dev              5.167 μs   (4.165 μs .. 7.554 μs)
+
+
+Benchmark bench-builder-all: FINISH

@@ -6,6 +6,7 @@ module Lamdu.Expr.Constraints
     , intersect
     , CompositeVarConstraints(..)
     , getProductVarConstraints
+    , getSumVarConstraints
     , TypeVarConstraints
     , getTypeVarConstraints
     ) where
@@ -76,9 +77,14 @@ instance Pretty Constraints where
         PP.text "{" <> pPrint p <> PP.text "}" <>
         PP.text "[" <> pPrint s <> PP.text "]"
 
+getTVCompositeConstraints :: T.Var (T.Composite t) -> CompositeVarConstraints t -> Set T.Tag
+getTVCompositeConstraints tv = fromMaybe Set.empty . Map.lookup tv . compositeVarConstraints
+
 getProductVarConstraints :: T.ProductVar -> Constraints -> ForbiddenFields
-getProductVarConstraints tv c =
-    fromMaybe Set.empty $ Map.lookup tv $ compositeVarConstraints $ productVarConstraints c
+getProductVarConstraints tv c = getTVCompositeConstraints tv $ productVarConstraints c
+
+getSumVarConstraints :: T.SumVar -> Constraints -> ForbiddenFields
+getSumVarConstraints tv c = getTVCompositeConstraints tv $ sumVarConstraints c
 
 getTypeVarConstraints :: T.Var T.Type -> Constraints -> TypeVarConstraints
 getTypeVarConstraints _ _ = ()

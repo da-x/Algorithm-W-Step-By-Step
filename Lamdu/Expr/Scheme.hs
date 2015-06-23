@@ -18,7 +18,7 @@ import Data.Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Traversable (sequenceA)
 import GHC.Generics (Generic)
-import Lamdu.Expr.Constraints (Constraints(..), getTypeVarConstraints, getProductVarConstraints)
+import Lamdu.Expr.Constraints (Constraints(..), getTypeVarConstraints, getSumVarConstraints, getProductVarConstraints)
 import Lamdu.Expr.Type (Type)
 import Lamdu.Expr.TypeVars (TypeVars(..))
 import Text.PrettyPrint ((<+>), (<>))
@@ -70,11 +70,13 @@ alphaEq
     (Scheme aForall aConstraints aType)
     (Scheme bForall bConstraints bType) =
         case TypeMatch.matchVars aType bType of
-        Just (tvPairs, ctvPairs)
+        Just (tvPairs, ctvPairs, stvPairs)
             | Just tvMap <- fromDoublyConsistentList tvPairs
             , Just ctvMap <- fromDoublyConsistentList ctvPairs
-            -> all (checkVarsMatch getProductVarConstraints) (Map.toList ctvMap) &&
-                  all (checkVarsMatch getTypeVarConstraints) (Map.toList tvMap)
+            , Just stvMap <- fromDoublyConsistentList stvPairs
+            -> all (checkVarsMatch getSumVarConstraints) (Map.toList stvMap) &&
+               all (checkVarsMatch getProductVarConstraints) (Map.toList ctvMap) &&
+               all (checkVarsMatch getTypeVarConstraints) (Map.toList tvMap)
         _ -> False
     where
         checkVarsMatch getTVConstraints (a, b) =

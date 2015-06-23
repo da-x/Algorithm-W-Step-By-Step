@@ -150,14 +150,13 @@ inferApply (V.Apply e1 e2) = \go locals ->
 inferGetField :: V.GetField a -> InferHandler a b
 inferGetField (V.GetField e name) = \go locals ->
     do
-        ((p1_t, e'), p1_s) <- M.listenSubst $ go locals e
-        let p1_t' = Subst.apply p1_s p1_t -- TODO: Remove this?!
+        (p1_t, e') <- go locals e
         p1_tv <- M.freshInferredVar "a"
         p1_tvRecName <- M.freshInferredVarName "r"
         M.tellProductConstraint p1_tvRecName name
 
         ((), p2_s) <-
-            M.listenSubst $ unifyUnsafe p1_t' $
+            M.listenSubst $ unifyUnsafe p1_t $
             T.TRecord $ T.CExtend name p1_tv $ T.liftVar p1_tvRecName
         let p2_tv = Subst.apply p2_s p1_tv
         return (V.BGetField (V.GetField e' name), p2_tv)

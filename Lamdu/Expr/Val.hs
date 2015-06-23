@@ -266,6 +266,8 @@ alphaEq =
             (BApp x, BApp y) -> goRecurse x y
             (BGetField x, BGetField y) -> goRecurse x y
             (BRecExtend x, BRecExtend y) -> goRecurse x y
+            (BCase x, BCase y) -> goRecurse x y
+            (BInject x, BInject y) -> goRecurse x y
             (_, _) -> False
             where
                 goRecurse x y = maybe False Foldable.and $ match (go xToY) x y

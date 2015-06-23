@@ -135,11 +135,16 @@ inferAbs (V.Lam n e) = \go locals ->
 inferApply :: V.Apply a -> InferHandler a b
 inferApply (V.Apply e1 e2) = \go locals ->
     do
-        tv <- M.freshInferredVar "a"
-        ((t1, e1'), s1) <- M.listenSubst $ go locals e1
-        ((t2, e2'), s2) <- M.listenSubst $ go (Subst.apply s1 locals) e2
-        ((), s3) <- M.listenSubst $ unifyUnsafe (Subst.apply s2 t1) (T.TFun t2 tv)
-        return (V.BApp (V.Apply e1' e2'), Subst.apply s3 tv)
+        ((p1_t1, e1'), p1_s) <- M.listenSubst $ go locals e1
+        let p1 = Subst.apply p1_s
+
+        ((p2_t2, e2'), p2_s) <- M.listenSubst $ go (p1 locals) e2
+        let p2_t1 = Subst.apply p2_s p1_t1
+        p2_tv <- M.freshInferredVar "a"
+
+        ((), p3_s) <- M.listenSubst $ unifyUnsafe p2_t1 (T.TFun p2_t2 p2_tv)
+        let p3_tv = Subst.apply p3_s p2_tv
+        return (V.BApp (V.Apply e1' e2'), p3_tv)
 
 {-# INLINE inferGetField #-}
 inferGetField :: V.GetField a -> InferHandler a b

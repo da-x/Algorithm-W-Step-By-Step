@@ -2,14 +2,14 @@ module Data.Map.Utils
     ( lookupOrSelf, pop, popKeys, matchKeys, match
     ) where
 
-import Control.Lens.Operators
-import Control.Monad (guard)
-import Control.Monad.Trans.State (StateT(..))
-import Data.Map (Map)
-import Data.Maybe (fromMaybe)
-import Data.Traversable (Traversable(..))
 import qualified Control.Lens as Lens
+import           Control.Lens.Operators
+import           Control.Monad (guard)
+import           Control.Monad.Trans.State (StateT(..))
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
+import           Data.Traversable (Traversable(..))
 
 lookupOrSelf :: Ord a => Map a a -> a -> a
 lookupOrSelf m x = fromMaybe x $ m ^. Lens.at x

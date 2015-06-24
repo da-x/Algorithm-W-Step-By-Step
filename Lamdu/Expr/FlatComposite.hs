@@ -4,12 +4,12 @@ module Lamdu.Expr.FlatComposite
     , toComposite
     ) where
 
-import Control.Applicative ((<$>))
-import Control.Lens (Lens')
-import Control.Lens.Operators
-import Data.Map (Map)
-import Lamdu.Expr.Type (Type)
+import           Control.Applicative ((<$>))
+import           Control.Lens (Lens')
+import           Control.Lens.Operators
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 
 data FlatComposite p = FlatComposite

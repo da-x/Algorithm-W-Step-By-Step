@@ -11,22 +11,22 @@ module Lamdu.Expr.Constraints
     , getTypeVarConstraints
     ) where
 
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Data.Binary (Binary)
-import Data.Map (Map)
-import Data.Maybe (fromMaybe)
-import Data.Monoid (Monoid(..))
-import Data.Set (Set)
-import GHC.Generics (Generic)
-import Lamdu.Expr.TypeVars (TypeVars)
-import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Data.Binary (Binary)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid (Monoid(..))
+import           Data.Set (Set)
 import qualified Data.Set as Set
+import           GHC.Generics (Generic)
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.TypeVars (TypeVars)
 import qualified Lamdu.Expr.TypeVars as TypeVars
+import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 type ForbiddenFields = Set T.Tag
 

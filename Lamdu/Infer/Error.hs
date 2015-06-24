@@ -4,10 +4,10 @@ module Lamdu.Infer.Error
     ( Error(..)
     ) where
 
-import Text.PrettyPrint ((<+>), Doc)
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
+import           Text.PrettyPrint ((<+>), Doc)
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data Error
     = FieldAlreadyInRecord T.Tag (T.Composite T.Product)

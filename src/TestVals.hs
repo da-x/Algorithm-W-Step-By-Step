@@ -8,17 +8,17 @@ module TestVals
     , eLet, ($$), ($$:), ($.), ($=)
     ) where
 
-import Data.Map (Map)
-import Data.Monoid (Monoid(..))
-import Lamdu.Expr.Scheme (Scheme(..))
-import Lamdu.Expr.Type (Type, (~>))
-import Lamdu.Expr.Val (Val)
-import Lamdu.Infer (TypeVars(..))
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import qualified Lamdu.Expr.Pure as P
+import           Lamdu.Expr.Scheme (Scheme(..))
+import           Lamdu.Expr.Type (Type, (~>))
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Infer (TypeVars(..))
 
 -- TODO: $$ to be type-classed for TApp vs BApp
 -- TODO: TCon "->" instead of TFun

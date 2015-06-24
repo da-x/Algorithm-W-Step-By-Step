@@ -5,32 +5,32 @@ module Lamdu.Expr.Scheme
     , alphaEq
     ) where
 
-import Prelude hiding (any)
+import           Prelude hiding (any)
 
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens')
-import Control.Lens.Operators
-import Control.Lens.Tuple
-import Control.Monad (guard)
-import Data.Binary (Binary)
-import Data.Map (Map)
-import Data.Monoid (Monoid(..))
-import Data.Traversable (sequenceA)
-import GHC.Generics (Generic)
-import Lamdu.Expr.Constraints (Constraints(..), getTypeVarConstraints, getSumVarConstraints, getProductVarConstraints)
-import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.TypeVars (TypeVars(..))
-import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Control.Lens (Lens')
+import           Control.Lens.Operators
+import           Control.Lens.Tuple
+import           Control.Monad (guard)
+import           Data.Binary (Binary)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
+import           Data.Traversable (sequenceA)
 import qualified Data.Tuple as Tuple
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Constraints (Constraints(..), getTypeVarConstraints, getSumVarConstraints, getProductVarConstraints)
 import qualified Lamdu.Expr.Constraints as Constraints
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Type.Match as TypeMatch
+import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TypeVars
+import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 
 data Scheme = Scheme
     { _schemeForAll :: TypeVars

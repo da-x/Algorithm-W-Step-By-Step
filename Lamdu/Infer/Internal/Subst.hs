@@ -4,17 +4,17 @@ module Lamdu.Infer.Internal.Subst
     , CanSubst(..)
     ) where
 
-import Prelude hiding (null)
+import           Prelude hiding (null)
 
-import Control.Applicative ((<$>))
-import Data.Map (Map)
-import Data.Maybe (fromMaybe)
-import Data.Monoid (Monoid(..))
-import Data.Set (Set)
-import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.TypeVars (TypeVars(..))
-import Text.PrettyPrint (text, vcat, (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import           Control.Applicative ((<$>))
+import           Data.Map (Map)
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid (Monoid(..))
+import           Data.Set (Set)
+import           Lamdu.Expr.Type (Type)
+import           Lamdu.Expr.TypeVars (TypeVars(..))
+import           Text.PrettyPrint (text, vcat, (<>))
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 import qualified Data.Map as Map
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TypeVars

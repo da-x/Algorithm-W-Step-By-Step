@@ -6,17 +6,17 @@ module Lamdu.Infer.Internal.Scope
     , lookupTypeOf
     ) where
 
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Data.Binary (Binary)
-import Data.Map (Map)
-import Data.Monoid (Monoid(..))
-import GHC.Generics (Generic)
-import Lamdu.Expr.Type (Type)
-import Lamdu.Infer.Internal.Subst (CanSubst(..))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Data.Binary (Binary)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Monoid (Monoid(..))
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 newtype Scope = Scope { typeOfVar :: Map V.Var Type }

@@ -2,11 +2,11 @@ module Lamdu.Suggest
     ( suggestValueWith, suggestRecordWith
     ) where
 
-import Control.Applicative (Applicative(..), (<$>))
-import Lamdu.Expr.Type (Type)
-import Lamdu.Expr.Val (Val(..))
+import           Control.Applicative (Applicative(..), (<$>))
 import qualified Lamdu.Expr.Pure as P
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
+import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
 
 suggestValueWith :: Applicative f => f V.Var -> Type -> f (Val ())

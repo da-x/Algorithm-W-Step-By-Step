@@ -3,10 +3,10 @@ module Lamdu.Infer.Recursive
     ( inferEnv
     ) where
 
-import Lamdu.Infer (InferCtx, freshInferredVar)
-import Lamdu.Infer.Internal.Scope (Scope)
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Infer (InferCtx, freshInferredVar)
 import qualified Lamdu.Infer as Infer
+import           Lamdu.Infer.Internal.Scope (Scope)
 import qualified Lamdu.Infer.Internal.Scope as Scope
 
 {-# INLINE inferEnv #-}

@@ -14,27 +14,27 @@ module Lamdu.Expr.Val
     , pPrintUnannotated
     ) where
 
-import Control.Applicative ((<$), (<$>))
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Control.Lens (Lens')
-import Control.Lens.Operators
-import Data.Binary (Binary)
-import Data.Foldable (Foldable)
-import Data.Hashable (Hashable(..))
-import Data.Hashable.Generic (gHashWithSalt)
-import Data.Maybe (fromMaybe)
-import Data.Monoid (Monoid(..))
-import Data.String (IsString(..))
-import Data.Traversable (Traversable)
-import GHC.Generics (Generic)
-import Lamdu.Expr.Identifier (Identifier)
-import Lamdu.Expr.Type (Tag)
-import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
+import           Control.Applicative ((<$), (<$>))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Control.Lens (Lens')
+import           Control.Lens.Operators
+import           Data.Binary (Binary)
+import           Data.Foldable (Foldable)
 import qualified Data.Foldable as Foldable
+import           Data.Hashable (Hashable(..))
+import           Data.Hashable.Generic (gHashWithSalt)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
+import           Data.Monoid (Monoid(..))
+import           Data.String (IsString(..))
+import           Data.Traversable (Traversable)
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Identifier (Identifier)
+import           Lamdu.Expr.Type (Tag)
+import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
 
 {-# ANN module "HLint: ignore Use const" #-}
 

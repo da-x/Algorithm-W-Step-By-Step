@@ -3,15 +3,15 @@ module Lamdu.Infer.Load
     , loadInfer
     ) where
 
-import Data.Map (Map)
-import Lamdu.Expr.Globals (valGlobals)
-import Lamdu.Expr.Scheme (Scheme)
-import Lamdu.Expr.Val (Val)
-import Lamdu.Infer (Scope, Infer, infer, Payload)
+import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Traversable as Traversable
+import           Lamdu.Expr.Globals (valGlobals)
+import           Lamdu.Expr.Scheme (Scheme)
+import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Infer (Scope, Infer, infer, Payload)
 
 newtype Loader m = Loader
     { loadTypeOf :: V.GlobalId -> m Scheme

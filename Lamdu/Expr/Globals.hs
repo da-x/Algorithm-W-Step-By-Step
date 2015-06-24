@@ -2,8 +2,8 @@ module Lamdu.Expr.Globals
     ( valGlobals
     ) where
 
-import Lamdu.Expr.Val (Val(..))
 import qualified Data.Foldable as Foldable
+import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
 
 valBodyGlobals :: V.Body exp -> [V.GlobalId]

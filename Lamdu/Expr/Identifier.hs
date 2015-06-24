@@ -4,16 +4,16 @@ module Lamdu.Expr.Identifier
     ( Identifier(..)
     ) where
 
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Data.Binary (Binary)
-import Data.ByteString (ByteString)
-import Data.Hashable (Hashable)
-import Data.String (IsString(..))
-import GHC.Generics (Generic)
-import Text.PrettyPrint.HughesPJClass (Pretty(..))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Data.Binary (Binary)
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
+import           Data.Hashable (Hashable)
+import           Data.String (IsString(..))
+import           GHC.Generics (Generic)
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 newtype Identifier = Identifier ByteString
     deriving (Eq, Ord, Generic, Show, Binary, Hashable)

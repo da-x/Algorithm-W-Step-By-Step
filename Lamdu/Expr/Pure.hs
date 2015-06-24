@@ -4,10 +4,10 @@ module Lamdu.Expr.Pure
     , leaf, hole
     ) where
 
-import Prelude hiding (abs)
+import           Prelude hiding (abs)
 
-import Data.Monoid (Monoid(..))
-import Lamdu.Expr.Val (Val(..))
+import           Data.Monoid (Monoid(..))
+import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 

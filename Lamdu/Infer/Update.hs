@@ -4,12 +4,12 @@ module Lamdu.Infer.Update
     , Subst.CanSubst, update, inferredVal
     ) where
 
-import Control.Applicative (Applicative)
-import Control.Lens.Operators
-import Control.Lens.Tuple
-import Data.Traversable (traverse)
-import Lamdu.Expr.Val (Val)
+import           Control.Applicative (Applicative)
+import           Control.Lens.Operators
+import           Control.Lens.Tuple
 import qualified Control.Monad.Trans.State as State
+import           Data.Traversable (traverse)
+import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Infer as Infer
 import qualified Lamdu.Infer.Internal.Monad as M
 import qualified Lamdu.Infer.Internal.Subst as Subst

@@ -6,15 +6,15 @@ module Lamdu.Expr.TypeVars
     , difference
     ) where
 
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Data.Binary (Binary)
-import Data.Monoid (Monoid(..), (<>))
-import Data.Set (Set)
-import GHC.Generics (Generic)
-import Lamdu.Expr.Type (Type)
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
+import           Data.Binary (Binary)
 import qualified Data.Map as Map
+import           Data.Monoid (Monoid(..), (<>))
+import           Data.Set (Set)
 import qualified Data.Set as Set
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 
 data TypeVars = TypeVars

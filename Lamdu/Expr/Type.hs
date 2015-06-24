@@ -9,21 +9,21 @@ module Lamdu.Expr.Type
     , LiftVar(..)
     ) where
 
-import Control.Applicative ((<$>), Applicative(..))
-import Control.DeepSeq (NFData(..))
-import Control.DeepSeq.Generics (genericRnf)
-import Data.Binary (Binary)
-import Data.Hashable (Hashable)
-import Data.Map (Map)
-import Data.String (IsString(..))
-import GHC.Generics (Generic)
-import Lamdu.Expr.Identifier (Identifier)
-import Text.PrettyPrint ((<+>), (<>))
-import Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import           Control.Applicative ((<$>), Applicative(..))
+import           Control.DeepSeq (NFData(..))
+import           Control.DeepSeq.Generics (genericRnf)
 import qualified Control.Lens as Lens
+import           Data.Binary (Binary)
+import           Data.Hashable (Hashable)
 import qualified Data.List as List
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.String (IsString(..))
+import           GHC.Generics (Generic)
+import           Lamdu.Expr.Identifier (Identifier)
+import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
 
 newtype Var t = Var { tvName :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
@@ -40,9 +40,10 @@ newtype ParamId = ParamId { typeParamId :: Identifier }
 data Product
 data Sum
 
-data Composite p = CExtend Tag Type (Composite p)
-                                  | CEmpty
-                                  | CVar (Var (Composite p))
+data Composite p
+    = CExtend Tag Type (Composite p)
+    | CEmpty
+    | CVar (Var (Composite p))
     deriving (Generic, Show, Eq, Ord)
 instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)

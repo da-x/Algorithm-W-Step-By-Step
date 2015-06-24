@@ -4,7 +4,7 @@ module Lamdu.Expr.Val
     , Body(..)
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
-    , Inject(..), injectRecord, injectTag
+    , Inject(..), injectVal, injectTag
     , Case(..), caseTag, caseMatch, caseMismatch
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
@@ -105,8 +105,8 @@ instance Match Inject where
             | t0 == t1 = Just $ Inject t0 (f r0 r1)
             | otherwise = Nothing
 
-injectRecord :: Lens' (Inject exp) exp
-injectRecord f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
+injectVal :: Lens' (Inject exp) exp
+injectVal f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
 
 injectTag :: Lens' (Inject exp) Tag
 injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}

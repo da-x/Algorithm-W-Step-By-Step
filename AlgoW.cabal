@@ -14,7 +14,6 @@ library
   ghc-options:         -Wall -O2
   ghc-prof-options:    -auto-all -caf-all -rtsopts
   exposed-modules:     Lamdu.Expr.Constraints
-                 ,     Lamdu.Expr.Globals
                  ,     Lamdu.Expr.Identifier
                  ,     Lamdu.Expr.Pure
                  ,     Lamdu.Expr.FlatComposite

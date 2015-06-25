@@ -3,11 +3,12 @@ module Lamdu.Infer.Load
     , loadInfer
     ) where
 
+import           Control.Lens.Operators
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Traversable as Traversable
-import           Lamdu.Expr.Globals (valGlobals)
+import           Lamdu.Expr.Lens (valGlobals)
 import           Lamdu.Expr.Scheme (Scheme)
 import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
@@ -19,7 +20,7 @@ newtype Loader m = Loader
 
 loadValGlobals :: Monad m => Loader m -> Val a -> m (Map V.GlobalId Scheme)
 loadValGlobals (Loader load) =
-    Traversable.sequence . Map.fromSet load . Set.fromList . valGlobals
+    Traversable.sequence . Map.fromSet load . Set.fromList . (^.. valGlobals)
 
 loadInfer :: Monad m => Loader m -> Scope -> Val a -> m (Infer (Val (Payload, a)))
 loadInfer loader scope val =

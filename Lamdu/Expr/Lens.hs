@@ -21,6 +21,7 @@ module Lamdu.Expr.Lens
     , valVar           , valBodyVar
     , valRecEmpty      , valBodyRecEmpty
     , valLiteralInteger, valBodyLiteralInteger
+    , valLeafs
     -- Non-leafs
     , valGetField
     , valApply
@@ -33,6 +34,8 @@ module Lamdu.Expr.Lens
     , _TSum
     -- Tags:
     , valTags, bodyTags, biTraverseBodyTags
+    -- Globals:
+    , valGlobals
     -- Composites:
     , compositeTags
     -- Subexpressions:
@@ -188,6 +191,13 @@ valBodyRecEmpty = _BLeaf . _LRecEmpty
 valBodyLiteralInteger :: Prism' (V.Body expr) Integer
 valBodyLiteralInteger = _BLeaf . _LLiteralInteger
 
+valLeafs :: Traversal' (Val a) V.Leaf
+valLeafs f (V.Val pl body) =
+    case body of
+    V.BLeaf l -> f l <&> V.BLeaf
+    _ -> body & Lens.traverse . valLeafs %%~ f
+    <&> V.Val pl
+
 _TRecord :: Prism' Type T.Product
 _TRecord = prism' T.TRecord get
     where
@@ -258,3 +268,6 @@ bodyTags f = biTraverseBodyTags f pure
 
 valTags :: Lens.Traversal' (Val a) T.Tag
 valTags f = V.body $ biTraverseBodyTags f (valTags f)
+
+valGlobals :: Lens.Traversal' (Val a) V.GlobalId
+valGlobals = valLeafs . _LGlobal

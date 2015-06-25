@@ -67,7 +67,7 @@ instance NFData exp => NFData (Apply exp) where rnf = genericRnf
 instance Binary exp => Binary (Apply exp)
 instance Hashable exp => Hashable (Apply exp) where hashWithSalt = gHashWithSalt
 instance Match Apply where
-        match f (Apply f0 a0) (Apply f1 a1) = Just $ Apply (f f0 f1) (f a0 a1)
+    match f (Apply f0 a0) (Apply f1 a1) = Just $ Apply (f f0 f1) (f a0 a1)
 
 applyFunc :: Lens' (Apply exp) exp
 applyFunc f (Apply func arg) = (`Apply` arg) <$> f func
@@ -83,9 +83,9 @@ instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
 instance Hashable exp => Hashable (GetField exp) where hashWithSalt = gHashWithSalt
 instance Match GetField where
-        match f (GetField r0 t0) (GetField r1 t1)
-            | t0 == t1 = Just $ GetField (f r0 r1) t0
-            | otherwise = Nothing
+    match f (GetField r0 t0) (GetField r1 t1)
+        | t0 == t1 = Just $ GetField (f r0 r1) t0
+        | otherwise = Nothing
 
 getFieldRecord :: Lens' (GetField exp) exp
 getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
@@ -101,9 +101,9 @@ instance NFData exp => NFData (Inject exp) where rnf = genericRnf
 instance Binary exp => Binary (Inject exp)
 instance Hashable exp => Hashable (Inject exp) where hashWithSalt = gHashWithSalt
 instance Match Inject where
-        match f (Inject t0 r0) (Inject t1 r1)
-            | t0 == t1 = Just $ Inject t0 (f r0 r1)
-            | otherwise = Nothing
+    match f (Inject t0 r0) (Inject t1 r1)
+        | t0 == t1 = Just $ Inject t0 (f r0 r1)
+        | otherwise = Nothing
 
 injectVal :: Lens' (Inject exp) exp
 injectVal f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}

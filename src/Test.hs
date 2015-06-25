@@ -101,7 +101,17 @@ exps =
     , "a" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Just" $$ P.litInt 1)) $
       "b" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Nothing")) $
       P.recEmpty
+
+    , nullTest
     ]
+
+nullTest :: Val ()
+nullTest =
+    lambda "list" $ \l ->
+    ( P._case "[]" (lambda "_" (const (P.global "True"))) $
+      P._case ":" (lambda "_" (const (P.global "False"))) $
+      P.absurd
+    ) $$ P.fromNom (fst listTypePair) l
 
 recurseVar :: V.Var
 recurseVar = V.Var "Recurse"
@@ -113,7 +123,21 @@ recursiveExps :: [Val ()]
 recursiveExps =
     [ eLet "id" (lambda "x" id) id
     , recurse
+    , foldrTest
     ]
+
+foldrTest :: Val ()
+foldrTest =
+    lambda "nil" $ \nil ->
+    lambda "cons" $ \cons ->
+    lambda "list" $ \l ->
+    ( P._case "[]" (lambda "_" (const nil)) $
+      P._case ":" (lambdaRecord ["head", "tail"] $
+                   \ [head_, tail_] ->
+                   let rest = recurse $$ nil $$ cons $$ tail_
+                   in cons $$: [("head", head_), ("rest", rest)]) $
+      P.absurd
+    ) $$ P.fromNom (fst listTypePair) l
 
 suggestTypes :: [Type]
 suggestTypes =
@@ -177,7 +201,7 @@ inferInto pl val =
     do
         (inferredType, inferredVal) <- inferType (pl ^. plScope) val
         unify inferredType (pl ^. plType)
-        (,) inferredType <$> Update.inferredVal inferredVal & Update.liftInfer
+        (,) <$> Update.update inferredType <*> Update.inferredVal inferredVal & Update.liftInfer
 
 testRecursive :: Val () -> IO ()
 testRecursive e =

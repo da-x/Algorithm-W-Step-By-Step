@@ -15,6 +15,7 @@ module Lamdu.Expr.Lens
     , _BRecExtend
     , _BCase
     , _BInject
+    , _BFromNom, _BToNom
     -- Leafs
     , valGlobal        , valBodyGlobal
     , valHole          , valBodyHole
@@ -32,11 +33,10 @@ module Lamdu.Expr.Lens
     , _TRecord
     , _TFun
     , _TSum
-    -- Tags:
+    --
     , valTags, bodyTags, biTraverseBodyTags
-    -- Globals:
     , valGlobals
-    -- Composites:
+    , valNominals
     , compositeTags
     -- Subexpressions:
     , subExprPayloads
@@ -164,6 +164,18 @@ _BInject = prism' V.BInject get
         get (V.BInject x) = Just x
         get _ = Nothing
 
+_BFromNom :: Prism' (V.Body a) (V.Nom a)
+_BFromNom = prism' V.BFromNom get
+    where
+        get (V.BFromNom x) = Just x
+        get _ = Nothing
+
+_BToNom :: Prism' (V.Body a) (V.Nom a)
+_BToNom = prism' V.BToNom get
+    where
+        get (V.BToNom x) = Just x
+        get _ = Nothing
+
 _BRecExtend :: Prism' (V.Body a) (V.RecExtend a)
 _BRecExtend = prism' V.BRecExtend get
     where
@@ -192,11 +204,11 @@ valBodyLiteralInteger :: Prism' (V.Body expr) Integer
 valBodyLiteralInteger = _BLeaf . _LLiteralInteger
 
 valLeafs :: Traversal' (Val a) V.Leaf
-valLeafs f (V.Val pl body) =
+valLeafs f (Val pl body) =
     case body of
     V.BLeaf l -> f l <&> V.BLeaf
     _ -> body & Lens.traverse . valLeafs %%~ f
-    <&> V.Val pl
+    <&> Val pl
 
 _TRecord :: Prism' Type T.Product
 _TRecord = prism' T.TRecord get
@@ -271,3 +283,13 @@ valTags f = V.body $ biTraverseBodyTags f (valTags f)
 
 valGlobals :: Lens.Traversal' (Val a) V.GlobalId
 valGlobals = valLeafs . _LGlobal
+
+valNominals :: Lens.Traversal' (Val a) T.Id
+valNominals f (Val pl body) =
+    case body of
+    V.BFromNom nom -> onNom nom <&> V.BFromNom
+    V.BToNom nom -> onNom nom <&> V.BToNom
+    _ -> body & Lens.traverse . valNominals %%~ f
+    <&> Val pl
+    where
+        onNom (V.Nom nomId val) = V.Nom <$> f nomId <*> valNominals f val

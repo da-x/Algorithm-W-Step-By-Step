@@ -2,6 +2,7 @@
 module Lamdu.Infer
     ( makeScheme
     , TypeVars(..)
+    , Loaded(..)
     , infer
     , Scope, emptyScope, Scope.scopeToTypeMap
     , Payload(..), plScope, plType
@@ -21,8 +22,11 @@ import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..), (<>))
+import           Data.Traversable (sequenceA)
 import           Data.Typeable (Typeable)
 import           GHC.Generics (Generic)
+import           Lamdu.Expr.Nominal (Nominal(..))
+import qualified Lamdu.Expr.Nominal as Nominal
 import           Lamdu.Expr.Scheme (Scheme)
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
@@ -64,13 +68,17 @@ instance CanSubst Payload where
     apply s (Payload typ scope) =
         Payload (Subst.apply s typ) (Subst.apply s scope)
 
-inferSubst ::
-    Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Scope, Val (Payload, a))
-inferSubst globals rootScope val =
+data Loaded = Loaded
+    { loadedGlobalTypes :: Map V.GlobalId Scheme
+    , loadedNominals :: Map T.Id Nominal
+    }
+
+inferSubst :: Loaded -> Scope -> Val a -> Infer (Scope, Val (Payload, a))
+inferSubst loaded rootScope val =
     do
         prevSubst <- M.getSubst
         let rootScope' = Subst.apply prevSubst rootScope
-        (inferredVal, s) <- M.listenSubst $ inferInternal mkPayload globals rootScope' val
+        (inferredVal, s) <- M.listenSubst $ inferInternal mkPayload loaded rootScope' val
         return (rootScope', inferredVal <&> _1 %~ Subst.apply s)
     where
         mkPayload typ scope dat = (Payload typ scope, dat)
@@ -80,11 +88,10 @@ inferSubst globals rootScope val =
 -- much faster than a polymorphic monad underlying the InferCtx monad
 -- allowing global access.
 -- Use loadInfer for a safer interface
-infer ::
-    Map V.GlobalId Scheme -> Scope -> Val a -> Infer (Val (Payload, a))
-infer globals scope val =
+infer :: Loaded -> Scope -> Val a -> Infer (Val (Payload, a))
+infer loaded scope val =
     do
-        ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
+        ((scope', val'), results) <- M.listenNoTell $ inferSubst loaded scope val
         M.tell $ results & M.subst %~ Subst.intersect (TV.free scope')
         return val'
 
@@ -99,7 +106,7 @@ hasTag tag (T.CExtend t _ r)
 
 type InferHandler a b =
     (Scope -> a -> Infer (Type, b)) -> Scope ->
-    M.InferCtx (Either Err.Error) (V.Body b, Type)
+    M.Infer (V.Body b, Type)
 
 {-# INLINE inferLeaf #-}
 inferLeaf :: Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
@@ -241,21 +248,66 @@ inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
             , T.TRecord $ T.CExtend name t1' rest
             )
 
+getNominal :: Map T.Id Nominal -> T.Id -> M.Infer Nominal
+getNominal nominals name =
+    case Map.lookup name nominals of
+    Nothing -> M.throwError $ Err.MissingNominal name
+    Just nominal -> return nominal
+
+nomTypes :: Map T.Id Nominal -> T.Id -> M.Infer (Type, Type)
+nomTypes nominals name =
+    do
+        nominal <- getNominal nominals name
+        p1_paramVals <-
+            nParams nominal
+            & Map.keysSet & Map.fromSet (const (M.freshInferredVar "n"))
+            & sequenceA
+        p1_freshInnerType <-
+            Nominal.apply p1_paramVals nominal & Scheme.instantiate
+        return (T.TInst name p1_paramVals, p1_freshInnerType)
+
+{-# INLINE inferFromNom #-}
+inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
+inferFromNom nominals (V.Nom name val) = \go locals ->
+    do
+        (p1_t, val') <- go locals val
+        (p1_outerType, p1_innerType) <- nomTypes nominals name
+        ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_outerType
+        let p2_innerType = Subst.apply p2_s p1_innerType
+        return
+            ( V.BFromNom (V.Nom name val')
+            , p2_innerType
+            )
+
+{-# INLINE inferToNom #-}
+inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
+inferToNom nominals (V.Nom name val) = \go locals ->
+    do
+        (p1_t, val') <- go locals val
+        (p1_outerType, p1_innerType) <- nomTypes nominals name
+        ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_innerType
+        let p2_outerType = Subst.apply p2_s p1_outerType
+        return
+            ( V.BToNom (V.Nom name val')
+            , p2_outerType
+            )
+
 inferInternal ::
     (Type -> Scope -> a -> b) ->
-    Map V.GlobalId Scheme -> Scope -> Val a ->
-    Infer (Val b)
-inferInternal f globals =
+    Loaded -> Scope -> Val a -> Infer (Val b)
+inferInternal f loaded =
     (fmap . fmap) snd . go
     where
         go locals (Val pl body) =
             ( case body of
-              V.BLeaf leaf -> inferLeaf globals leaf
+              V.BLeaf leaf -> inferLeaf (loadedGlobalTypes loaded) leaf
               V.BAbs lam -> inferAbs lam
               V.BApp app -> inferApply app
               V.BGetField getField -> inferGetField getField
               V.BInject inject -> inferInject inject
               V.BCase case_ -> inferCase case_
               V.BRecExtend recExtend -> inferRecExtend recExtend
+              V.BFromNom nom -> inferFromNom (loadedNominals loaded) nom
+              V.BToNom nom -> inferToNom (loadedNominals loaded) nom
             ) go locals
             <&> \(body', typ) -> (typ, Val (f typ locals pl) body')

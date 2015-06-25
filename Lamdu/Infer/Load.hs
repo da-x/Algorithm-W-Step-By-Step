@@ -3,27 +3,33 @@ module Lamdu.Infer.Load
     , loadInfer
     ) where
 
+import           Control.Applicative (Applicative(..), (<$>))
 import           Control.Lens.Operators
-import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Traversable as Traversable
-import           Lamdu.Expr.Lens (valGlobals)
+import           Lamdu.Expr.Lens (valGlobals, valNominals)
+import           Lamdu.Expr.Nominal (Nominal)
 import           Lamdu.Expr.Scheme (Scheme)
+import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
-import           Lamdu.Infer (Scope, Infer, infer, Payload)
+import           Lamdu.Infer (Scope, Infer, infer, Payload, Loaded(..))
 
-newtype Loader m = Loader
+data Loader m = Loader
     { loadTypeOf :: V.GlobalId -> m Scheme
+    , loadNominal :: T.Id -> m Nominal
     }
 
-loadValGlobals :: Monad m => Loader m -> Val a -> m (Map V.GlobalId Scheme)
-loadValGlobals (Loader load) =
-    Traversable.sequence . Map.fromSet load . Set.fromList . (^.. valGlobals)
+loadVal :: Applicative m => Loader m -> Val a -> m Loaded
+loadVal loader val =
+    Loaded
+    <$> loadMap loadTypeOf (val ^.. valGlobals)
+    <*> loadMap loadNominal (val ^.. valNominals)
+    where
+        loadMap f x = x & Set.fromList & Map.fromSet (f loader) & Traversable.sequenceA
 
-loadInfer :: Monad m => Loader m -> Scope -> Val a -> m (Infer (Val (Payload, a)))
+loadInfer :: Applicative m => Loader m -> Scope -> Val a -> m (Infer (Val (Payload, a)))
 loadInfer loader scope val =
-    do
-        globals <- loadValGlobals loader val
-        return $ infer globals scope val
+    loadVal loader val
+    <&> \loaded -> infer loaded scope val

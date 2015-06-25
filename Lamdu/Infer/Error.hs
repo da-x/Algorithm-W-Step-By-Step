@@ -13,6 +13,7 @@ data Error
     = DuplicateField T.Tag T.Product
     | DuplicateAlt T.Tag T.Sum
     | MissingGlobal V.GlobalId
+    | MissingNominal T.Id
     | OccursCheckFail Doc Doc
     | TypesDoNotUnity Doc Doc
     | UnboundVariable V.Var
@@ -23,6 +24,7 @@ instance Pretty Error where
     pPrint (DuplicateAlt t r) =
         "Alternative" <+> pPrint t <+> "forbidden in sum" <+> pPrint r
     pPrint (MissingGlobal g) = "Missing global:" <+> pPrint g
+    pPrint (MissingNominal i) = "Missing nominal:" <+> pPrint i
     pPrint (OccursCheckFail v t) = "Occurs check fails:" <+> v <+> "vs." <+> t
     pPrint (UnboundVariable v) = "Unbound variable:" <+> pPrint v
     pPrint (TypesDoNotUnity x y) = "Types do not unify" <+> x <+> "vs." <+> y

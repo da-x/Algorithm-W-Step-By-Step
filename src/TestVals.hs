@@ -6,19 +6,22 @@ module TestVals
     , factorialVal, euler1Val, solveDepressedQuarticVal
     , lambda, lambdaRecord, whereItem, record, eRecord
     , eLet, ($$), ($$:), ($.), ($=)
+    , listTypePair, boolTypePair
     ) where
 
-import           Data.Map (Map)
+import           Control.Lens.Operators
 import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
+import           Lamdu.Expr.Nominal (Nominal(..))
 import qualified Lamdu.Expr.Pure as P
 import           Lamdu.Expr.Scheme (Scheme(..))
+import qualified Lamdu.Expr.Scheme as Scheme
 import           Lamdu.Expr.Type (Type, (~>))
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
-import           Lamdu.Infer (TypeVars(..))
+import           Lamdu.Infer (TypeVars(..), Loaded(..))
 
 -- TODO: $$ to be type-classed for TApp vs BApp
 -- TODO: TCon "->" instead of TFun
@@ -64,15 +67,46 @@ infixl 3 $=
 integerType :: Type
 integerType = T.TInst "Int" Map.empty
 
-boolType :: Type
-boolType = T.TInst "Bool" Map.empty
-
 forAll :: [T.TypeVar] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
     Scheme mempty { typeVars = Set.fromList tvs } mempty $ mkType $ map T.TVar tvs
 
+listTypePair :: (T.Id, Nominal)
+listTypePair =
+    ( "List"
+    , Nominal
+        { nParams = Map.singleton "elem" tvName
+        , nScheme =
+            T.CEmpty
+            & T.CExtend "[]" (record [])
+            & T.CExtend ":" (record [("head", tv), ("tail", listOf tv)])
+            & T.TSum
+            & Scheme.mono
+        }
+    )
+    where
+        tvName = "a"
+        tv = T.TVar tvName
+
 listOf :: Type -> Type
-listOf = T.TInst "List" . Map.singleton "elem"
+listOf = T.TInst (fst listTypePair) . Map.singleton "elem"
+
+boolType :: Type
+boolType = T.TInst (fst boolTypePair) Map.empty
+
+boolTypePair :: (T.Id, Nominal)
+boolTypePair =
+    ( "Bool"
+    , Nominal
+        { nParams = Map.empty
+        , nScheme =
+            T.CEmpty
+            & T.CExtend "True" (record [])
+            & T.CExtend "False" (record [])
+            & T.TSum
+            & Scheme.mono
+        }
+    )
 
 maybeOf :: Type -> Type
 maybeOf t =
@@ -87,35 +121,46 @@ infixType a b c = record [("l", a), ("r", b)] ~> c
 infixArgs :: Val () -> Val () -> Val ()
 infixArgs l r = eRecord [("l", l), ("r", r)]
 
-env :: Map V.GlobalId Scheme
-env = Map.fromList
-    [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
-    , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
-    , ("==",     forAll ["a"] $ \ [a] -> infixType a a boolType)
-    , ("%",      forAll ["a"] $ \ [a] -> infixType a a a)
-    , ("*",      forAll ["a"] $ \ [a] -> infixType a a a)
-    , ("-",      forAll ["a"] $ \ [a] -> infixType a a a)
-    , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
-    , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
-    , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
-    , ("filter", forAll ["a"] $ \ [a] -> record [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
-    , (":",      forAll ["a"] $ \ [a] -> record [("head", a), ("tail", listOf a)] ~> listOf a)
-    , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
-    , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
-    , ("map",    forAll ["a", "b"] $ \ [a, b] -> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
-    , ("..",     forAll [] $ \ [] -> infixType integerType integerType (listOf integerType))
-    , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
-    , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)
-    , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
-    , ("sqrt",   forAll ["a"] $ \ [a] -> a ~> a)
-    , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
-    , ("zipWith",forAll ["a","b","c"] $ \ [a,b,c] ->
-                              (a ~> b ~> c) ~> listOf a ~> listOf b ~> listOf c )
-    , ("Just",   forAll ["a"] $ \ [a] -> a ~> maybeOf a)
-    , ("Nothing",forAll ["a"] $ \ [a] -> maybeOf a)
-    , ("maybe",  forAll ["a", "b"] $ \ [a, b] -> b ~> (a ~> b) ~> maybeOf a ~> b)
-    , ("plus1",  forAll [] $ \ [] -> integerType ~> integerType)
-    ]
+env :: Loaded
+env =
+    Loaded
+    { loadedGlobalTypes =
+        Map.fromList
+        [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
+        , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
+        , ("==",     forAll ["a"] $ \ [a] -> infixType a a boolType)
+        , ("%",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("*",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("-",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
+        , ("filter", forAll ["a"] $ \ [a] -> record [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
+        , (":",      forAll ["a"] $ \ [a] -> record [("head", a), ("tail", listOf a)] ~> listOf a)
+        , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
+        , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
+        , ("map",    forAll ["a", "b"] $ \ [a, b] -> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
+        , ("..",     forAll [] $ \ [] -> infixType integerType integerType (listOf integerType))
+        , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
+        , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)
+        , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
+        , ("sqrt",   forAll ["a"] $ \ [a] -> a ~> a)
+        , ("id",     forAll ["a"] $ \ [a] -> a ~> a)
+        , ("zipWith",forAll ["a","b","c"] $ \ [a,b,c] ->
+                                  (a ~> b ~> c) ~> listOf a ~> listOf b ~> listOf c )
+        , ("Just",   forAll ["a"] $ \ [a] -> a ~> maybeOf a)
+        , ("Nothing",forAll ["a"] $ \ [a] -> maybeOf a)
+        , ("maybe",  forAll ["a", "b"] $ \ [a, b] -> b ~> (a ~> b) ~> maybeOf a ~> b)
+        , ("plus1",  forAll [] $ \ [] -> integerType ~> integerType)
+        , ("True",   forAll [] $ \ [] -> boolType)
+        , ("False",  forAll [] $ \ [] -> boolType)
+        ]
+    , loadedNominals =
+        Map.fromList
+        [ listTypePair
+        , boolTypePair
+        ]
+    }
 
 list :: [Val ()] -> Val ()
 list [] = P.global "[]"

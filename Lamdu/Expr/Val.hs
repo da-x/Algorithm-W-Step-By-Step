@@ -8,6 +8,7 @@ module Lamdu.Expr.Val
     , Case(..), caseTag, caseMatch, caseMismatch
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
+    , Nom(..), nomId, nomVal
     , Val(..), body, payload, alphaEq
     , Var(..)
     , GlobalId(..)
@@ -17,7 +18,7 @@ module Lamdu.Expr.Val
 import           Control.Applicative ((<$), (<$>))
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
-import           Control.Lens (Lens')
+import           Control.Lens (Lens, Lens')
 import           Control.Lens.Operators
 import           Data.Binary (Binary)
 import           Data.Foldable (Foldable)
@@ -31,7 +32,7 @@ import           Data.String (IsString(..))
 import           Data.Traversable (Traversable)
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Identifier (Identifier)
-import           Lamdu.Expr.Type (Tag)
+import qualified Lamdu.Expr.Type as T
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
 import           Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
@@ -77,7 +78,7 @@ applyArg f (Apply func arg) = Apply func <$> f arg
 
 data GetField exp = GetField
     { _getFieldRecord :: exp
-    , _getFieldTag :: Tag
+    , _getFieldTag :: T.Tag
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (GetField exp) where rnf = genericRnf
 instance Binary exp => Binary (GetField exp)
@@ -90,11 +91,11 @@ instance Match GetField where
 getFieldRecord :: Lens' (GetField exp) exp
 getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
 
-getFieldTag :: Lens' (GetField exp) Tag
+getFieldTag :: Lens' (GetField exp) T.Tag
 getFieldTag f GetField {..} = f _getFieldTag <&> \_getFieldTag -> GetField {..}
 
 data Inject exp = Inject
-    { _injectTag :: Tag
+    { _injectTag :: T.Tag
     , _injectVal :: exp
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (Inject exp) where rnf = genericRnf
@@ -108,11 +109,11 @@ instance Match Inject where
 injectVal :: Lens' (Inject exp) exp
 injectVal f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
 
-injectTag :: Lens' (Inject exp) Tag
+injectTag :: Lens' (Inject exp) T.Tag
 injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}
 
 data Case exp = Case
-    { _caseTag :: Tag
+    { _caseTag :: T.Tag
     , _caseMatch :: exp
     , _caseMismatch :: exp
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
@@ -124,7 +125,7 @@ instance Match Case where
         | t0 == t1 = Just $ Case t0 (f h0 h1) (f hr0 hr1)
         | otherwise = Nothing
 
-caseTag :: Lens' (Case exp) Tag
+caseTag :: Lens' (Case exp) T.Tag
 caseTag f Case {..} = f _caseTag <&> \_caseTag -> Case {..}
 
 caseMatch :: Lens' (Case exp) exp
@@ -148,7 +149,7 @@ lamResult :: Lens' (Lam exp) exp
 lamResult f Lam {..} = f _lamResult <&> \_lamResult -> Lam {..}
 
 data RecExtend exp = RecExtend
-    { _recTag :: Tag
+    { _recTag :: T.Tag
     , _recFieldVal :: exp
     , _recRest :: exp
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
@@ -160,7 +161,7 @@ instance Match RecExtend where
         | t0 == t1 = Just $ RecExtend t0 (f f0 f1) (f r0 r1)
         | otherwise = Nothing
 
-recTag :: Lens' (RecExtend exp) Tag
+recTag :: Lens' (RecExtend exp) T.Tag
 recTag f RecExtend {..} = f _recTag <&> \_recTag -> RecExtend {..}
 
 recFieldVal :: Lens' (RecExtend exp) exp
@@ -169,6 +170,24 @@ recFieldVal f RecExtend {..} = f _recFieldVal <&> \_recFieldVal -> RecExtend {..
 recRest :: Lens' (RecExtend exp) exp
 recRest f RecExtend {..} = f _recRest <&> \_recRest -> RecExtend {..}
 
+data Nom exp = Nom
+    { _nomId :: T.Id
+    , _nomVal :: exp
+    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
+instance NFData exp => NFData (Nom exp) where rnf = genericRnf
+instance Hashable exp => Hashable (Nom exp) where hashWithSalt = gHashWithSalt
+instance Binary exp => Binary (Nom exp)
+instance Match Nom where
+    match f (Nom i0 v0) (Nom i1 v1)
+        | i0 == i1 = Just $ Nom i0 (f v0 v1)
+        | otherwise = Nothing
+
+nomId :: Lens' (Nom exp) T.Id
+nomId f Nom {..} = f _nomId <&> \_nomId -> Nom {..}
+
+nomVal :: Lens (Nom a) (Nom b) a b
+nomVal f Nom {..} = f _nomVal <&> \_nomVal -> Nom {..}
+
 data Body exp
     =  BApp {-# UNPACK #-}!(Apply exp)
     |  BAbs {-# UNPACK #-}!(Lam exp)
@@ -176,6 +195,10 @@ data Body exp
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
     |  BInject {-# UNPACK #-}!(Inject exp)
     |  BCase {-# UNPACK #-}!(Case exp)
+    |  -- Convert to Nominal type
+       BToNom {-# UNPACK #-}!(Nom exp)
+    |  -- Convert from Nominal type
+       BFromNom {-# UNPACK #-}!(Nom exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 -- NOTE: Careful of Eq, it's not alpha-eq!
@@ -221,6 +244,8 @@ pPrintPrecBody lvl prec b =
                                  , pPrint n <> PP.text " -> " <> pPrint m
                                  , PP.text "_" <> PP.text " -> " <> pPrint mm
                                  ]
+    BToNom (Nom ident val)    -> PP.text "[ ->" <+> pPrint ident <+> pPrint val <+> PP.text "]"
+    BFromNom (Nom ident val)  -> PP.text "[" <+> pPrint ident <+> pPrint val <+> PP.text "-> ]"
     BLeaf LRecEmpty           -> PP.text "{}"
     BRecExtend (RecExtend tag val rest) ->
                                  PP.text "{" <+>
@@ -268,6 +293,8 @@ alphaEq =
             (BRecExtend x, BRecExtend y) -> goRecurse x y
             (BCase x, BCase y) -> goRecurse x y
             (BInject x, BInject y) -> goRecurse x y
+            (BFromNom x, BFromNom y) -> goRecurse x y
+            (BToNom x, BToNom y) -> goRecurse x y
             (_, _) -> False
             where
                 goRecurse x y = maybe False Foldable.and $ match (go xToY) x y

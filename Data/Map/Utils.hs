@@ -1,5 +1,5 @@
 module Data.Map.Utils
-    ( lookupOrSelf, pop, popKeys, matchKeys, match
+    ( lookupOrSelf, pop, popKeys, matchKeys, match, differenceSet
     ) where
 
 import qualified Control.Lens as Lens
@@ -9,7 +9,11 @@ import           Control.Monad.Trans.State (StateT(..))
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
+import           Data.Set (Set)
 import           Data.Traversable (Traversable(..))
+
+differenceSet :: Ord k => Map k a -> Set k -> Map k a
+differenceSet m = Map.difference m . Map.fromSet (const ())
 
 lookupOrSelf :: Ord a => Map a a -> a -> a
 lookupOrSelf m x = fromMaybe x $ m ^. Lens.at x

@@ -27,7 +27,7 @@ import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Type.Match as TypeMatch
 import           Lamdu.Expr.TypeVars (TypeVars(..))
-import qualified Lamdu.Expr.TypeVars as TypeVars
+import qualified Lamdu.Expr.TypeVars as TV
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
 import           Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
@@ -80,8 +80,8 @@ alphaEq
         _ -> False
     where
         checkVarsMatch getTVConstraints (a, b) =
-            ( a `TypeVars.member` aForall ==
-              b `TypeVars.member` bForall
+            ( a `TV.member` aForall ==
+              b `TV.member` bForall
             ) &&
             ( getTVConstraints a aConstraints ==
               getTVConstraints b bConstraints
@@ -91,7 +91,7 @@ make :: Constraints -> Type -> Scheme
 make c t =
     Scheme freeVars (freeVars `Constraints.intersect` c) t
     where
-        freeVars = TypeVars.free t
+        freeVars = TV.free t
 
 mono :: Type -> Scheme
 mono x =
@@ -103,7 +103,7 @@ mono x =
 
 any :: Scheme
 any =
-    Scheme (TypeVars.singleton a) mempty (T.TVar a)
+    Scheme (TV.singleton a) mempty (T.TVar a)
     where
         a :: T.TypeVar
         a = "a"
@@ -127,3 +127,9 @@ instance Pretty Scheme where
                 | otherwise = pPrint constraints <+> PP.text "=>"
 
 instance Binary Scheme
+
+instance TV.Free Scheme where
+    -- constraints apply to the forAll'd variables so free variables
+    -- there are irrelevant:
+    free (Scheme forAll _constraints typ) =
+        TV.free typ `TV.difference` forAll

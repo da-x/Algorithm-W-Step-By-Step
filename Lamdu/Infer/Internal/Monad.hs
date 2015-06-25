@@ -32,6 +32,7 @@ import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraint
 import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars)
+import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Error (Error)
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import           Lamdu.Infer.Internal.Subst (Subst)
@@ -180,8 +181,8 @@ freshInferredVarName prefix =
         return $ fromString $ prefix ++ show oldSupply
 {-# INLINE freshInferredVarName #-}
 
-freshInferredVar :: Monad m => T.LiftVar t => String -> InferCtx m t
-freshInferredVar = liftM T.liftVar . freshInferredVarName
+freshInferredVar :: Monad m => TV.VarKind t => String -> InferCtx m t
+freshInferredVar = liftM TV.lift . freshInferredVarName
 {-# INLINE freshInferredVar #-}
 
 listenSubst :: Infer a -> Infer (a, Subst)

@@ -15,6 +15,7 @@ import qualified Lamdu.Expr.Scheme as Scheme
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars(..))
+import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Internal.Monad (InferCtx)
 import qualified Lamdu.Infer.Internal.Monad as M
 import           Lamdu.Infer.Internal.Subst (Subst(..))
@@ -44,9 +45,9 @@ instantiate (Scheme (TypeVars tv rv sv) constraints t) =
         sumSubsts <- mkInstantiateSubstPart "s" sv
         let subst =
                 Subst
-                (fmap T.liftVar typeVarSubsts)
-                (fmap T.liftVar recordSubsts)
-                (fmap T.liftVar sumSubsts)
+                (fmap TV.lift typeVarSubsts)
+                (fmap TV.lift recordSubsts)
+                (fmap TV.lift sumSubsts)
             constraints' = Constraints.applyRenames recordSubsts sumSubsts constraints
         -- Avoid tell for these new constraints, because they refer to
         -- fresh variables, no need to apply the ordinary expensive

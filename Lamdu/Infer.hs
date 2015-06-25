@@ -27,7 +27,7 @@ import           Lamdu.Expr.Scheme (Scheme)
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars(..))
-import qualified Lamdu.Expr.TypeVars as TypeVars
+import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
@@ -56,9 +56,9 @@ plScope :: Lens' Payload Scope
 plScope f pl = (\t' -> pl { _plScope = t' }) <$> f (_plScope pl)
 {-# INLINE plScope #-}
 
-instance TypeVars.Free Payload where
+instance TV.Free Payload where
     free (Payload typ scope) =
-        TypeVars.free typ <> TypeVars.free scope
+        TV.free typ <> TV.free scope
 
 instance CanSubst Payload where
     apply s (Payload typ scope) =
@@ -85,7 +85,7 @@ infer ::
 infer globals scope val =
     do
         ((scope', val'), results) <- M.listenNoTell $ inferSubst globals scope val
-        M.tell $ results & M.subst %~ Subst.intersect (TypeVars.free scope')
+        M.tell $ results & M.subst %~ Subst.intersect (TV.free scope')
         return val'
 
 data CompositeHasTag p = HasTag | DoesNotHaveTag | MayHaveTag (T.Var (T.Composite p))
@@ -157,7 +157,7 @@ inferGetField (V.GetField e name) = \go locals ->
 
         ((), p2_s) <-
             M.listenSubst $ unifyUnsafe p1_t $
-            T.TRecord $ T.CExtend name p1_tv $ T.liftVar p1_tvRecName
+            T.TRecord $ T.CExtend name p1_tv $ TV.lift p1_tvRecName
         let p2_tv = Subst.apply p2_s p1_tv
         return (V.BGetField (V.GetField e' name), p2_tv)
 
@@ -170,7 +170,7 @@ inferInject (V.Inject name e) = \go locals ->
         M.tellSumConstraint tvSumName name
         return
             ( V.BInject (V.Inject name e')
-            , T.TSum $ T.CExtend name t $ T.liftVar tvSumName
+            , T.TSum $ T.CExtend name t $ TV.lift tvSumName
             )
 
 {-# INLINE inferCase #-}
@@ -197,7 +197,7 @@ inferCase (V.Case name m mm) = \go locals ->
         -- new sum type var "s":
         tvSumName <- M.freshInferredVarName "s"
         M.tellSumConstraint tvSumName name
-        let p3_tvSum = T.liftVar tvSumName
+        let p3_tvSum = TV.lift tvSumName
         -- type(mismatch) `unify` [ s ]->res
         ((), p4_s) <-
             M.listenSubst $ unifyUnsafe p3_tmm $
@@ -232,7 +232,7 @@ inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
             _ -> do
                 tv <- M.freshInferredVarName "r"
                 M.tellProductConstraint tv name
-                let tve = T.liftVar tv
+                let tve = TV.lift tv
                 ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
                 return $ Subst.apply s tve
         let t1' = Subst.apply s3 $ Subst.apply s2 t1

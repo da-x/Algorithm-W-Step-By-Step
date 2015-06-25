@@ -50,11 +50,13 @@ instance CompositeVarKind p => Free (T.Composite p) where
     free (T.CVar n)        = singleton n
     free (T.CExtend _ t r) = free t <> free r
 
-class T.LiftVar t => VarKind t where
+class VarKind t where
+    lift :: T.Var t -> t
     member :: T.Var t -> TypeVars -> Bool
     singleton :: T.Var t -> TypeVars
 
 instance VarKind Type where
+    lift = T.TVar
     member v tvs = v `Set.member` typeVars tvs
     singleton v = mempty { typeVars = Set.singleton v }
 
@@ -71,5 +73,6 @@ instance CompositeVarKind T.SumTag where
     compositeSingleton v = mempty { sumTypeVars = Set.singleton v }
 
 instance CompositeVarKind p => VarKind (T.Composite p) where
+    lift = T.CVar
     member = compositeMember
     singleton = compositeSingleton

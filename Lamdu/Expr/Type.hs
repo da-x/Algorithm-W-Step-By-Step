@@ -6,7 +6,6 @@ module Lamdu.Expr.Type
     , ProductVar, SumVar
     , (~>), int
     , compositeTypes, nextLayer
-    , LiftVar(..)
     ) where
 
 import           Control.Applicative ((<$>), Applicative(..))
@@ -81,10 +80,6 @@ int = TInst "Int" Map.empty
 infixr 1 ~>
 (~>) :: Type -> Type -> Type
 (~>) = TFun
-
-class    LiftVar t             where liftVar :: Var t -> t
-instance LiftVar Type          where liftVar = TVar
-instance LiftVar (Composite c) where liftVar = CVar
 
 instance Pretty Type where
     pPrintPrec lvl prec typ =

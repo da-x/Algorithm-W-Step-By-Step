@@ -11,8 +11,10 @@ import qualified Lamdu.Expr.Val as V
 
 suggestValueWith :: Applicative f => f V.Var -> Type -> f (Val ())
 suggestValueWith _ T.TVar{}                  = pure P.hole
--- TODO: Need access to the Nominals map here, to do better than this hole:
-suggestValueWith _ (T.TInst i _params)       = pure (P.toNom i P.hole)
+suggestValueWith _ T.TInst{}                 = pure P.hole
+-- TODO: Need access to the Nominals map here, to only suggest
+-- nominals that can fromNominal, and also offer to build the inner
+-- value
 suggestValueWith mkVar (T.TSum (T.CExtend f t T.CEmpty)) =
     P.inject f <$> suggestValueWith mkVar t
 suggestValueWith _ T.TSum {}                 = pure P.hole

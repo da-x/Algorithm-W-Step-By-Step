@@ -18,6 +18,7 @@ library
                  ,     Lamdu.Expr.Identifier
                  ,     Lamdu.Expr.Pure
                  ,     Lamdu.Expr.FlatComposite
+                 ,     Lamdu.Expr.Lens
                  ,     Lamdu.Expr.Scheme
                  ,     Lamdu.Expr.Type
                  ,     Lamdu.Expr.Type.Match

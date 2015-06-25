@@ -105,7 +105,7 @@ any :: Scheme
 any =
     Scheme (TypeVars.singleton a) mempty (T.TVar a)
     where
-        a :: T.Var Type
+        a :: T.TypeVar
         a = "a"
 
 instance NFData Scheme where

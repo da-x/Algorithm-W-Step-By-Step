@@ -18,7 +18,7 @@ import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 
 data TypeVars = TypeVars
-    { typeVars :: Set (T.Var Type)
+    { typeVars :: Set T.TypeVar
     , productTypeVars :: Set T.ProductVar
     , sumTypeVars :: Set T.SumVar
     }

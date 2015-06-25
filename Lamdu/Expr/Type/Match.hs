@@ -11,7 +11,7 @@ import           Lamdu.Expr.FlatComposite (FlatComposite(..))
 import qualified Lamdu.Expr.FlatComposite as Flat
 import           Lamdu.Expr.Type
 
-type VarMatches = ([(Var Type, Var Type)], [(ProductVar, ProductVar)], [(SumVar, SumVar)])
+type VarMatches = ([(TypeVar, TypeVar)], [(ProductVar, ProductVar)], [(SumVar, SumVar)])
 
 matchVars :: Type -> Type -> Maybe VarMatches
 matchVars (TVar tv0)         (TVar tv1)         = Just ([(tv0, tv1)], [], [])

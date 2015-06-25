@@ -2,8 +2,8 @@
 module Lamdu.Expr.Type
     ( Type(..), Composite(..)
     , ProductTag, SumTag
+    , ProductVar, SumVar, TypeVar
     , Var(..), Id(..), Tag(..), ParamId(..)
-    , ProductVar, SumVar
     , (~>), int
     , compositeTypes, nextLayer
     ) where
@@ -39,6 +39,10 @@ newtype ParamId = ParamId { typeParamId :: Identifier }
 data ProductTag
 data SumTag
 
+type ProductVar = Var (Composite ProductTag)
+type SumVar = Var (Composite SumTag)
+type TypeVar = Var Type
+
 data Composite p
     = CExtend Tag Type (Composite p)
     | CEmpty
@@ -47,16 +51,13 @@ data Composite p
 instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)
 
-type ProductVar = Var (Composite ProductTag)
-type SumVar = Var (Composite SumTag)
-
 compositeTypes :: Lens.Traversal' (Composite p) Type
 compositeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypes f rest
 compositeTypes _ CEmpty = pure CEmpty
 compositeTypes _ (CVar tv) = pure (CVar tv)
 
 data Type
-    = TVar (Var Type)
+    = TVar TypeVar
     | TFun Type Type
     | TInst Id (Map ParamId Type)
     | TRecord (Composite ProductTag)

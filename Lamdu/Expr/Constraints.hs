@@ -86,7 +86,7 @@ getProductVarConstraints tv c = getTVCompositeConstraints tv $ productVarConstra
 getSumVarConstraints :: T.SumVar -> Constraints -> ForbiddenFields
 getSumVarConstraints tv c = getTVCompositeConstraints tv $ sumVarConstraints c
 
-getTypeVarConstraints :: T.Var T.Type -> Constraints -> TypeVarConstraints
+getTypeVarConstraints :: T.TypeVar -> Constraints -> TypeVarConstraints
 getTypeVarConstraints _ _ = ()
 
 pPrintConstraint :: T.Var t -> Set T.Tag -> PP.Doc

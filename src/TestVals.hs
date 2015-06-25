@@ -67,7 +67,7 @@ integerType = T.TInst "Int" Map.empty
 boolType :: Type
 boolType = T.TInst "Bool" Map.empty
 
-forAll :: [T.Var Type] -> ([Type] -> Type) -> Scheme
+forAll :: [T.TypeVar] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
     Scheme mempty { typeVars = Set.fromList tvs } mempty $ mkType $ map T.TVar tvs
 

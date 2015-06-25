@@ -235,6 +235,8 @@ testUnify x y =
 prop_alphaEq :: Val () -> Bool
 prop_alphaEq v = v `V.alphaEq` v
 
+-- TODO: prop that top-level type equals the result type in scheme
+
 main :: IO ()
 main =
     do

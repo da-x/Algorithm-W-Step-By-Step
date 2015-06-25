@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr.Type
     ( Type(..), Composite(..)
+    , Product   , Sum
     , ProductTag, SumTag
     , ProductVar, SumVar, TypeVar
     , Var(..), Id(..), Tag(..), ParamId(..)
@@ -39,8 +40,11 @@ newtype ParamId = ParamId { typeParamId :: Identifier }
 data ProductTag
 data SumTag
 
-type ProductVar = Var (Composite ProductTag)
-type SumVar = Var (Composite SumTag)
+type Product = Composite ProductTag
+type Sum = Composite SumTag
+
+type ProductVar = Var Product
+type SumVar = Var Sum
 type TypeVar = Var Type
 
 data Composite p
@@ -60,8 +64,8 @@ data Type
     = TVar TypeVar
     | TFun Type Type
     | TInst Id (Map ParamId Type)
-    | TRecord (Composite ProductTag)
-    | TSum (Composite SumTag)
+    | TRecord Product
+    | TSum Sum
     deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type

@@ -10,8 +10,8 @@ import           Text.PrettyPrint ((<+>), Doc)
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data Error
-    = FieldAlreadyInRecord T.Tag (T.Composite T.ProductTag)
-    | FieldForbidden T.Tag T.ProductVar (T.Composite T.ProductTag)
+    = FieldAlreadyInRecord T.Tag T.Product
+    | FieldForbidden T.Tag T.ProductVar T.Product
     | AltForbidden T.Tag T.SumVar (T.Composite T.SumTag)
     | MissingGlobal V.GlobalId
     | OccursCheckFail Doc Doc

@@ -23,8 +23,8 @@ type SubSubst t = Map (T.Var t) t
 
 data Subst = Subst
     { substTypes :: SubSubst Type
-    , substRecordTypes :: SubSubst (T.Composite T.ProductTag)
-    , substSumTypes :: SubSubst (T.Composite T.SumTag)
+    , substRecordTypes :: SubSubst T.Product
+    , substSumTypes :: SubSubst T.Sum
     } deriving Show
 
 null :: Subst -> Bool

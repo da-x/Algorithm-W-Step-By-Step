@@ -21,7 +21,7 @@ suggestValueWith mkVar (T.TFun (T.TSum composite) r) =
 suggestValueWith mkVar (T.TFun _ r)          =
     P.abs <$> mkVar <*> suggestValueWith mkVar r
 
-suggestRecordWith :: Applicative f => f V.Var -> T.Composite T.ProductTag -> f (Val ())
+suggestRecordWith :: Applicative f => f V.Var -> T.Product -> f (Val ())
 suggestRecordWith _ T.CVar{}          = pure P.hole
 suggestRecordWith _ T.CEmpty          = pure P.recEmpty
 suggestRecordWith mkVar (T.CExtend f t r) =

@@ -12,7 +12,7 @@ import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 data Error
     = FieldAlreadyInRecord T.Tag T.Product
     | FieldForbidden T.Tag T.ProductVar T.Product
-    | AltForbidden T.Tag T.SumVar (T.Composite T.SumTag)
+    | AltForbidden T.Tag T.SumVar T.Sum
     | MissingGlobal V.GlobalId
     | OccursCheckFail Doc Doc
     | TypesDoNotUnity Doc Doc

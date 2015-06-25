@@ -28,7 +28,7 @@ suggestRecordWith _ T.CEmpty          = pure P.recEmpty
 suggestRecordWith mkVar (T.CExtend f t r) =
     P.recExtend f <$> suggestValueWith mkVar t <*> suggestRecordWith mkVar r
 
-suggestCaseWith :: Applicative f => f V.Var -> T.Composite T.SumTag -> Type -> f (Val ())
+suggestCaseWith :: Applicative f => f V.Var -> T.Sum -> Type -> f (Val ())
 suggestCaseWith _ T.CVar{} _ = pure P.hole
 suggestCaseWith _ T.CEmpty _ = pure P.absurd
 suggestCaseWith mkVar (T.CExtend f t r) res =

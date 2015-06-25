@@ -6,13 +6,10 @@ module Lamdu.Expr.Type
     , ProductVar, SumVar, TypeVar
     , Var(..), Id(..), Tag(..), ParamId(..)
     , (~>), int
-    , compositeTypes, nextLayer
     ) where
 
-import           Control.Applicative ((<$>), Applicative(..))
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
-import qualified Control.Lens as Lens
 import           Data.Binary (Binary)
 import           Data.Hashable (Hashable)
 import qualified Data.List as List
@@ -55,11 +52,6 @@ data Composite p
 instance NFData (Composite p) where rnf = genericRnf
 instance Binary (Composite p)
 
-compositeTypes :: Lens.Traversal' (Composite p) Type
-compositeTypes f (CExtend tag typ rest) = CExtend tag <$> f typ <*> compositeTypes f rest
-compositeTypes _ CEmpty = pure CEmpty
-compositeTypes _ (CVar tv) = pure (CVar tv)
-
 data Type
     = TVar TypeVar
     | TFun Type Type
@@ -69,14 +61,6 @@ data Type
     deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
-
--- | Traverse direct types within a type
-nextLayer :: Lens.Traversal' Type Type
-nextLayer _ (TVar tv) = pure (TVar tv)
-nextLayer f (TFun a r) = TFun <$> f a <*> f r
-nextLayer f (TInst tid m) = TInst tid <$> Lens.traverse f m
-nextLayer f (TRecord p) = TRecord <$> compositeTypes f p
-nextLayer f (TSum s) = TSum <$> compositeTypes f s
 
 -- The type of LiteralInteger
 int :: Type

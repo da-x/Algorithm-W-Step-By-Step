@@ -23,8 +23,8 @@ type SubSubst t = Map (T.Var t) t
 
 data Subst = Subst
     { substTypes :: SubSubst Type
-    , substRecordTypes :: SubSubst (T.Composite T.Product)
-    , substSumTypes :: SubSubst (T.Composite T.Sum)
+    , substRecordTypes :: SubSubst (T.Composite T.ProductTag)
+    , substSumTypes :: SubSubst (T.Composite T.SumTag)
     } deriving Show
 
 null :: Subst -> Bool
@@ -86,13 +86,13 @@ instance HasVar Type where
     {-# INLINE new #-}
     new tv t = mempty { substTypes = Map.singleton tv t }
 
-instance CompositeHasVar T.Product where
+instance CompositeHasVar T.ProductTag where
     {-# INLINE compositeGet #-}
     compositeGet = substRecordTypes
     {-# INLINE compositeNew #-}
     compositeNew v = mempty { substRecordTypes = v }
 
-instance CompositeHasVar T.Sum where
+instance CompositeHasVar T.SumTag where
     {-# INLINE compositeGet #-}
     compositeGet = substSumTypes
     {-# INLINE compositeNew #-}

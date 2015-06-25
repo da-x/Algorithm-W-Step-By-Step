@@ -62,11 +62,11 @@ class CompositeVarKind p where
     compositeMember :: T.Var (T.Composite p) -> TypeVars -> Bool
     compositeSingleton :: T.Var (T.Composite p) -> TypeVars
 
-instance CompositeVarKind T.Product where
+instance CompositeVarKind T.ProductTag where
     compositeMember v tvs = v `Set.member` productTypeVars tvs
     compositeSingleton v = mempty { productTypeVars = Set.singleton v }
 
-instance CompositeVarKind T.Sum where
+instance CompositeVarKind T.SumTag where
     compositeMember v tvs = v `Set.member` sumTypeVars tvs
     compositeSingleton v = mempty { sumTypeVars = Set.singleton v }
 

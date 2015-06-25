@@ -61,8 +61,8 @@ renameApply renames (CompositeVarConstraints m) =
         rename x = fromMaybe x $ Map.lookup x renames
 
 data Constraints = Constraints
-    { productVarConstraints :: CompositeVarConstraints T.Product
-    , sumVarConstraints :: CompositeVarConstraints T.Sum
+    { productVarConstraints :: CompositeVarConstraints T.ProductTag
+    , sumVarConstraints :: CompositeVarConstraints T.SumTag
     } deriving (Generic, Eq, Show)
 
 instance Monoid Constraints where

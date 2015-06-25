@@ -143,12 +143,12 @@ foldrTest =
 
 suggestTypes :: [Type]
 suggestTypes =
-    [ T.int ~> T.int
-    , T.int ~> T.int ~> T.int
+    [ T.TInt ~> T.TInt
+    , T.TInt ~> T.TInt ~> T.TInt
     , TRecord CEmpty
     , TVar "a" ~> TRecord CEmpty
-    , TVar "a" ~> TRecord (CExtend "x" T.int (CExtend "y" (T.int ~> T.int) CEmpty))
-    , TVar "a" ~> TRecord (CExtend "x" (T.int ~> T.int) (CExtend "y" (T.int ~> T.int) CEmpty))
+    , TVar "a" ~> TRecord (CExtend "x" T.TInt (CExtend "y" (T.TInt ~> T.TInt) CEmpty))
+    , TVar "a" ~> TRecord (CExtend "x" (T.TInt ~> T.TInt) (CExtend "y" (T.TInt ~> T.TInt) CEmpty))
     ]
 
 unifies :: [(Type, Type)]
@@ -160,7 +160,7 @@ unifies =
           CEmpty
         ) ~> TVar "e"
       , ( TRecord $
-          CExtend "x" T.int $
+          CExtend "x" T.TInt $
           CExtend "y" (TVar "a") $
           CExtend "z" (TVar "a") $
           CVar "r"

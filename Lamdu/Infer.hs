@@ -21,7 +21,7 @@ import           Control.Lens.Tuple
 import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..), (<>))
+import           Data.Monoid ((<>))
 import           Data.Traversable (sequenceA)
 import           Data.Typeable (Typeable)
 import           GHC.Generics (Generic)
@@ -121,7 +121,7 @@ inferLeaf globals leaf = \_go locals ->
         case Map.lookup n globals of
         Nothing      -> M.throwError $ Err.MissingGlobal n
         Just sigma   -> Scheme.instantiate sigma
-    V.LLiteralInteger _ -> return (T.TInst "Int" mempty)
+    V.LLiteralInteger _ -> return T.TInt
     V.LRecEmpty -> return $ T.TRecord T.CEmpty
     V.LAbsurd ->
         do

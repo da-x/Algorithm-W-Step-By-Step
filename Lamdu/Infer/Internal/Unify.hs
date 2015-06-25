@@ -131,6 +131,7 @@ instance Unify Type where
     unifyGeneric t (T.TVar u)                =  varBind u t
     unifyGeneric (T.TRecord x) (T.TRecord y) =  unifyGeneric x y
     unifyGeneric (T.TSum x)    (T.TSum y)    =  unifyGeneric x y
+    unifyGeneric T.TInt        T.TInt        =  return ()
     unifyGeneric t1 t2                       =  dontUnify t1 t2
 
     varBind u (T.TVar t) | t == u = return ()

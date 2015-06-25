@@ -16,6 +16,7 @@ suggestValueWith _ (T.TInst i _params)       = pure (P.toNom i P.hole)
 suggestValueWith mkVar (T.TSum (T.CExtend f t T.CEmpty)) =
     P.inject f <$> suggestValueWith mkVar t
 suggestValueWith _ T.TSum {}                 = pure P.hole
+suggestValueWith _ T.TInt                    = pure P.hole
 suggestValueWith mkVar (T.TRecord composite) =
     suggestRecordWith mkVar composite
 suggestValueWith mkVar (T.TFun (T.TSum composite) r) =

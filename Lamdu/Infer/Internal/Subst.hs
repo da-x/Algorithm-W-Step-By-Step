@@ -83,6 +83,7 @@ instance CanSubst Type where
     apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)
     apply s (T.TRecord r)   = T.TRecord $ apply s r
     apply s (T.TSum r)      = T.TSum $ apply s r
+    apply _ T.TInt          = T.TInt
 
 remove :: TypeVars -> Subst -> Subst
 remove (TypeVars tvs rtvs stvs) (Subst subT subR subS) =

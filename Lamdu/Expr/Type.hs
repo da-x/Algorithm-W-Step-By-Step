@@ -5,7 +5,7 @@ module Lamdu.Expr.Type
     , ProductTag, SumTag
     , ProductVar, SumVar, TypeVar
     , Var(..), Id(..), Tag(..), ParamId(..)
-    , (~>), int
+    , (~>)
     ) where
 
 import           Control.DeepSeq (NFData(..))
@@ -56,15 +56,12 @@ data Type
     = TVar TypeVar
     | TFun Type Type
     | TInst Id (Map ParamId Type)
+    | TInt
     | TRecord Product
     | TSum Sum
     deriving (Generic, Show, Eq, Ord)
 instance NFData Type where rnf = genericRnf
 instance Binary Type
-
--- The type of LiteralInteger
-int :: Type
-int = TInst "Int" Map.empty
 
 infixr 1 ~>
 (~>) :: Type -> Type -> Type
@@ -86,6 +83,7 @@ instance Pretty Type where
                 PP.text ">"
             where
                 showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
+        TInt -> PP.text "Int"
         TRecord r -> PP.text "*" <> pPrint r
         TSum s -> PP.text "+" <> pPrint s
 

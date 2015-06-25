@@ -69,6 +69,7 @@ nextLayer f (T.TFun a r) = T.TFun <$> f a <*> f r
 nextLayer f (T.TInst tid m) = T.TInst tid <$> Lens.traverse f m
 nextLayer f (T.TRecord p) = T.TRecord <$> compositeTypes f p
 nextLayer f (T.TSum s) = T.TSum <$> compositeTypes f s
+nextLayer _ T.TInt = pure T.TInt
 
 valApply :: Traversal' (Val a) (V.Apply (Val a))
 valApply = V.body . _BApp

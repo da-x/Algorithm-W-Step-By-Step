@@ -64,9 +64,6 @@ infixl 3 $=
 ($=) :: T.Tag -> Val () -> Val () -> Val ()
 ($=) = P.recExtend
 
-integerType :: Type
-integerType = T.TInst "Int" Map.empty
-
 forAll :: [T.TypeVar] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
     Scheme mempty { typeVars = Set.fromList tvs } mempty $ mkType $ map T.TVar tvs
@@ -140,7 +137,7 @@ env =
         , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
         , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
         , ("map",    forAll ["a", "b"] $ \ [a, b] -> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
-        , ("..",     forAll [] $ \ [] -> infixType integerType integerType (listOf integerType))
+        , ("..",     forAll [] $ \ [] -> infixType T.TInt T.TInt (listOf T.TInt))
         , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
         , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)
         , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
@@ -151,7 +148,7 @@ env =
         , ("Just",   forAll ["a"] $ \ [a] -> a ~> maybeOf a)
         , ("Nothing",forAll ["a"] $ \ [a] -> maybeOf a)
         , ("maybe",  forAll ["a", "b"] $ \ [a, b] -> b ~> (a ~> b) ~> maybeOf a ~> b)
-        , ("plus1",  forAll [] $ \ [] -> integerType ~> integerType)
+        , ("plus1",  forAll [] $ \ [] -> T.TInt ~> T.TInt)
         , ("True",   forAll [] $ \ [] -> boolType)
         , ("False",  forAll [] $ \ [] -> boolType)
         ]

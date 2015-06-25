@@ -14,15 +14,17 @@ import           Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Val as V
+import           Lamdu.Expr.Val.Arbitrary ()
 import           Lamdu.Infer
 import qualified Lamdu.Infer.Recursive as Recursive
 import           Lamdu.Infer.Unify
 import qualified Lamdu.Infer.Update as Update
 import qualified Lamdu.Suggest as Suggest
+import qualified Test.Framework as TestFramework
+import           Test.Framework.Providers.QuickCheck2 (testProperty)
 import           Text.PrettyPrint ((<>), (<+>), ($+$))
 import qualified Text.PrettyPrint as PP
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
-
 import           TestVals
 
 {-# ANN module ("HLint: ignore Use const" :: String) #-}
@@ -230,6 +232,9 @@ testUnify x y =
         printResult (Left err) = print $ printCase $+$ pPrint err
         printResult (Right (res, _ctx)) = print $ printCase $+$ pPrint res
 
+prop_alphaEq :: Val () -> Bool
+prop_alphaEq v = v `V.alphaEq` v
+
 main :: IO ()
 main =
     do
@@ -241,3 +246,4 @@ main =
         mapM_ testSuggest suggestTypes
         putStrLn "Unify:"
         mapM_ (uncurry testUnify) unifies
+        TestFramework.defaultMain [testProperty "alphaEq self" prop_alphaEq]

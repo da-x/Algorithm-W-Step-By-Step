@@ -71,17 +71,28 @@ benchmark bench-builder-all
   ghc-prof-options:    -auto-all -caf-all -rtsopts
   default-language:    Haskell2010
 
-executable AlgoW
+test-suite algow-test
+  type:                exitcode-stdio-1.0
   ghc-options:         -Wall
   ghc-prof-options:    -auto-all -caf-all -rtsopts
   main-is:             Test.hs
-  -- other-modules:
-  hs-source-dirs:      src
+  other-modules:       Lamdu.Expr.Val.Arbitrary
+                       TestVals
+  hs-source-dirs:      ., src
   build-depends:       AlgoW
-               ,       base
-               ,       containers
-               ,       pretty
-               ,       prettyclass
-               ,       lens
-               ,       mtl
+                     , QuickCheck
+                     , base
+                     , binary
+                     , bytestring
+                     , containers
+                     , deepseq
+                     , deepseq-generics
+                     , hashable
+                     , lens
+                     , mtl
+                     , pretty
+                     , prettyclass
+                     , test-framework >= 0.8.1.1
+                     , test-framework-quickcheck2 >= 0.3.0.3
+                     , transformers
   default-language:    Haskell2010

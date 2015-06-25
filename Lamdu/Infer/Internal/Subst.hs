@@ -8,16 +8,18 @@ import           Prelude hiding (null)
 
 import           Control.Applicative ((<$>))
 import           Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.Map.Utils as MapUtils
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid (Monoid(..))
 import           Data.Set (Set)
+import           Lamdu.Expr.Scheme (Scheme(..))
 import           Lamdu.Expr.Type (Type)
+import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars(..))
+import qualified Lamdu.Expr.TypeVars as TypeVars
 import           Text.PrettyPrint (text, vcat, (<>))
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
-import qualified Data.Map as Map
-import qualified Lamdu.Expr.Type as T
-import qualified Lamdu.Expr.TypeVars as TypeVars
 
 type SubSubst t = Map (T.Var t) t
 
@@ -81,6 +83,22 @@ instance CanSubst Type where
     apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)
     apply s (T.TRecord r)   = T.TRecord $ apply s r
     apply s (T.TSum r)      = T.TSum $ apply s r
+
+remove :: TypeVars -> Subst -> Subst
+remove (TypeVars tvs rtvs stvs) (Subst subT subR subS) =
+    Subst
+    (MapUtils.differenceSet subT tvs)
+    (MapUtils.differenceSet subR rtvs)
+    (MapUtils.differenceSet subS stvs)
+
+instance CanSubst Scheme where
+    apply s (Scheme forAll constraints typ) =
+        Scheme forAll
+        -- One need not apply subst on contraints because those are on forAll vars
+        constraints
+        (apply cleanS typ)
+        where
+            cleanS = remove forAll s
 
 instance HasVar Type where
     {-# INLINE new #-}

@@ -18,7 +18,7 @@ applySubst (Subst _ rtvSubsts stvSubsts) (Constraints prodC sumC) =
     <*> applySubstCompositeConstraints DuplicateAlt stvSubsts sumC
 
 applySubstCompositeConstraints ::
-    (T.Tag -> T.Var (T.Composite t) -> T.Composite t -> err) ->
+    (T.Tag -> T.Composite t -> err) ->
     Map (T.Var (T.Composite t)) (T.Composite t) ->
     CompositeVarConstraints t ->
     Either err (CompositeVarConstraints t)
@@ -35,5 +35,5 @@ applySubstCompositeConstraints fieldForbidden rtvSubsts (CompositeVarConstraints
                     go T.CEmpty             = Right []
                     go (T.CVar newVar)      = Right [(newVar, forbidden)]
                     go (T.CExtend f _ rest)
-                        | Set.member f forbidden = Left $ fieldForbidden f var recType
+                        | Set.member f forbidden = Left $ fieldForbidden f recType
                         | otherwise              = go rest

@@ -226,7 +226,7 @@ inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
                 -- verify it doesn't already have this field,
                 -- and avoid unnecessary unify from other case
                 case hasTag name x of
-                HasTag -> M.throwError $ Err.FieldAlreadyInRecord name x
+                HasTag -> M.throwError $ Err.DuplicateField name x
                 DoesNotHaveTag -> return x
                 MayHaveTag var -> x <$ M.tellProductConstraint var name
             _ -> do

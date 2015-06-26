@@ -3,6 +3,7 @@ module Lamdu.Expr.Pure
     , inject, absurd, _case
     , fromNom, toNom
     , leaf, hole
+    , record, lambda, lambdaRecord
     ) where
 
 import           Prelude hiding (abs)
@@ -57,3 +58,14 @@ toNom tid v = Val mempty $ V.BToNom $ V.Nom tid v
 
 hole :: Monoid a => Val a
 hole = leaf V.LHole
+
+
+record :: Monoid a => [(T.Tag, Val a)] -> Val a
+record = foldr (uncurry recExtend) recEmpty
+
+lambda :: Monoid a => V.Var -> (Val a -> Val a) -> Val a
+lambda v body = abs v $ body $ var v
+
+lambdaRecord :: Monoid a => V.Var -> [T.Tag] -> ([Val a] -> Val a) -> Val a
+lambdaRecord v tags body =
+    abs v $ body $ map (getField (var v)) tags

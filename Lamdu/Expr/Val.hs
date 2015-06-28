@@ -88,7 +88,7 @@ instance Match GetField where
         | t0 == t1 = Just $ GetField (f r0 r1) t0
         | otherwise = Nothing
 
-getFieldRecord :: Lens' (GetField exp) exp
+getFieldRecord :: Lens (GetField a) (GetField b) a b
 getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
 
 getFieldTag :: Lens' (GetField exp) T.Tag
@@ -106,7 +106,7 @@ instance Match Inject where
         | t0 == t1 = Just $ Inject t0 (f r0 r1)
         | otherwise = Nothing
 
-injectVal :: Lens' (Inject exp) exp
+injectVal :: Lens (Inject a) (Inject b) a b
 injectVal f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
 
 injectTag :: Lens' (Inject exp) T.Tag
@@ -145,7 +145,7 @@ instance Binary exp => Binary (Lam exp)
 lamParamId :: Lens' (Lam exp) Var
 lamParamId f Lam {..} = f _lamParamId <&> \_lamParamId -> Lam {..}
 
-lamResult :: Lens' (Lam exp) exp
+lamResult :: Lens (Lam a) (Lam b) a b
 lamResult f Lam {..} = f _lamResult <&> \_lamResult -> Lam {..}
 
 data RecExtend exp = RecExtend

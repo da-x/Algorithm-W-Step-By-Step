@@ -4,8 +4,8 @@ module TestVals
     ( env
     , list
     , factorialVal, euler1Val, solveDepressedQuarticVal
-    , lambda, lambdaRecord, whereItem, record, eRecord
-    , eLet, ($$), ($$:), ($.), ($=)
+    , lambda, lambdaRecord, whereItem, recordType
+    , eLet
     , listTypePair, boolTypePair
     ) where
 
@@ -14,6 +14,7 @@ import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import           Lamdu.Expr.Nominal (Nominal(..))
+import           Lamdu.Expr.Pure (($$), ($$:))
 import qualified Lamdu.Expr.Pure as P
 import           Lamdu.Expr.Scheme (Scheme(..))
 import qualified Lamdu.Expr.Scheme as Scheme
@@ -42,27 +43,8 @@ lambdaRecord names mkBody =
 whereItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
 
-record :: [(T.Tag, Type)] -> Type
-record = T.TRecord . foldr (uncurry T.CExtend) T.CEmpty
-
-eRecord :: [(T.Tag, Val ())] -> Val ()
-eRecord = foldr (uncurry P.recExtend) P.recEmpty
-
-infixl 4 $$
-($$) :: Val () -> Val () -> Val ()
-($$) = P.app
-
-infixl 4 $$:
-($$:) :: Val () -> [(T.Tag, Val ())] -> Val ()
-func $$: fields = func $$ eRecord fields
-
-infixl 9 $.
-($.) :: Val () -> T.Tag -> Val ()
-($.) = P.getField
-
-infixl 3 $=
-($=) :: T.Tag -> Val () -> Val () -> Val ()
-($=) = P.recExtend
+recordType :: [(T.Tag, Type)] -> Type
+recordType = T.TRecord . foldr (uncurry T.CExtend) T.CEmpty
 
 forAll :: [T.TypeVar] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
@@ -75,8 +57,8 @@ listTypePair =
         { nParams = Map.singleton "elem" tvName
         , nScheme =
             T.CEmpty
-            & T.CExtend "[]" (record [])
-            & T.CExtend ":" (record [("head", tv), ("tail", listOf tv)])
+            & T.CExtend "[]" (recordType [])
+            & T.CExtend ":" (recordType [("head", tv), ("tail", listOf tv)])
             & T.TSum
             & Scheme.mono
         }
@@ -98,8 +80,8 @@ boolTypePair =
         { nParams = Map.empty
         , nScheme =
             T.CEmpty
-            & T.CExtend "True" (record [])
-            & T.CExtend "False" (record [])
+            & T.CExtend "True" (recordType [])
+            & T.CExtend "False" (recordType [])
             & T.TSum
             & Scheme.mono
         }
@@ -108,15 +90,15 @@ boolTypePair =
 maybeOf :: Type -> Type
 maybeOf t =
     T.TSum $
-    T.CExtend "Nothing" (record []) $
+    T.CExtend "Nothing" (recordType []) $
     T.CExtend "Just" t $
     T.CEmpty
 
 infixType :: Type -> Type -> Type -> Type
-infixType a b c = record [("l", a), ("r", b)] ~> c
+infixType a b c = recordType [("l", a), ("r", b)] ~> c
 
 infixArgs :: Val () -> Val () -> Val ()
-infixArgs l r = eRecord [("l", l), ("r", r)]
+infixArgs l r = P.record [("l", l), ("r", r)]
 
 env :: Loaded
 env =
@@ -124,7 +106,7 @@ env =
     { loadedGlobalTypes =
         Map.fromList
         [ ("fix",    forAll ["a"] $ \ [a] -> (a ~> a) ~> a)
-        , ("if",     forAll ["a"] $ \ [a] -> record [("condition", boolType), ("then", a), ("else", a)] ~> a)
+        , ("if",     forAll ["a"] $ \ [a] -> recordType [("condition", boolType), ("then", a), ("else", a)] ~> a)
         , ("==",     forAll ["a"] $ \ [a] -> infixType a a boolType)
         , ("%",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("*",      forAll ["a"] $ \ [a] -> infixType a a a)
@@ -132,11 +114,11 @@ env =
         , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
-        , ("filter", forAll ["a"] $ \ [a] -> record [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
-        , (":",      forAll ["a"] $ \ [a] -> record [("head", a), ("tail", listOf a)] ~> listOf a)
+        , ("filter", forAll ["a"] $ \ [a] -> recordType [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
+        , (":",      forAll ["a"] $ \ [a] -> recordType [("head", a), ("tail", listOf a)] ~> listOf a)
         , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
         , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
-        , ("map",    forAll ["a", "b"] $ \ [a, b] -> record [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
+        , ("map",    forAll ["a", "b"] $ \ [a, b] -> recordType [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
         , ("..",     forAll [] $ \ [] -> infixType T.TInt T.TInt (listOf T.TInt))
         , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
         , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)

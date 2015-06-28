@@ -9,6 +9,7 @@ import           Control.Monad.State (StateT(..), state, runState, evalState, mo
 import qualified Data.Map as M
 import           Data.String (IsString(..))
 import           Data.Traversable (traverse)
+import           Lamdu.Expr.Pure (($$), ($$:), ($=), ($.))
 import qualified Lamdu.Expr.Pure as P
 import           Lamdu.Expr.Type ((~>), Type(..), Composite(..))
 import qualified Lamdu.Expr.Type as T
@@ -22,10 +23,10 @@ import qualified Lamdu.Infer.Update as Update
 import qualified Lamdu.Suggest as Suggest
 import qualified Test.Framework as TestFramework
 import           Test.Framework.Providers.QuickCheck2 (testProperty)
+import           TestVals
 import           Text.PrettyPrint ((<>), (<+>), ($+$))
 import qualified Text.PrettyPrint as PP
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
-import           TestVals
 
 {-# ANN module ("HLint: ignore Use const" :: String) #-}
 

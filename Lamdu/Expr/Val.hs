@@ -46,8 +46,8 @@ newtype GlobalId = GlobalId { globalId :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 data Leaf
-    =  LVar Var
-    |  LGlobal GlobalId
+    =  LVar {-# UNPACK #-}!Var
+    |  LGlobal {-# UNPACK #-}!GlobalId
     |  LHole
     |  LLiteralInteger Integer
     |  LRecEmpty

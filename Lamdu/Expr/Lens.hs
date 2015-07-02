@@ -270,6 +270,8 @@ biTraverseBodyTags ::
     V.Body a -> f (V.Body b)
 biTraverseBodyTags onTag onChild body =
     case body of
+    V.BInject (V.Inject t v) ->
+        V.BInject <$> (V.Inject <$> onTag t <*> onChild v)
     V.BGetField (V.GetField r t) ->
         V.BGetField <$> (V.GetField <$> onChild r <*> onTag t)
     V.BRecExtend (V.RecExtend t v r) ->

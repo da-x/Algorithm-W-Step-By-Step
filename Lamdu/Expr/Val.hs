@@ -49,7 +49,7 @@ data Leaf
     =  LVar {-# UNPACK #-}!Var
     |  LGlobal {-# UNPACK #-}!GlobalId
     |  LHole
-    |  LLiteralInteger Integer
+    |  LLiteralInteger !Integer
     |  LRecEmpty
     |  LAbsurd
     deriving (Generic, Show, Eq)

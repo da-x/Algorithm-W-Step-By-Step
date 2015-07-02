@@ -26,6 +26,7 @@ benches =
     [ ("factorial", benchInfer factorialVal)
     , ("euler1", benchInfer euler1Val)
     , ("solveDepressedQuartic", benchInfer solveDepressedQuarticVal)
+    , ("factors", benchInfer factorsVal)
     ]
 
 main :: IO ()

@@ -40,11 +40,11 @@ app f x = Val mempty $ V.BApp $ V.Apply f x
 recExtend :: Monoid a => T.Tag -> Val a -> Val a -> Val a
 recExtend name typ rest = Val mempty $ V.BRecExtend $ V.RecExtend name typ rest
 
-getField :: Monoid a => Val a -> T.Tag -> Val a
-getField r n = Val mempty $ V.BGetField $ V.GetField r n
+getField :: Monoid a => T.Tag -> Val a
+getField = leaf . V.LGetField
 
-inject :: Monoid a => T.Tag -> Val a -> Val a
-inject n r = Val mempty $ V.BInject $ V.Inject n r
+inject :: Monoid a => T.Tag -> Val a
+inject = leaf . V.LInject
 
 absurd :: Monoid a => Val a
 absurd = leaf V.LAbsurd
@@ -64,7 +64,7 @@ hole = leaf V.LHole
 
 
 infixl 4 $$
-($$) :: Val () -> Val () -> Val ()
+($$) :: Monoid a => Val a -> Val a -> Val a
 ($$) = app
 
 infixl 4 $$:
@@ -72,8 +72,8 @@ infixl 4 $$:
 func $$: fields = func $$ record fields
 
 infixl 9 $.
-($.) :: Val () -> T.Tag -> Val ()
-($.) = getField
+($.) :: Monoid a => Val a -> T.Tag -> Val a
+($.) r t = getField t $$ r
 
 infixl 3 $=
 ($=) :: T.Tag -> Val () -> Val () -> Val ()
@@ -87,4 +87,4 @@ lambda v body = abs v $ body $ var v
 
 lambdaRecord :: Monoid a => V.Var -> [T.Tag] -> ([Val a] -> Val a) -> Val a
 lambdaRecord v tags body =
-    abs v $ body $ map (getField (var v)) tags
+    abs v $ body $ map (($.) (var v)) tags

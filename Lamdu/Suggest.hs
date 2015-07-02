@@ -19,7 +19,7 @@ suggestValueWith _ T.TInst{}                 = [pure P.hole]
 -- nominals that can fromNominal, and also offer to build the inner
 -- value
 suggestValueWith mkVar (T.TSum (T.CExtend f t sumType)) =
-    (suggestValueWith mkVar t <&> Lens.mapped %~ P.inject f)  ++
+    (suggestValueWith mkVar t <&> Lens.mapped %~ P.app (P.inject f)) ++
     suggestValueWith mkVar (T.TSum sumType)
 suggestValueWith _ (T.TSum T.CEmpty)         = [] -- Void value uninhabitable
 suggestValueWith _ (T.TSum T.CVar {})        = [pure P.hole]

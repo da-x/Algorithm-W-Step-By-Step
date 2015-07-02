@@ -8,14 +8,13 @@ module Lamdu.Expr.Lens
     , _LVar
     , _LLiteralInteger
     , _LFromNom, _LToNom
+    , _LGetField, _LInject
     -- ValBody prisms:
     , _BLeaf
     , _BApp
     , _BAbs
-    , _BGetField
     , _BRecExtend
     , _BCase
-    , _BInject
     -- Leafs
     , valGlobal        , valBodyGlobal
     , valHole          , valBodyHole
@@ -95,8 +94,8 @@ valRecEmpty = V.body . valBodyRecEmpty
 valLiteralInteger :: Traversal' (Val a) Integer
 valLiteralInteger = V.body . valBodyLiteralInteger
 
-valGetField  :: Traversal' (Val a) (V.GetField (Val a))
-valGetField = V.body . _BGetField
+valGetField  :: Traversal' (Val a) T.Tag
+valGetField = V.body . _BLeaf . _LGetField
 
 _LGlobal :: Prism' V.Leaf V.GlobalId
 _LGlobal = prism' V.LGlobal get
@@ -134,6 +133,18 @@ _LLiteralInteger = prism' V.LLiteralInteger get
         get (V.LLiteralInteger i) = Just i
         get _ = Nothing
 
+_LGetField :: Prism' V.Leaf T.Tag
+_LGetField = prism' V.LGetField get
+    where
+        get (V.LGetField x) = Just x
+        get _ = Nothing
+
+_LInject :: Prism' V.Leaf T.Tag
+_LInject = prism' V.LInject get
+    where
+        get (V.LInject x) = Just x
+        get _ = Nothing
+
 _LFromNom :: Prism' V.Leaf T.Id
 _LFromNom = prism' V.LFromNom get
     where
@@ -163,18 +174,6 @@ _BAbs :: Prism' (V.Body a) (V.Lam a)
 _BAbs = prism' V.BAbs get
     where
         get (V.BAbs x) = Just x
-        get _ = Nothing
-
-_BGetField :: Prism' (V.Body a) (V.GetField a)
-_BGetField = prism' V.BGetField get
-    where
-        get (V.BGetField x) = Just x
-        get _ = Nothing
-
-_BInject :: Prism' (V.Body a) (V.Inject a)
-_BInject = prism' V.BInject get
-    where
-        get (V.BInject x) = Just x
         get _ = Nothing
 
 _BRecExtend :: Prism' (V.Body a) (V.RecExtend a)
@@ -270,10 +269,8 @@ biTraverseBodyTags ::
     V.Body a -> f (V.Body b)
 biTraverseBodyTags onTag onChild body =
     case body of
-    V.BInject (V.Inject t v) ->
-        V.BInject <$> (V.Inject <$> onTag t <*> onChild v)
-    V.BGetField (V.GetField r t) ->
-        V.BGetField <$> (V.GetField <$> onChild r <*> onTag t)
+    V.BLeaf (V.LInject t) -> V.BLeaf . V.LInject <$> onTag t
+    V.BLeaf (V.LGetField t) -> V.BLeaf . V.LGetField <$> onTag t
     V.BRecExtend (V.RecExtend t v r) ->
         V.BRecExtend <$> (V.RecExtend <$> onTag t <*> onChild v <*> onChild r)
     _ -> Lens.traverse onChild body

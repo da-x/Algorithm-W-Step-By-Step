@@ -3,8 +3,6 @@ module Lamdu.Expr.Val
     ( Leaf(..)
     , Body(..)
     , Apply(..), applyFunc, applyArg
-    , GetField(..), getFieldRecord, getFieldTag
-    , Inject(..), injectVal, injectTag
     , Case(..), caseTag, caseMatch, caseMismatch
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
@@ -49,6 +47,8 @@ data Leaf
     |  LGlobal {-# UNPACK #-}!GlobalId
     |  LToNom {-# UNPACK #-}!T.Id
     |  LFromNom {-# UNPACK #-}!T.Id
+    |  LGetField {-# UNPACK #-}!T.Tag
+    |  LInject {-# UNPACK #-}!T.Tag
     |  LHole
     |  LLiteralInteger Integer
     |  LRecEmpty
@@ -76,42 +76,6 @@ applyFunc f (Apply func arg) = (`Apply` arg) <$> f func
 
 applyArg :: Lens' (Apply exp) exp
 applyArg f (Apply func arg) = Apply func <$> f arg
-
-data GetField exp = GetField
-    { _getFieldRecord :: exp
-    , _getFieldTag :: T.Tag
-    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
-instance NFData exp => NFData (GetField exp) where rnf = genericRnf
-instance Binary exp => Binary (GetField exp)
-instance Hashable exp => Hashable (GetField exp) where hashWithSalt = gHashWithSalt
-instance Match GetField where
-    match f (GetField r0 t0) (GetField r1 t1)
-        | t0 == t1 = Just $ GetField (f r0 r1) t0
-        | otherwise = Nothing
-
-getFieldRecord :: Lens (GetField a) (GetField b) a b
-getFieldRecord f GetField {..} = f _getFieldRecord <&> \_getFieldRecord -> GetField {..}
-
-getFieldTag :: Lens' (GetField exp) T.Tag
-getFieldTag f GetField {..} = f _getFieldTag <&> \_getFieldTag -> GetField {..}
-
-data Inject exp = Inject
-    { _injectTag :: T.Tag
-    , _injectVal :: exp
-    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
-instance NFData exp => NFData (Inject exp) where rnf = genericRnf
-instance Binary exp => Binary (Inject exp)
-instance Hashable exp => Hashable (Inject exp) where hashWithSalt = gHashWithSalt
-instance Match Inject where
-    match f (Inject t0 r0) (Inject t1 r1)
-        | t0 == t1 = Just $ Inject t0 (f r0 r1)
-        | otherwise = Nothing
-
-injectVal :: Lens (Inject a) (Inject b) a b
-injectVal f Inject {..} = f _injectVal <&> \_injectVal -> Inject {..}
-
-injectTag :: Lens' (Inject exp) T.Tag
-injectTag f Inject {..} = f _injectTag <&> \_injectTag -> Inject {..}
 
 data Case exp = Case
     { _caseTag :: T.Tag
@@ -174,9 +138,7 @@ recRest f RecExtend {..} = f _recRest <&> \_recRest -> RecExtend {..}
 data Body exp
     =  BApp {-# UNPACK #-}!(Apply exp)
     |  BAbs {-# UNPACK #-}!(Lam exp)
-    |  BGetField {-# UNPACK #-}!(GetField exp)
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
-    |  BInject {-# UNPACK #-}!(Inject exp)
     |  BCase {-# UNPACK #-}!(Case exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
@@ -206,6 +168,8 @@ pPrintPrecBody lvl prec b =
     BLeaf (LGlobal tag)       -> pPrint tag
     BLeaf (LToNom tid)        -> pPrint tid
     BLeaf (LFromNom tid)      -> PP.text "from" <+> pPrint tid
+    BLeaf (LInject tid)       -> PP.text "inject" <+> pPrint tid
+    BLeaf (LGetField tid)     -> PP.text "get" <+> pPrint tid
     BLeaf (LLiteralInteger i) -> pPrint i
     BLeaf LHole               -> PP.text "?"
     BLeaf LAbsurd             -> PP.text "absurd"
@@ -215,10 +179,6 @@ pPrintPrecBody lvl prec b =
                                  PP.char '\\' <> pPrint n <+>
                                  PP.text "->" <+>
                                  pPrint e
-    BGetField (GetField e n)  -> prettyParen (12 < prec) $
-                                 pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-    BInject (Inject n e)      -> prettyParen (12 < prec) $
-                                 pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
     BCase (Case n m mm)       -> prettyParen (0 < prec) $
                                  PP.vcat
                                  [ PP.text "case of"
@@ -268,10 +228,8 @@ alphaEq =
                 xToYConv xToY x == y
             (BLeaf x, BLeaf y) -> x == y
             (BApp x, BApp y) -> goRecurse x y
-            (BGetField x, BGetField y) -> goRecurse x y
             (BRecExtend x, BRecExtend y) -> goRecurse x y
             (BCase x, BCase y) -> goRecurse x y
-            (BInject x, BInject y) -> goRecurse x y
             (_, _) -> False
             where
                 goRecurse x y = maybe False Foldable.and $ match (go xToY) x y

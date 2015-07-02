@@ -130,6 +130,8 @@ inferLeaf nominals globals leaf = \_go locals ->
             return $ T.TFun (T.TSum T.CEmpty) tv
     V.LToNom tid -> inferToNom nominals tid
     V.LFromNom tid -> inferFromNom nominals tid
+    V.LInject tag -> inferInject tag
+    V.LGetField tag -> inferGetField tag
     <&> (,) (V.BLeaf leaf)
 
 {-# INLINE inferAbs #-}
@@ -157,31 +159,22 @@ inferApply (V.Apply e1 e2) = \go locals ->
         return (V.BApp (V.Apply e1' e2'), p3_tv)
 
 {-# INLINE inferGetField #-}
-inferGetField :: V.GetField a -> InferHandler a b
-inferGetField (V.GetField e name) = \go locals ->
+inferGetField :: T.Tag -> Infer Type
+inferGetField tag =
     do
-        (p1_t, e') <- go locals e
-        p1_tv <- M.freshInferredVar "a"
-        p1_tvRecName <- M.freshInferredVarName "r"
-        M.tellProductConstraint p1_tvRecName name
-
-        ((), p2_s) <-
-            M.listenSubst $ unifyUnsafe p1_t $
-            T.TRecord $ T.CExtend name p1_tv $ TV.lift p1_tvRecName
-        let p2_tv = Subst.apply p2_s p1_tv
-        return (V.BGetField (V.GetField e' name), p2_tv)
+        tv <- M.freshInferredVar "a"
+        tvRecName <- M.freshInferredVarName "r"
+        M.tellProductConstraint tvRecName tag
+        return $ T.TFun (T.TRecord (T.CExtend tag tv (TV.lift tvRecName))) tv
 
 {-# INLINE inferInject #-}
-inferInject :: V.Inject a -> InferHandler a b
-inferInject (V.Inject name e) = \go locals ->
+inferInject :: T.Tag -> Infer Type
+inferInject tag =
     do
-        (t, e') <- go locals e
+        tv <- M.freshInferredVar "a"
         tvSumName <- M.freshInferredVarName "s"
-        M.tellSumConstraint tvSumName name
-        return
-            ( V.BInject (V.Inject name e')
-            , T.TSum $ T.CExtend name t $ TV.lift tvSumName
-            )
+        M.tellSumConstraint tvSumName tag
+        return $ T.TFun tv $ T.TSum $ T.CExtend tag tv $ TV.lift tvSumName
 
 {-# INLINE inferCase #-}
 inferCase :: V.Case a -> InferHandler a b
@@ -293,8 +286,6 @@ inferInternal f loaded =
                 inferLeaf (loadedNominals loaded) (loadedGlobalTypes loaded) l
               V.BAbs lam -> inferAbs lam
               V.BApp app -> inferApply app
-              V.BGetField getField -> inferGetField getField
-              V.BInject inject -> inferInject inject
               V.BCase case_ -> inferCase case_
               V.BRecExtend recExtend -> inferRecExtend recExtend
             ) go locals

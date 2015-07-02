@@ -15,7 +15,7 @@ import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import           Lamdu.Expr.Nominal (Nominal(..))
-import           Lamdu.Expr.Pure (($$), ($$:))
+import           Lamdu.Expr.Pure (($$), ($$:), ($.))
 import qualified Lamdu.Expr.Pure as P
 import           Lamdu.Expr.Scheme (Scheme(..))
 import qualified Lamdu.Expr.Scheme as Scheme
@@ -39,7 +39,7 @@ lambda varName mkBody = P.abs varName $ mkBody $ P.var varName
 lambdaRecord :: [T.Tag] -> ([Val ()] -> Val ()) -> Val ()
 lambdaRecord names mkBody =
     lambda "paramsRecord" $ \paramsRec ->
-    mkBody $ map (P.getField paramsRec) names
+    mkBody $ map (($.) paramsRec) names
 
 whereItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
@@ -145,13 +145,13 @@ env =
     }
 
 list :: [Val ()] -> Val ()
-list [] = P.toNom "List" $$ P.inject "[]" P.recEmpty
+list [] = P.toNom "List" $$ (P.inject "[]" $$ P.recEmpty)
 list items@(_x:_) =
     foldr cons (list []) items
 
 cons :: Val () -> Val () -> Val ()
 cons h t =
-    P.toNom "List" $$ (P.inject ":" $ P.record [("head", h), ("tail", t)])
+    P.toNom "List" $$ (P.inject ":" $$ P.record [("head", h), ("tail", t)])
 
 factorialVal :: Val ()
 factorialVal =

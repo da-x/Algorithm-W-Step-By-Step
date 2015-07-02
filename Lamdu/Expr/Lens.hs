@@ -7,6 +7,7 @@ module Lamdu.Expr.Lens
     , _LAbsurd
     , _LVar
     , _LLiteralInteger
+    , _LFromNom, _LToNom
     -- ValBody prisms:
     , _BLeaf
     , _BApp
@@ -15,7 +16,6 @@ module Lamdu.Expr.Lens
     , _BRecExtend
     , _BCase
     , _BInject
-    , _BFromNom, _BToNom
     -- Leafs
     , valGlobal        , valBodyGlobal
     , valHole          , valBodyHole
@@ -36,7 +36,7 @@ module Lamdu.Expr.Lens
     --
     , valTags, bodyTags, biTraverseBodyTags
     , valGlobals
-    , valNominals
+    , valNominals, leafNominals
     , compositeTags
     -- Subexpressions:
     , subExprPayloads
@@ -134,6 +134,18 @@ _LLiteralInteger = prism' V.LLiteralInteger get
         get (V.LLiteralInteger i) = Just i
         get _ = Nothing
 
+_LFromNom :: Prism' V.Leaf T.Id
+_LFromNom = prism' V.LFromNom get
+    where
+        get (V.LFromNom x) = Just x
+        get _ = Nothing
+
+_LToNom :: Prism' V.Leaf T.Id
+_LToNom = prism' V.LToNom get
+    where
+        get (V.LToNom x) = Just x
+        get _ = Nothing
+
 -- TODO: _V* -> _B*
 _BLeaf :: Prism' (V.Body a) V.Leaf
 _BLeaf = prism' V.BLeaf get
@@ -163,18 +175,6 @@ _BInject :: Prism' (V.Body a) (V.Inject a)
 _BInject = prism' V.BInject get
     where
         get (V.BInject x) = Just x
-        get _ = Nothing
-
-_BFromNom :: Prism' (V.Body a) (V.Nom a)
-_BFromNom = prism' V.BFromNom get
-    where
-        get (V.BFromNom x) = Just x
-        get _ = Nothing
-
-_BToNom :: Prism' (V.Body a) (V.Nom a)
-_BToNom = prism' V.BToNom get
-    where
-        get (V.BToNom x) = Just x
         get _ = Nothing
 
 _BRecExtend :: Prism' (V.Body a) (V.RecExtend a)
@@ -287,12 +287,10 @@ valTags f = V.body $ biTraverseBodyTags f (valTags f)
 valGlobals :: Lens.Traversal' (Val a) V.GlobalId
 valGlobals = valLeafs . _LGlobal
 
+leafNominals :: Lens.Traversal' V.Leaf T.Id
+leafNominals f (V.LFromNom t) = f t <&> V.LFromNom
+leafNominals f (V.LToNom t) = f t <&> V.LToNom
+leafNominals _ l = pure l
+
 valNominals :: Lens.Traversal' (Val a) T.Id
-valNominals f (Val pl body) =
-    case body of
-    V.BFromNom nom -> onNom nom <&> V.BFromNom
-    V.BToNom nom -> onNom nom <&> V.BToNom
-    _ -> body & Lens.traverse . valNominals %%~ f
-    <&> Val pl
-    where
-        onNom (V.Nom nomId val) = V.Nom <$> f nomId <*> valNominals f val
+valNominals = valLeafs . leafNominals

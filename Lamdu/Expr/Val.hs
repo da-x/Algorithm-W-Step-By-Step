@@ -8,7 +8,6 @@ module Lamdu.Expr.Val
     , Case(..), caseTag, caseMatch, caseMismatch
     , Lam(..), lamParamId, lamResult
     , RecExtend(..), recTag, recFieldVal, recRest
-    , Nom(..), nomId, nomVal
     , Val(..), body, payload, alphaEq
     , Var(..)
     , GlobalId(..)
@@ -48,6 +47,8 @@ newtype GlobalId = GlobalId { globalId :: Identifier }
 data Leaf
     =  LVar {-# UNPACK #-}!Var
     |  LGlobal {-# UNPACK #-}!GlobalId
+    |  LToNom {-# UNPACK #-}!T.Id
+    |  LFromNom {-# UNPACK #-}!T.Id
     |  LHole
     |  LLiteralInteger Integer
     |  LRecEmpty
@@ -170,24 +171,6 @@ recFieldVal f RecExtend {..} = f _recFieldVal <&> \_recFieldVal -> RecExtend {..
 recRest :: Lens' (RecExtend exp) exp
 recRest f RecExtend {..} = f _recRest <&> \_recRest -> RecExtend {..}
 
-data Nom exp = Nom
-    { _nomId :: T.Id
-    , _nomVal :: exp
-    } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
-instance NFData exp => NFData (Nom exp) where rnf = genericRnf
-instance Hashable exp => Hashable (Nom exp) where hashWithSalt = gHashWithSalt
-instance Binary exp => Binary (Nom exp)
-instance Match Nom where
-    match f (Nom i0 v0) (Nom i1 v1)
-        | i0 == i1 = Just $ Nom i0 (f v0 v1)
-        | otherwise = Nothing
-
-nomId :: Lens' (Nom exp) T.Id
-nomId f Nom {..} = f _nomId <&> \_nomId -> Nom {..}
-
-nomVal :: Lens (Nom a) (Nom b) a b
-nomVal f Nom {..} = f _nomVal <&> \_nomVal -> Nom {..}
-
 data Body exp
     =  BApp {-# UNPACK #-}!(Apply exp)
     |  BAbs {-# UNPACK #-}!(Lam exp)
@@ -195,10 +178,6 @@ data Body exp
     |  BRecExtend {-# UNPACK #-}!(RecExtend exp)
     |  BInject {-# UNPACK #-}!(Inject exp)
     |  BCase {-# UNPACK #-}!(Case exp)
-    |  -- Convert to Nominal type
-       BToNom {-# UNPACK #-}!(Nom exp)
-    |  -- Convert from Nominal type
-       BFromNom {-# UNPACK #-}!(Nom exp)
     |  BLeaf Leaf
     deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 -- NOTE: Careful of Eq, it's not alpha-eq!
@@ -225,6 +204,8 @@ pPrintPrecBody lvl prec b =
     case b of
     BLeaf (LVar var)          -> pPrint var
     BLeaf (LGlobal tag)       -> pPrint tag
+    BLeaf (LToNom tid)        -> pPrint tid
+    BLeaf (LFromNom tid)      -> PP.text "from" <+> pPrint tid
     BLeaf (LLiteralInteger i) -> pPrint i
     BLeaf LHole               -> PP.text "?"
     BLeaf LAbsurd             -> PP.text "absurd"
@@ -244,8 +225,6 @@ pPrintPrecBody lvl prec b =
                                  , pPrint n <> PP.text " -> " <> pPrint m
                                  , PP.text "_" <> PP.text " -> " <> pPrint mm
                                  ]
-    BToNom (Nom ident val)    -> PP.text "[ ->" <+> pPrint ident <+> pPrint val <+> PP.text "]"
-    BFromNom (Nom ident val)  -> PP.text "[" <+> pPrint ident <+> pPrint val <+> PP.text "-> ]"
     BLeaf LRecEmpty           -> PP.text "{}"
     BRecExtend (RecExtend tag val rest) ->
                                  PP.text "{" <+>
@@ -293,8 +272,6 @@ alphaEq =
             (BRecExtend x, BRecExtend y) -> goRecurse x y
             (BCase x, BCase y) -> goRecurse x y
             (BInject x, BInject y) -> goRecurse x y
-            (BFromNom x, BFromNom y) -> goRecurse x y
-            (BToNom x, BToNom y) -> goRecurse x y
             (_, _) -> False
             where
                 goRecurse x y = maybe False Foldable.and $ match (go xToY) x y

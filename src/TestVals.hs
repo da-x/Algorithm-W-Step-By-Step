@@ -145,13 +145,13 @@ env =
     }
 
 list :: [Val ()] -> Val ()
-list [] = P.toNom "List" $ P.inject "[]" P.recEmpty
+list [] = P.toNom "List" $$ P.inject "[]" P.recEmpty
 list items@(_x:_) =
     foldr cons (list []) items
 
 cons :: Val () -> Val () -> Val ()
 cons h t =
-    P.toNom "List" $ P.inject ":" $ P.record [("head", h), ("tail", t)]
+    P.toNom "List" $$ (P.inject ":" $ P.record [("head", h), ("tail", t)])
 
 factorialVal :: Val ()
 factorialVal =
@@ -253,7 +253,7 @@ factorsVal =
             ( nullaryCase "False" f $
               nullaryCase "True" t $
               P.absurd
-            ) $$ P.fromNom "Bool" b
+            ) $$ (P.fromNom "Bool" $$ b)
         nullaryCase tag handler = P._case tag (defer handler)
         defer = P.lambda "_" . const
         (%>) = inf ">"

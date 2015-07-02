@@ -109,8 +109,9 @@ type InferHandler a b =
     M.Infer (V.Body b, Type)
 
 {-# INLINE inferLeaf #-}
-inferLeaf :: Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
-inferLeaf globals leaf = \_go locals ->
+inferLeaf ::
+    Map T.Id Nominal -> Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
+inferLeaf nominals globals leaf = \_go locals ->
     case leaf of
     V.LHole -> M.freshInferredVar "h"
     V.LVar n ->
@@ -127,6 +128,8 @@ inferLeaf globals leaf = \_go locals ->
         do
             tv <- M.freshInferredVar "a"
             return $ T.TFun (T.TSum T.CEmpty) tv
+    V.LToNom tid -> inferToNom nominals tid
+    V.LFromNom tid -> inferFromNom nominals tid
     <&> (,) (V.BLeaf leaf)
 
 {-# INLINE inferAbs #-}
@@ -266,31 +269,17 @@ nomTypes nominals name =
             Nominal.apply p1_paramVals nominal & Scheme.instantiate
         return (T.TInst name p1_paramVals, p1_freshInnerType)
 
-{-# INLINE inferFromNom #-}
-inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
-inferFromNom nominals (V.Nom name val) = \go locals ->
+inferFromNom :: Map T.Id Nominal -> T.Id -> Infer Type
+inferFromNom nominals name =
     do
-        (p1_t, val') <- go locals val
         (p1_outerType, p1_innerType) <- nomTypes nominals name
-        ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_outerType
-        let p2_innerType = Subst.apply p2_s p1_innerType
-        return
-            ( V.BFromNom (V.Nom name val')
-            , p2_innerType
-            )
+        return $ T.TFun p1_outerType p1_innerType
 
-{-# INLINE inferToNom #-}
-inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
-inferToNom nominals (V.Nom name val) = \go locals ->
+inferToNom :: Map T.Id Nominal -> T.Id -> Infer Type
+inferToNom nominals name =
     do
-        (p1_t, val') <- go locals val
         (p1_outerType, p1_innerType) <- nomTypes nominals name
-        ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_innerType
-        let p2_outerType = Subst.apply p2_s p1_outerType
-        return
-            ( V.BToNom (V.Nom name val')
-            , p2_outerType
-            )
+        return $ T.TFun p1_innerType p1_outerType
 
 inferInternal ::
     (Type -> Scope -> a -> b) ->
@@ -300,14 +289,13 @@ inferInternal f loaded =
     where
         go locals (Val pl body) =
             ( case body of
-              V.BLeaf leaf -> inferLeaf (loadedGlobalTypes loaded) leaf
+              V.BLeaf l ->
+                inferLeaf (loadedNominals loaded) (loadedGlobalTypes loaded) l
               V.BAbs lam -> inferAbs lam
               V.BApp app -> inferApply app
               V.BGetField getField -> inferGetField getField
               V.BInject inject -> inferInject inject
               V.BCase case_ -> inferCase case_
               V.BRecExtend recExtend -> inferRecExtend recExtend
-              V.BFromNom nom -> inferFromNom (loadedNominals loaded) nom
-              V.BToNom nom -> inferToNom (loadedNominals loaded) nom
             ) go locals
             <&> \(body', typ) -> (typ, Val (f typ locals pl) body')

@@ -4,6 +4,7 @@ module TestVals
     ( env
     , list
     , factorialVal, euler1Val, solveDepressedQuarticVal
+    , factorsVal
     , lambda, lambdaRecord, whereItem, recordType
     , eLet
     , listTypePair, boolTypePair
@@ -113,6 +114,7 @@ env =
         , ("-",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
+        , ("//",     forAll []    $ \ []  -> infixType T.TInt T.TInt T.TInt)
         , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
         , ("filter", forAll ["a"] $ \ [a] -> recordType [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
         , (":",      forAll ["a"] $ \ [a] -> recordType [("head", a), ("tail", listOf a)] ~> listOf a)
@@ -142,12 +144,13 @@ env =
     }
 
 list :: [Val ()] -> Val ()
-list [] = P.global "[]"
+list [] = P.toNom "List" $ P.inject "[]" P.recEmpty
 list items@(_x:_) =
-    foldr cons nil items
-    where
-        cons h t = P.global ":" $$: [("head", h), ("tail", t)]
-        nil = P.global "[]"
+    foldr cons (list []) items
+
+cons :: Val () -> Val () -> Val ()
+cons h t =
+    P.toNom "List" $ P.inject ":" $ P.record [("head", h), ("tail", t)]
 
 factorialVal :: Val ()
 factorialVal =
@@ -227,7 +230,34 @@ solveDepressedQuarticVal =
         )
     ]
     where
-        x %+ y = P.global "+" $$ infixArgs x y
-        x %- y = P.global "-" $$ infixArgs x y
-        x %* y = P.global "*" $$ infixArgs x y
-        x %/ y = P.global "/" $$ infixArgs x y
+        (%+) = inf "+"
+        (%-) = inf "-"
+        (%*) = inf "*"
+        (%/) = inf "/"
+
+inf :: V.GlobalId -> Val () -> Val () -> Val ()
+inf str x y = P.global str $$ infixArgs x y
+
+factorsVal :: Val ()
+factorsVal =
+    fix_ $ \loop ->
+    lambdaRecord ["n", "min"] $ \ [n, m] ->
+    if_ ((m %* m) %> n) (list [n]) $
+    if_ ((n %% m) %== P.litInt 0)
+    (cons m $ loop $$: [("n", n %// m), ("m", m)]) $
+    loop $$: [ ("n", n), ("m", m %+ P.litInt 1) ]
+    where
+        fix_ f = P.global "fix" $$ lambda "loop" f
+        if_ b t f =
+            ( nullaryCase "False" f $
+              nullaryCase "True" t $
+              P.absurd
+            ) $$ P.fromNom "Bool" b
+        nullaryCase tag handler = P._case tag (defer handler)
+        defer = P.lambda "_" . const
+        (%>) = inf ">"
+        (%%) = inf "%"
+        (%*) = inf "*"
+        (%+) = inf "+"
+        (%//) = inf "//"
+        (%==) = inf "=="

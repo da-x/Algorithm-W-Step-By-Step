@@ -274,6 +274,8 @@ biTraverseBodyTags onTag onChild body =
         V.BInject <$> (V.Inject <$> onTag t <*> onChild v)
     V.BGetField (V.GetField r t) ->
         V.BGetField <$> (V.GetField <$> onChild r <*> onTag t)
+    V.BCase (V.Case t v r) ->
+        V.BCase <$> (V.Case <$> onTag t <*> onChild v <*> onChild r)
     V.BRecExtend (V.RecExtend t v r) ->
         V.BRecExtend <$> (V.RecExtend <$> onTag t <*> onChild v <*> onChild r)
     _ -> Lens.traverse onChild body

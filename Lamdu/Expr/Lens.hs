@@ -29,10 +29,6 @@ module Lamdu.Expr.Lens
     -- Pure vals:
     , pureValBody
     , pureValApply
-    -- Types:
-    , _TRecord
-    , _TFun
-    , _TSum
     --
     , valTags, bodyTags, biTraverseBodyTags
     , valGlobals
@@ -42,9 +38,14 @@ module Lamdu.Expr.Lens
     , subExprPayloads
     , subExprs
     , payloadsIndexedByPath
-    -- Traversals:
+    -- Type prisms:
+    , _TRecord
+    , _TFun
+    , _TSum
+    -- Type traversals:
     , compositeTypes
     , nextLayer
+    , typeTIds
     ) where
 
 import           Control.Applicative (Applicative(..), (<$>))
@@ -70,6 +71,11 @@ nextLayer f (T.TInst tid m) = T.TInst tid <$> Lens.traverse f m
 nextLayer f (T.TRecord p) = T.TRecord <$> compositeTypes f p
 nextLayer f (T.TSum s) = T.TSum <$> compositeTypes f s
 nextLayer _ T.TInt = pure T.TInt
+
+typeTIds :: Lens.Traversal' Type T.Id
+typeTIds f (T.TInst tId args) =
+    T.TInst <$> f tId <*> Lens.traverse (typeTIds f) args
+typeTIds f x = nextLayer (typeTIds f) x
 
 valApply :: Traversal' (Val a) (V.Apply (Val a))
 valApply = V.body . _BApp

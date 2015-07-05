@@ -7,6 +7,7 @@ import           Control.Lens.Operators
 import           Control.Lens.Tuple
 import           Control.Monad.State (StateT(..), state, runState, evalState, modify, get)
 import qualified Data.Map as M
+import           Data.Maybe (fromMaybe)
 import           Data.String (IsString(..))
 import           Data.Traversable (traverse)
 import           Lamdu.Expr.Pure (($$), ($$:), ($=), ($.))
@@ -218,7 +219,9 @@ testSuggest typ =
     print $ PP.vcat (map V.pPrintUnannotated vals) <+> PP.text "suggested by" <+> pPrint typ
     where
         vals =
-            Suggest.suggestValueWith fresh typ
+            (Suggest.loadSuggest (`M.lookup` loadedNominals env) typ
+             & fromMaybe (error "Missing nominal?!"))
+            initialContext fresh
             <&> (`evalState` [fromString ('x':show (n::Integer)) | n <- [0..]])
         fresh = state $ head &&& tail
 

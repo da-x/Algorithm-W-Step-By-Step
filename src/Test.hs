@@ -215,11 +215,11 @@ testRecursive e =
 
 testSuggest :: Type -> IO ()
 testSuggest typ =
-    print $ V.pPrintUnannotated val <+> PP.text "suggested by" <+> pPrint typ
+    print $ PP.vcat (map V.pPrintUnannotated vals) <+> PP.text "suggested by" <+> pPrint typ
     where
-        val =
-            evalState (Suggest.suggestValueWith fresh typ)
-            [fromString ('x':show (n::Integer)) | n <- [0..]]
+        vals =
+            Suggest.suggestValueWith fresh typ
+            <&> (`evalState` [fromString ('x':show (n::Integer)) | n <- [0..]])
         fresh = state $ head &&& tail
 
 testUnify :: Type -> Type -> IO ()

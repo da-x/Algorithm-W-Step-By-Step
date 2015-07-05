@@ -91,6 +91,7 @@ test-suite algow-test
                      , hashable
                      , lens
                      , mtl
+                     , TypeCompose
                      , pretty
                      , prettyclass
                      , test-framework >= 0.8.1.1

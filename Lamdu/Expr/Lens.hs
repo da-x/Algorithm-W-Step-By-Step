@@ -39,9 +39,12 @@ module Lamdu.Expr.Lens
     , subExprs
     , payloadsIndexedByPath
     -- Type prisms:
+    , _TVar
     , _TRecord
-    , _TFun
     , _TSum
+    , _TFun
+    -- Composite prisms:
+    , _CVar
     -- Type traversals:
     , compositeTypes
     , nextLayer
@@ -217,6 +220,12 @@ valLeafs f (Val pl body) =
     _ -> body & Lens.traverse . valLeafs %%~ f
     <&> Val pl
 
+_TVar :: Prism' Type T.TypeVar
+_TVar = prism' T.TVar get
+    where
+        get (T.TVar x) = Just x
+        get _ = Nothing
+
 _TRecord :: Prism' Type T.Product
 _TRecord = prism' T.TRecord get
     where
@@ -233,6 +242,12 @@ _TFun :: Prism' Type (Type, Type)
 _TFun = prism' (uncurry T.TFun) get
     where
         get (T.TFun arg res) = Just (arg, res)
+        get _ = Nothing
+
+_CVar :: Prism' (T.Composite p) (T.Var (T.Composite p))
+_CVar = prism' T.CVar get
+    where
+        get (T.CVar x) = Just x
         get _ = Nothing
 
 compositeTags :: Traversal' (T.Composite p) T.Tag

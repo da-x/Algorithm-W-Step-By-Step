@@ -12,22 +12,27 @@ module Lamdu.Infer
     , M.freshInferredVar
     ) where
 
-import           Control.Applicative ((<$), (<$>))
+import           Control.Applicative (Applicative(..), (<$), (<$>))
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Control.Lens (Lens')
 import           Control.Lens.Operators
 import           Control.Lens.Tuple
+import           Control.Monad (unless, guard)
 import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Monoid ((<>))
-import           Data.Traversable (sequenceA)
+import qualified Data.Set as Set
+import           Data.Traversable (sequenceA, traverse)
 import           Data.Typeable (Typeable)
 import           GHC.Generics (Generic)
+import           Lamdu.Expr.Constraints (Constraints)
+import qualified Lamdu.Expr.Constraints as Constraints
+import qualified Lamdu.Expr.Lens as ExprLens
 import           Lamdu.Expr.Nominal (Nominal(..))
 import qualified Lamdu.Expr.Nominal as Nominal
-import           Lamdu.Expr.Scheme (Scheme)
+import           Lamdu.Expr.Scheme (Scheme(..))
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars(..))
@@ -37,13 +42,14 @@ import qualified Lamdu.Expr.Val as V
 import qualified Lamdu.Infer.Error as Err
 import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
-import           Lamdu.Infer.Internal.Scheme (makeScheme)
+import           Lamdu.Infer.Internal.Scheme (makeScheme, generalize)
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
 import           Lamdu.Infer.Internal.Scope (Scope, emptyScope)
 import qualified Lamdu.Infer.Internal.Scope as Scope
-import           Lamdu.Infer.Internal.Subst (CanSubst(..))
+import           Lamdu.Infer.Internal.Subst (Subst, CanSubst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
 import           Lamdu.Infer.Internal.Unify (unifyUnsafe)
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data Payload = Payload
     { _plType :: Type
@@ -254,7 +260,7 @@ getNominal nominals name =
     Nothing -> M.throwError $ Err.MissingNominal name
     Just nominal -> return nominal
 
-nomTypes :: Map T.Id Nominal -> T.Id -> M.Infer (Type, Type)
+nomTypes :: Map T.Id Nominal -> T.Id -> M.Infer (Type, Scheme)
 nomTypes nominals name =
     do
         nominal <- getNominal nominals name
@@ -262,16 +268,15 @@ nomTypes nominals name =
             nParams nominal
             & Map.keysSet & Map.fromSet (const (M.freshInferredVar "n"))
             & sequenceA
-        p1_freshInnerType <-
-            Nominal.apply p1_paramVals nominal & Scheme.instantiate
-        return (T.TInst name p1_paramVals, p1_freshInnerType)
+        return (T.TInst name p1_paramVals, Nominal.apply p1_paramVals nominal)
 
 {-# INLINE inferFromNom #-}
 inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
 inferFromNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes nominals name
+        (p1_outerType, p1_innerScheme) <- nomTypes nominals name
+        p1_innerType <- Scheme.instantiate p1_innerScheme
         ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_outerType
         let p2_innerType = Subst.apply p2_s p1_innerType
         return
@@ -279,18 +284,94 @@ inferFromNom nominals (V.Nom name val) = \go locals ->
             , p2_innerType
             )
 
+verifySchemeConstraints :: M.Results -> Scheme -> TypeVars -> Constraints -> Infer ()
+verifySchemeConstraints results skolemScheme skolems oldConstraints =
+    unless (Constraints.null unexpectedConstraints) $
+    M.throwError $ Err.UnexpectedConstraints skolemScheme unexpectedConstraints
+    where
+        newConstraints = Constraints.intersect skolems $ M._constraints results
+        unexpectedConstraints = newConstraints `Constraints.difference` oldConstraints
+
+-- We allow the skolems to be renamed to new type vars only, and
+-- remain an independent set
+substSkolems :: Subst -> TV.Renames -> Maybe TV.Renames
+substSkolems subst (TV.Renames tvs rtvs stvs) =
+    TV.Renames
+    <$> onRenames ExprLens._TVar tvs
+    <*> onRenames ExprLens._CVar rtvs
+    <*> onRenames ExprLens._CVar stvs
+    where
+        onTv prism tv =
+            case Subst.lookup tv subst of
+            Nothing -> Just tv
+            Just typ -> typ ^? prism
+        onRenames prism oldRenames =
+            oldRenames
+            & traverse (onTv prism)
+            >>= verify oldRenames
+        uniqueElemCount m = Set.size . Set.fromList $ Map.elems m
+        verify oldRenames newRenames =
+            newRenames <$
+            guard (uniqueElemCount newRenames == uniqueElemCount oldRenames)
+
+verifyNoSkolemEscape :: TypeVars -> Scheme -> TypeVars -> M.Infer ()
+verifyNoSkolemEscape outerVars skolemScheme skolems =
+    unless (TV.null escapedSkolems) $ M.throwError $
+    Err.SkolemEscapes skolemScheme $ pPrint escapedSkolems
+    where
+        escapedSkolems = skolems `TV.intersection` outerVars
+
+verifySkolems :: Scope -> Scheme -> Scheme -> TV.Renames -> Constraints -> M.Results -> Type -> Type -> Infer ()
+verifySkolems locals originalExpectedScheme unifiedScheme oldSkolemRenames skolemConstraints results typ outerType =
+    do
+        let throwErr =
+                M.throwError $ Err.ExpectedPolymorphicType originalExpectedScheme $
+                generalize (TV.free locals) (M._constraints results) typ
+        newSkolemRenames <- substSkolems subst oldSkolemRenames & maybe throwErr return
+
+        let skolemUnifiedScheme = Scheme.applyRenames newSkolemRenames unifiedScheme
+        let skolemOriginalExpectedScheme = Scheme.applyRenames newSkolemRenames originalExpectedScheme
+        let newSkolems = TV.renameDest newSkolemRenames
+
+        verifySchemeConstraints results skolemUnifiedScheme newSkolems skolemConstraints
+        verifyNoSkolemEscape (TV.free locals <> TV.free outerType) skolemOriginalExpectedScheme newSkolems
+    where
+        subst = M._subst results
+
 {-# INLINE inferToNom #-}
 inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
-inferToNom nominals (V.Nom name val) = \go locals ->
+inferToNom nominals (V.Nom name val) = \go p0_locals ->
     do
-        (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes nominals name
-        ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_innerType
-        let p2_outerType = Subst.apply p2_s p1_outerType
-        return
-            ( V.BToNom (V.Nom name val')
-            , p2_outerType
-            )
+        (mkRes, p1_results) <-
+            M.listen $
+            do
+                ((p1_typ, val'), p1_s) <- go p0_locals val & M.listenSubst
+                let p1_locals = Subst.apply p1_s p0_locals
+                (p1_outerType, p1_nomScheme) <- nomTypes nominals name
+                ((p1_skolemRenames, p1_expectedType), p1_instantiateResults) <-
+                    Scheme.instantiateWithRenames p1_nomScheme & M.listen
+                let p1_skolemConstraints = M._constraints p1_instantiateResults
+                -- The unification here may learn things about skolems, but
+                -- not everything is valid to learn! See below.
+                ((), p2_s) <- unifyUnsafe p1_expectedType p1_typ & M.listenSubst
+                let p2_outerType = Subst.apply p2_s p1_outerType
+                if TV.nullRenames p1_skolemRenames
+                    then
+                    return $
+                    \_total_results -> return (V.BToNom (V.Nom name val'), p2_outerType)
+                    else do
+                        p2_skolemConstraints <- M.applySubstConstraints p2_s p1_skolemConstraints
+                        let p2_locals = Subst.apply p2_s p1_locals
+                        let p2_nomScheme = Subst.apply p2_s p1_nomScheme
+                        let p2_typ = Subst.apply p2_s p1_typ
+                        return $ \total_results ->
+                            do
+                                -- NOTE: p1_skolems is intentionally not
+                                -- updated, the update happens within
+                                -- verifySkolems
+                                verifySkolems p2_locals p1_nomScheme p2_nomScheme p1_skolemRenames p2_skolemConstraints total_results p2_typ p2_outerType
+                                return (V.BToNom (V.Nom name val'), p2_outerType)
+        mkRes p1_results
 
 inferInternal ::
     (Type -> Scope -> a -> b) ->

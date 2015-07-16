@@ -4,9 +4,11 @@ module Lamdu.Infer.Error
     ( Error(..)
     ) where
 
+import           Lamdu.Expr.Constraints (Constraints)
+import           Lamdu.Expr.Scheme (Scheme)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
-import           Text.PrettyPrint ((<+>), Doc)
+import           Text.PrettyPrint ((<+>), ($+$), Doc)
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data Error
@@ -17,6 +19,9 @@ data Error
     | OccursCheckFail Doc Doc
     | TypesDoNotUnity Doc Doc
     | UnboundVariable V.Var
+    | SkolemEscapes Scheme Doc
+    | UnexpectedConstraints Scheme Constraints
+    | ExpectedPolymorphicType Scheme Scheme
 
 instance Pretty Error where
     pPrint (DuplicateField t r) =
@@ -33,3 +38,12 @@ instance Pretty Error where
         "Unbound variable:" <+> pPrint v
     pPrint (TypesDoNotUnity x y) =
         "Types do not unify" <+> x <+> "vs." <+> y
+    pPrint (SkolemEscapes poly var) =
+        "When expecting a polymorphic type:" <+> pPrint poly
+        $+$ "the variable:" <+> var <+> "escapes its scope"
+    pPrint (UnexpectedConstraints poly constraints) =
+        "Unexpected constraints " <+> pPrint constraints
+        <+> "in polymorphic type:" <+> pPrint poly
+    pPrint (ExpectedPolymorphicType poly mono) =
+        "Expected a polymorphic type:" <+> pPrint poly
+        $+$ "got:" <+> pPrint mono

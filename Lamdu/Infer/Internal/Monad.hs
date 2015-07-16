@@ -6,6 +6,7 @@ module Lamdu.Infer.Internal.Monad
     , InferCtx(..), inferCtx
     , Infer
     , throwError
+    , applySubstConstraints
     , tell, tellSubst, tellSubsts
     , tellProductConstraint
     , tellSumConstraint
@@ -112,6 +113,10 @@ type Infer = InferCtx (Either Error)
 throwError :: Error -> Infer a
 throwError = Infer . StateT . const . Left
 {-# INLINE throwError #-}
+
+applySubstConstraints :: Subst -> Constraints -> Infer Constraints
+applySubstConstraints s = either throwError return . Constraints.applySubst s
+{-# INLINE applySubstConstraints #-}
 
 tell :: Results -> Infer ()
 tell w =

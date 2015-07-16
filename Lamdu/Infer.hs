@@ -120,7 +120,7 @@ inferLeaf globals leaf = \_go locals ->
     V.LGlobal n ->
         case Map.lookup n globals of
         Nothing      -> M.throwError $ Err.MissingGlobal n
-        Just sigma   -> Scheme.instantiate sigma
+        Just sigma   -> Scheme.instantiate sigma <&> snd
     V.LLiteralInteger _ -> return T.TInt
     V.LRecEmpty -> return $ T.TRecord T.CEmpty
     V.LAbsurd ->
@@ -263,7 +263,7 @@ nomTypes nominals name =
             & Map.keysSet & Map.fromSet (const (M.freshInferredVar "n"))
             & sequenceA
         p1_freshInnerType <-
-            Nominal.apply p1_paramVals nominal & Scheme.instantiate
+            Nominal.apply p1_paramVals nominal & Scheme.instantiate <&> snd
         return (T.TInst name p1_paramVals, p1_freshInnerType)
 
 {-# INLINE inferFromNom #-}

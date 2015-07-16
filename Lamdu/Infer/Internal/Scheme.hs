@@ -37,7 +37,7 @@ mkInstantiateSubstPart prefix =
                 return (oldVar, freshVarExpr)
 
 {-# INLINE instantiate #-}
-instantiate :: Monad m => Scheme -> InferCtx m Type
+instantiate :: Monad m => Scheme -> InferCtx m (TypeVars, Type)
 instantiate (Scheme (TypeVars tv rv sv) constraints t) =
     do
         typeVarSubsts <- mkInstantiateSubstPart "i" tv
@@ -48,9 +48,14 @@ instantiate (Scheme (TypeVars tv rv sv) constraints t) =
                 (fmap TV.lift typeVarSubsts)
                 (fmap TV.lift recordSubsts)
                 (fmap TV.lift sumSubsts)
+            newVars =
+                TypeVars
+                (Set.fromList (Map.elems typeVarSubsts))
+                (Set.fromList (Map.elems recordSubsts))
+                (Set.fromList (Map.elems sumSubsts))
             constraints' = Constraints.applyRenames recordSubsts sumSubsts constraints
         -- Avoid tell for these new constraints, because they refer to
         -- fresh variables, no need to apply the ordinary expensive
         -- and error-emitting tell
         M.Infer $ M.ctxResults . M.constraints <>= constraints'
-        return $ Subst.apply subst t
+        return (newVars, Subst.apply subst t)

@@ -4,7 +4,7 @@ module Lamdu.Infer.Internal.Subst
     , CanSubst(..)
     ) where
 
-import           Prelude hiding (null)
+import           Prelude hiding (null, lookup)
 
 import           Control.Applicative ((<$>))
 import           Data.Map (Map)
@@ -67,6 +67,7 @@ class TypeVars.Free a => CanSubst a where
 
 class (TypeVars.VarKind t, CanSubst t) => HasVar t where
     new :: T.Var t -> t -> Subst
+    lookup :: T.Var t -> Subst -> Maybe t
 
 class TypeVars.CompositeVarKind p => CompositeHasVar p where
     compositeNew :: SubSubst (T.Composite p) -> Subst
@@ -74,11 +75,11 @@ class TypeVars.CompositeVarKind p => CompositeHasVar p where
 
 instance CompositeHasVar p => CanSubst (T.Composite p) where
     apply _ T.CEmpty          = T.CEmpty
-    apply s (T.CVar n)        = fromMaybe (T.CVar n) $ Map.lookup n (compositeGet s)
+    apply s (T.CVar n)        = fromMaybe (T.CVar n) $ lookup n s
     apply s (T.CExtend n t r) = T.CExtend n (apply s t) (apply s r)
 
 instance CanSubst Type where
-    apply s (T.TVar n)      = fromMaybe (T.TVar n) $ Map.lookup n (substTypes s)
+    apply s (T.TVar n)      = fromMaybe (T.TVar n) $ lookup n s
     apply s (T.TInst n p)   = T.TInst n $ apply s <$> p
     apply s (T.TFun t1 t2)  = T.TFun (apply s t1) (apply s t2)
     apply s (T.TRecord r)   = T.TRecord $ apply s r
@@ -104,6 +105,8 @@ instance CanSubst Scheme where
 instance HasVar Type where
     {-# INLINE new #-}
     new tv t = mempty { substTypes = Map.singleton tv t }
+    {-# INLINE lookup #-}
+    lookup tv s = Map.lookup tv (substTypes s)
 
 instance CompositeHasVar T.ProductTag where
     {-# INLINE compositeGet #-}
@@ -120,3 +123,5 @@ instance CompositeHasVar T.SumTag where
 instance CompositeHasVar p => HasVar (T.Composite p) where
     {-# INLINE new #-}
     new tv t = compositeNew $ Map.singleton tv t
+    {-# INLINE lookup #-}
+    lookup tv t = Map.lookup tv (compositeGet t)

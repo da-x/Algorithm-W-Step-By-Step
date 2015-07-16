@@ -1,6 +1,7 @@
 module Lamdu.Infer.Internal.Scheme
     ( makeScheme
     , instantiate
+    , generalize
     ) where
 
 import           Control.Lens.Operators
@@ -9,6 +10,7 @@ import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
+import           Lamdu.Expr.Constraints (Constraints)
 import qualified Lamdu.Expr.Constraints as Constraints
 import           Lamdu.Expr.Scheme (Scheme(..))
 import qualified Lamdu.Expr.Scheme as Scheme
@@ -35,6 +37,12 @@ mkInstantiateSubstPart prefix =
             do
                 freshVarExpr <- M.freshInferredVarName prefix
                 return (oldVar, freshVarExpr)
+
+generalize :: TypeVars -> Constraints -> Type -> Scheme
+generalize outerTVs innerConstraints innerType =
+    Scheme tvs (Constraints.intersect tvs innerConstraints) innerType
+    where
+        tvs = TV.free innerType `TV.difference` outerTVs
 
 {-# INLINE instantiate #-}
 instantiate :: Monad m => Scheme -> InferCtx m (TypeVars, Type)

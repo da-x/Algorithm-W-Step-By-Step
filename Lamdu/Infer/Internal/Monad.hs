@@ -6,7 +6,7 @@ module Lamdu.Infer.Internal.Monad
     , InferCtx(..), inferCtx
     , Infer
     , throwError
-    , tell, tellSubst, tellSubsts
+    , tell, tellSubst
     , tellProductConstraint
     , tellSumConstraint
     , tellConstraints
@@ -113,10 +113,6 @@ tell w =
         !newRes <- appendResults (_ctxResults c) w
         Right ((), c { _ctxResults = newRes} )
 {-# INLINE tell #-}
-
-tellSubsts :: Subst -> Infer ()
-tellSubsts s = tell $ emptyResults { _subst = s }
-{-# INLINE tellSubsts #-}
 
 tellSubst :: Subst.HasVar t => T.Var t -> t -> Infer ()
 tellSubst v t = tell $ emptyResults { _subst = Subst.new v t }

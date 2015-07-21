@@ -26,9 +26,12 @@ import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 unifyUnsafe :: Type -> Type -> Infer ()
 unifyUnsafe = unifyGeneric
 
+varBind :: (Eq t, Subst.HasVar t, Pretty t) => T.Var t -> t -> Infer ()
+varBind u t | (TypeVars.lift u) == t = return ()
+varBind u t = checkOccurs u t $ M.tellSubst u t
+
 class CanSubst t => Unify t where
     unifyGeneric :: t -> t -> Infer ()
-    varBind :: T.Var t -> t -> Infer ()
 
 closedRecord :: Map T.Tag Type -> T.Composite p
 closedRecord fields = FlatComposite.toComposite (FlatComposite fields Nothing)
@@ -134,9 +137,6 @@ instance Unify Type where
     unifyGeneric T.TInt        T.TInt        =  return ()
     unifyGeneric t1 t2                       =  dontUnify t1 t2
 
-    varBind u (T.TVar t) | t == u = return ()
-    varBind u t = checkOccurs u t $ M.tellSubst u t
-
 instance Subst.CompositeHasVar p => Unify (T.Composite p) where
     unifyGeneric T.CEmpty T.CEmpty       =  return ()
     unifyGeneric (T.CVar u) t            =  varBind u t
@@ -153,6 +153,3 @@ instance Subst.CompositeHasVar p => Unify (T.Composite p) where
               (FlatComposite.fromComposite t)
               (FlatComposite.fromComposite u)
     unifyGeneric t1 t2                   =  dontUnify t1 t2
-
-    varBind u (T.CVar t) | t == u = return ()
-    varBind u t = checkOccurs u t $ M.tellSubst u t

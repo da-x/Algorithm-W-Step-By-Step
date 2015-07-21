@@ -27,9 +27,9 @@ import qualified Text.PrettyPrint as PP
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data TypeVars = TypeVars
-    { typeVars :: Set T.TypeVar
-    , productTypeVars :: Set T.ProductVar
-    , sumTypeVars :: Set T.SumVar
+    { typeVars :: !(Set T.TypeVar)
+    , productTypeVars :: !(Set T.ProductVar)
+    , sumTypeVars :: !(Set T.SumVar)
     } deriving (Eq, Generic, Show)
 instance NFData TypeVars where
     rnf = genericRnf

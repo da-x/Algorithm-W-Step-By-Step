@@ -23,8 +23,13 @@ instance Pretty Error where
         "Field" <+> pPrint t <+> "forbidden in record" <+> pPrint r
     pPrint (DuplicateAlt t r) =
         "Alternative" <+> pPrint t <+> "forbidden in sum" <+> pPrint r
-    pPrint (MissingGlobal g) = "Missing global:" <+> pPrint g
-    pPrint (MissingNominal i) = "Missing nominal:" <+> pPrint i
-    pPrint (OccursCheckFail v t) = "Occurs check fails:" <+> v <+> "vs." <+> t
-    pPrint (UnboundVariable v) = "Unbound variable:" <+> pPrint v
-    pPrint (TypesDoNotUnity x y) = "Types do not unify" <+> x <+> "vs." <+> y
+    pPrint (MissingGlobal g) =
+        "Missing global:" <+> pPrint g
+    pPrint (MissingNominal i) =
+        "Missing nominal:" <+> pPrint i
+    pPrint (OccursCheckFail v t) =
+        "Occurs check fails:" <+> v <+> "vs." <+> t
+    pPrint (UnboundVariable v) =
+        "Unbound variable:" <+> pPrint v
+    pPrint (TypesDoNotUnity x y) =
+        "Types do not unify" <+> x <+> "vs." <+> y

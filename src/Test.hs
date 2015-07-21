@@ -1,13 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Applicative
-import           Control.Arrow ((&&&))
 import           Control.Lens (zoom)
 import           Control.Lens.Operators
 import           Control.Lens.Tuple
-import           Control.Monad.State (StateT(..), state, runState, evalState, modify, get)
+import           Control.Monad.State (StateT(..), runState, modify, get)
 import qualified Data.Map as M
-import           Data.String (IsString(..))
 import           Data.Traversable (traverse)
 import           Lamdu.Expr.Pure (($$), ($$:), ($=), ($.))
 import qualified Lamdu.Expr.Pure as P
@@ -20,7 +18,6 @@ import           Lamdu.Infer
 import qualified Lamdu.Infer.Recursive as Recursive
 import           Lamdu.Infer.Unify
 import qualified Lamdu.Infer.Update as Update
-import qualified Lamdu.Suggest as Suggest
 import qualified Test.Framework as TestFramework
 import           Test.Framework.Providers.QuickCheck2 (testProperty)
 import           TestVals
@@ -156,16 +153,6 @@ foldrTest =
       P.absurd
     ) $$ P.fromNom (fst listTypePair) l
 
-suggestTypes :: [Type]
-suggestTypes =
-    [ T.TInt ~> T.TInt
-    , T.TInt ~> T.TInt ~> T.TInt
-    , TRecord CEmpty
-    , TVar "a" ~> TRecord CEmpty
-    , TVar "a" ~> TRecord (CExtend "x" T.TInt (CExtend "y" (T.TInt ~> T.TInt) CEmpty))
-    , TVar "a" ~> TRecord (CExtend "x" (T.TInt ~> T.TInt) (CExtend "y" (T.TInt ~> T.TInt) CEmpty))
-    ]
-
 unifies :: [(Type, Type)]
 unifies =
     [ ( ( TRecord $
@@ -227,15 +214,6 @@ testRecursive e =
         recursivePos <- Recursive.inferEnv recurseVar emptyScope
         inferInto recursivePos e
 
-testSuggest :: Type -> IO ()
-testSuggest typ =
-    print $ PP.vcat (map V.pPrintUnannotated vals) <+> PP.text "suggested by" <+> pPrint typ
-    where
-        vals =
-            Suggest.suggestValueWith fresh typ
-            <&> (`evalState` [fromString ('x':show (n::Integer)) | n <- [0..]])
-        fresh = state $ head &&& tail
-
 testUnify :: Type -> Type -> IO ()
 testUnify x y =
     do
@@ -259,8 +237,6 @@ main =
         mapM_ test exps
         putStrLn "Recursive expression types:"
         mapM_ testRecursive recursiveExps
-        putStrLn "Suggested values from types:"
-        mapM_ testSuggest suggestTypes
         putStrLn "Unify:"
         mapM_ (uncurry testUnify) unifies
         TestFramework.defaultMain [testProperty "alphaEq self" prop_alphaEq]

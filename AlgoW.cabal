@@ -30,7 +30,6 @@ library
                  ,     Lamdu.Infer.Load
                  ,     Lamdu.Infer.Unify
                  ,     Lamdu.Infer.Update
-                 ,     Lamdu.Suggest
   other-modules:       Lamdu.Infer.Internal.Constraints
                ,       Lamdu.Infer.Internal.Monad
                ,       Lamdu.Infer.Internal.Scheme

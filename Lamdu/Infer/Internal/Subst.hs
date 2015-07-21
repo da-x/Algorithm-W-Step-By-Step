@@ -18,7 +18,7 @@ import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TypeVars
-import           Text.PrettyPrint (text, vcat, (<>))
+import           Text.PrettyPrint (Doc, nest, text, vcat, (<>), ($+$), (<+>))
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 type SubSubst t = Map (T.Var t) t
@@ -28,6 +28,23 @@ data Subst = Subst
     , substRecordTypes :: SubSubst T.Product
     , substSumTypes :: SubSubst T.Sum
     } deriving Show
+
+pPrintMap :: (Pretty k, Pretty v) => Map k v -> Doc
+pPrintMap =
+    vcat . map prettyPair . Map.toList
+    where
+        prettyPair (k, v) = pPrint k <+> text ", " <+> pPrint v
+
+instance Pretty Subst where
+    pPrint (Subst t r s) =
+        text "Subst:"
+        $+$ nest 4
+        ( vcat
+          [ pPrintMap t
+          , pPrintMap r
+          , pPrintMap s
+          ]
+        )
 
 null :: Subst -> Bool
 null (Subst t r s) = Map.null t && Map.null r && Map.null s

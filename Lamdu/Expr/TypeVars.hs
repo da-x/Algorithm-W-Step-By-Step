@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Lamdu.Expr.TypeVars
     ( TypeVars(..)
+    , null
     , Free(..)
     , VarKind(..), CompositeVarKind(..)
-    , difference
+    , difference, intersection
     ) where
+
+import           Prelude hiding (null)
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
@@ -43,6 +46,14 @@ instance Binary TypeVars
 difference :: TypeVars -> TypeVars -> TypeVars
 difference (TypeVars t0 r0 s0) (TypeVars t1 r1 s1) =
     TypeVars (Set.difference t0 t1) (Set.difference r0 r1) (Set.difference s0 s1)
+
+intersection :: TypeVars -> TypeVars -> TypeVars
+intersection (TypeVars t0 r0 s0) (TypeVars t1 r1 s1) =
+    TypeVars (Set.intersection t0 t1) (Set.intersection r0 r1) (Set.intersection s0 s1)
+
+{-# INLINE null #-}
+null :: TypeVars -> Bool
+null (TypeVars t r s) = Set.null t && Set.null r && Set.null s
 
 class Free t where free :: t -> TypeVars
 

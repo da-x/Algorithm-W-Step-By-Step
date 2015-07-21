@@ -1,15 +1,17 @@
 {-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr.Constraints
-    ( Constraints(..)
+    ( Constraints(..), null
     , ForbiddenFields
     , applyRenames
-    , intersect
-    , CompositeVarConstraints(..)
+    , intersect, difference
+    , CompositeVarConstraints(..), nullCompositeConstraints
     , getProductVarConstraints
     , getSumVarConstraints
     , TypeVarConstraints
     , getTypeVarConstraints
     ) where
+
+import           Prelude hiding (null)
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
@@ -35,6 +37,9 @@ type TypeVarConstraints = ()
 newtype CompositeVarConstraints t = CompositeVarConstraints
     { compositeVarConstraints :: Map (T.Var (T.Composite t)) ForbiddenFields
     } deriving (Generic, Eq, Show)
+
+nullCompositeConstraints :: CompositeVarConstraints t -> Bool
+nullCompositeConstraints (CompositeVarConstraints m) = Map.null m
 
 instance Monoid (CompositeVarConstraints t) where
     mempty = CompositeVarConstraints Map.empty
@@ -64,6 +69,11 @@ data Constraints = Constraints
     { productVarConstraints :: CompositeVarConstraints T.ProductTag
     , sumVarConstraints :: CompositeVarConstraints T.SumTag
     } deriving (Generic, Eq, Show)
+
+null :: Constraints -> Bool
+null (Constraints rtvs stvs) =
+    nullCompositeConstraints rtvs
+    && nullCompositeConstraints stvs
 
 instance Monoid Constraints where
     mempty = Constraints mempty mempty
@@ -116,3 +126,17 @@ compositeIntersect tvs (CompositeVarConstraints c) =
 intersect :: TypeVars -> Constraints -> Constraints
 intersect tvs (Constraints p s) =
     Constraints (compositeIntersect tvs p) (compositeIntersect tvs s)
+
+compositeDifference ::
+    TypeVars.CompositeVarKind t =>
+    CompositeVarConstraints t ->
+    CompositeVarConstraints t ->
+    CompositeVarConstraints t
+compositeDifference
+    (CompositeVarConstraints big)
+    (CompositeVarConstraints small) =
+        CompositeVarConstraints (Map.difference big small)
+
+difference :: Constraints -> Constraints -> Constraints
+difference (Constraints bigp bigs) (Constraints smallp smalls) =
+    Constraints (compositeDifference bigp smallp) (compositeDifference bigs smalls)

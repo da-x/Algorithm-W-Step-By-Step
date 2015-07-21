@@ -5,6 +5,8 @@ module Lamdu.Expr.TypeVars
     , Free(..)
     , VarKind(..), CompositeVarKind(..)
     , difference, intersection
+    , Renames(..), applyRenames, renameDest
+    , nullRenames
     ) where
 
 import           Prelude hiding (null)
@@ -12,7 +14,9 @@ import           Prelude hiding (null)
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Data.Binary (Binary)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid (Monoid(..), (<>))
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -57,6 +61,10 @@ null (TypeVars t r s) = Set.null t && Set.null r && Set.null s
 
 class Free t where free :: t -> TypeVars
 
+instance Free a => Free [a] where
+    {-# INLINE free #-}
+    free = mconcat . map free
+
 instance Free Type where
     free (T.TVar n)      =  singleton n
     free (T.TInst _ p)   =  mconcat $ map free $ Map.elems p
@@ -96,3 +104,30 @@ instance CompositeVarKind p => VarKind (T.Composite p) where
     lift = T.CVar
     member = compositeMember
     singleton = compositeSingleton
+
+data Renames = Renames
+    { renamesTv :: Map T.TypeVar T.TypeVar
+    , renamesProd :: Map T.ProductVar T.ProductVar
+    , renamesSum :: Map T.SumVar T.SumVar
+    } deriving (Eq, Ord, Show)
+
+nullRenames :: Renames -> Bool
+nullRenames (Renames tv rtv stv) = Map.null tv && Map.null rtv && Map.null stv
+
+renameDest :: Renames -> TypeVars
+renameDest (Renames tvRenames prodRenames sumRenames) =
+    TypeVars
+    (Set.fromList (Map.elems tvRenames))
+    (Set.fromList (Map.elems prodRenames))
+    (Set.fromList (Map.elems sumRenames))
+
+{-# INLINE applyRenames #-}
+applyRenames :: Renames -> TypeVars -> TypeVars
+applyRenames (Renames tvRenames prodRenames sumRenames) (TypeVars tvs rtvs stvs) =
+    TypeVars
+    (apply tvRenames tvs)
+    (apply prodRenames rtvs)
+    (apply sumRenames stvs)
+    where
+        apply renames = Set.map (applyRename renames)
+        applyRename m k = fromMaybe k (Map.lookup k m)

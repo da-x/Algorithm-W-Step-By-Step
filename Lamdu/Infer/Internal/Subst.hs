@@ -2,6 +2,7 @@ module Lamdu.Infer.Internal.Subst
     ( HasVar(..), CompositeHasVar
     , Subst(..), intersect
     , CanSubst(..)
+    , fromRenames
     ) where
 
 import           Prelude hiding (null, lookup)
@@ -142,3 +143,11 @@ instance CompositeHasVar p => HasVar (T.Composite p) where
     new tv t = compositeNew $ Map.singleton tv t
     {-# INLINE lookup #-}
     lookup tv t = Map.lookup tv (compositeGet t)
+
+{-# INLINE fromRenames #-}
+fromRenames :: TypeVars.Renames -> Subst
+fromRenames (TypeVars.Renames tvRenames prodRenames sumRenames) =
+    Subst
+    (fmap TypeVars.lift tvRenames)
+    (fmap TypeVars.lift prodRenames)
+    (fmap TypeVars.lift sumRenames)

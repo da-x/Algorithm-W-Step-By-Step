@@ -1,7 +1,9 @@
 module Lamdu.Infer.Internal.Scheme
     ( makeScheme
+    , instantiateWithRenames
     , instantiate
     , generalize
+    , applyRenames
     ) where
 
 import           Control.Lens.Operators
@@ -20,7 +22,7 @@ import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Internal.Monad (InferCtx)
 import qualified Lamdu.Infer.Internal.Monad as M
-import           Lamdu.Infer.Internal.Subst (Subst(..))
+
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 {-# INLINE makeScheme #-}
@@ -44,26 +46,30 @@ generalize outerTVs innerConstraints innerType =
     where
         tvs = TV.free innerType `TV.difference` outerTVs
 
-{-# INLINE instantiate #-}
-instantiate :: Monad m => Scheme -> InferCtx m (TypeVars, Type)
-instantiate (Scheme (TypeVars tv rv sv) constraints t) =
+{-# INLINE instantiateWithRenames #-}
+instantiateWithRenames :: Monad m => Scheme -> InferCtx m (TV.Renames, Type)
+instantiateWithRenames (Scheme (TypeVars tv rv sv) constraints t) =
     do
         typeVarSubsts <- mkInstantiateSubstPart "i" tv
         recordSubsts <- mkInstantiateSubstPart "k" rv
         sumSubsts <- mkInstantiateSubstPart "s" sv
-        let subst =
-                Subst
-                (fmap TV.lift typeVarSubsts)
-                (fmap TV.lift recordSubsts)
-                (fmap TV.lift sumSubsts)
-            newVars =
-                TypeVars
-                (Set.fromList (Map.elems typeVarSubsts))
-                (Set.fromList (Map.elems recordSubsts))
-                (Set.fromList (Map.elems sumSubsts))
-            constraints' = Constraints.applyRenames recordSubsts sumSubsts constraints
+        let renames = TV.Renames typeVarSubsts recordSubsts sumSubsts
+        let subst = Subst.fromRenames renames
+            constraints' = Constraints.applyRenames renames constraints
         -- Avoid tell for these new constraints, because they refer to
         -- fresh variables, no need to apply the ordinary expensive
         -- and error-emitting tell
         M.Infer $ M.ctxResults . M.constraints <>= constraints'
-        return (newVars, Subst.apply subst t)
+        return (renames, Subst.apply subst t)
+
+{-# INLINE instantiate #-}
+instantiate :: Monad m => Scheme -> InferCtx m Type
+instantiate scheme = liftM snd (instantiateWithRenames scheme)
+
+{-# INLINE applyRenames #-}
+applyRenames :: TV.Renames -> Scheme -> Scheme
+applyRenames renames (Scheme forAll constraints typ) =
+    Scheme
+    (TV.applyRenames renames forAll)
+    (Constraints.applyRenames renames constraints)
+    (Subst.apply (Subst.fromRenames renames) typ)

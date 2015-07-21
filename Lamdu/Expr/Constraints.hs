@@ -106,14 +106,14 @@ pPrintConstraint tv forbiddenFields =
     PP.text "}" <+>
     PP.text "∉" <+> pPrint tv
 
-applyRenames ::
-    Map T.ProductVar T.ProductVar ->
-    Map T.SumVar T.SumVar ->
-    Constraints -> Constraints
-applyRenames prodRenames sumRenames (Constraints prodConstraints sumConstraints) =
-    Constraints
-    (renameApply prodRenames prodConstraints)
-    (renameApply sumRenames sumConstraints)
+{-# INLINE applyRenames #-}
+applyRenames :: TypeVars.Renames -> Constraints -> Constraints
+applyRenames
+    (TypeVars.Renames _ prodRenames sumRenames)
+    (Constraints prodConstraints sumConstraints) =
+        Constraints
+        (renameApply prodRenames prodConstraints)
+        (renameApply sumRenames sumConstraints)
 
 compositeIntersect ::
     TypeVars.CompositeVarKind t =>

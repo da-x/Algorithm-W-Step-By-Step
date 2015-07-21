@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import           Data.Monoid (Monoid(..))
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Type (Type)
-import qualified Lamdu.Expr.TypeVars as TypeVars
+import qualified Lamdu.Expr.TypeVars as TV
 import qualified Lamdu.Expr.Val as V
 import           Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -25,8 +25,8 @@ newtype Scope = Scope { typeOfVar :: Map V.Var Type }
 instance NFData Scope where rnf = genericRnf
 instance Binary Scope
 
-instance TypeVars.Free Scope where
-    free (Scope env) = mconcat $ map TypeVars.free $ Map.elems env
+instance TV.Free Scope where
+    free (Scope env) = mconcat $ map TV.free $ Map.elems env
 
 instance CanSubst Scope where
     apply s (Scope env) = Scope $ Map.map (Subst.apply s) env

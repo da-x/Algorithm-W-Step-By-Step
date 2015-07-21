@@ -16,6 +16,8 @@ import qualified Data.Set as Set
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
+import qualified Text.PrettyPrint as PP
+import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 data TypeVars = TypeVars
     { typeVars :: Set T.TypeVar
@@ -28,6 +30,13 @@ instance Monoid TypeVars where
     mempty = TypeVars mempty mempty mempty
     mappend (TypeVars t0 r0 s0) (TypeVars t1 r1 s1) =
         TypeVars (mappend t0 t1) (mappend r0 r1) (mappend s0 s1)
+
+instance Pretty TypeVars where
+    pPrint (TypeVars tvs rtvs stvs) =
+        PP.hcat $ PP.punctuate (PP.text ", ") $ p tvs ++ p rtvs ++ p stvs
+        where
+            p :: Set (T.Var t) -> [PP.Doc]
+            p = map pPrint . Set.elems
 
 instance Binary TypeVars
 

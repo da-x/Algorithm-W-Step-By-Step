@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
 module Lamdu.Infer.Internal.Monad
-    ( Results(..), subst, constraints, emptyResults, intersectResults
+    ( Results(..), subst, constraints, emptyResults
     , Context(..), ctxResults, ctxState, initialContext
     , InferState(..)
     , InferCtx(..), inferCtx
@@ -29,9 +29,7 @@ import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import           Data.String (IsString(..))
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
-import qualified Lamdu.Expr.Constraints as Constraints
 import qualified Lamdu.Expr.Type as T
-import           Lamdu.Expr.TypeVars (TypeVars)
 import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Error (Error)
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
@@ -67,11 +65,6 @@ appendResults (Results s0 c0) (Results s1 c1) =
         c0' <- Constraints.applySubst s1 c0
         return $ Results (mappend s0 s1) (mappend c0' c1)
 {-# INLINE appendResults #-}
-
-intersectResults :: TypeVars -> Results -> Results
-intersectResults tvs (Results s c) =
-    Results (Subst.intersect tvs s) (Constraints.intersect tvs c)
-{-# INLINE intersectResults #-}
 
 data Context = Context
     { _ctxResults :: {-# UNPACK #-} !Results

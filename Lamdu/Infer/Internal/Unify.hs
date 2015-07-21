@@ -6,6 +6,7 @@ module Lamdu.Infer.Internal.Unify
 
 import           Prelude.Compat
 
+import           Control.Monad (when)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Control.Monad.Trans.State as State
@@ -30,8 +31,29 @@ unifyUnsafe = unifyGeneric
 
 varBind :: (Eq t, Subst.HasVar t, Pretty t) => T.Var t -> t -> Infer ()
 varBind u t
-    | TypeVars.lift u == t = return ()
-    | otherwise = checkOccurs u t $ M.tellSubst u t
+    | mtv == Just u = return ()
+    | otherwise =
+        do
+            uIsSkolem <- M.isSkolem u
+            case (uIsSkolem, mtv) of
+                (False, _) ->
+                    do
+                        checkOccurs u t
+                        M.tellSubst u t
+                (True, Nothing) -> M.throwError $ Err.SkolemNotPolymorphic (pPrint u) (pPrint t)
+                (True, Just tv) ->
+                    do
+                        tIsSkolem <- M.isSkolem tv
+                        when tIsSkolem $ M.throwError $ Err.SkolemsUnified (pPrint u) (pPrint t)
+                        M.tellSubst tv (TypeVars.lift u)
+    where
+        mtv = TypeVars.unlift t
+
+checkOccurs :: (Pretty t, Subst.HasVar t) => T.Var t -> t -> Infer ()
+checkOccurs var typ
+    | var `TypeVars.member` TypeVars.free typ =
+        M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
+    | otherwise = return ()
 
 class CanSubst t => Unify t where
     unifyGeneric :: t -> t -> Infer ()
@@ -114,15 +136,6 @@ unifyFlattened
 dontUnify :: Pretty t => t -> t -> Infer ()
 dontUnify x y =
     M.throwError $ Err.TypesDoNotUnity (pPrint x) (pPrint y)
-
-checkOccurs ::
-    (Pretty t, Subst.HasVar t) =>
-    T.Var t -> t -> Infer () -> Infer ()
-checkOccurs var typ act
-    | var `TypeVars.member` TypeVars.free typ =
-        M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
-    | otherwise =
-        act
 
 instance Unify Type where
     unifyGeneric (T.TFun l r) (T.TFun l' r') =

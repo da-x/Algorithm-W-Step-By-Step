@@ -6,6 +6,8 @@ module Lamdu.Infer.Internal.Monad
     , InferCtx(..), inferCtx
     , Infer
     , throwError
+    , isSkolem
+    , addSkolems
     , tell, tellSubst
     , tellProductConstraint
     , tellSumConstraint
@@ -36,11 +38,24 @@ import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import           Lamdu.Infer.Internal.Subst (Subst)
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
-newtype InferState = InferState { _inferSupply :: Int }
+data InferState = InferState
+    { _inferSupply :: Int
+    , _inferSkolems :: TV.TypeVars
+    , _inferSkolemConstraints :: Constraints
+    }
 
-inferSupply :: Lens.Iso' InferState Int
-inferSupply = Lens.iso _inferSupply InferState
+inferSupply :: Lens' InferState Int
+inferSupply f InferState {..} = f _inferSupply <&> \_inferSupply -> InferState {..}
 {-# INLINE inferSupply #-}
+
+inferSkolems :: Lens' InferState TV.TypeVars
+inferSkolems f InferState {..} = f _inferSkolems <&> \_inferSkolems -> InferState {..}
+{-# INLINE inferSkolems #-}
+
+
+inferSkolemConstraints :: Lens' InferState Constraints
+inferSkolemConstraints f InferState {..} = f _inferSkolemConstraints <&> \_inferSkolemConstraints -> InferState {..}
+{-# INLINE inferSkolemConstraints #-}
 
 data Results = Results
     { _subst :: {-# UNPACK #-} !Subst
@@ -83,7 +98,12 @@ initialContext :: Context
 initialContext =
     Context
     { _ctxResults = emptyResults
-    , _ctxState = InferState { _inferSupply = 0 }
+    , _ctxState =
+        InferState
+        { _inferSupply = 0
+        , _inferSkolems = mempty
+        , _inferSkolemConstraints = mempty
+        }
     }
 
 -- We use StateT, but it is composed of an actual stateful fresh
@@ -105,6 +125,19 @@ type Infer = InferCtx (Either Error)
 throwError :: Error -> Infer a
 throwError = Infer . StateT . const . Left
 {-# INLINE throwError #-}
+
+isSkolem :: (Monad m, TV.VarKind t) => T.Var t -> InferCtx m Bool
+isSkolem v = Infer $ Lens.uses (ctxState . inferSkolems) (v `TV.member`)
+{-# INLINE isSkolem #-}
+
+addSkolems :: Monad m => TV.TypeVars -> Constraints -> InferCtx m ()
+addSkolems skolems skolemConstraints =
+    Infer $ Lens.zoom ctxState $
+    do
+        inferSkolems <>= skolems
+        inferSkolemConstraints <>= skolemConstraints
+
+{-# INLINE addSkolems #-}
 
 tell :: Results -> Infer ()
 tell w =

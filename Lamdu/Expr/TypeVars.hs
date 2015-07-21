@@ -80,11 +80,16 @@ instance CompositeVarKind p => Free (T.Composite p) where
 
 class VarKind t where
     lift :: T.Var t -> t
+    unlift :: t -> Maybe (T.Var t)
     member :: T.Var t -> TypeVars -> Bool
     singleton :: T.Var t -> TypeVars
 
 instance VarKind Type where
     lift = T.TVar
+    {-# INLINE lift #-}
+    unlift (T.TVar tv) = Just tv
+    unlift _ = Nothing
+    {-# INLINE unlift #-}
     member v tvs = v `Set.member` typeVars tvs
     singleton v = mempty { typeVars = Set.singleton v }
 
@@ -102,8 +107,14 @@ instance CompositeVarKind T.SumTag where
 
 instance CompositeVarKind p => VarKind (T.Composite p) where
     lift = T.CVar
+    {-# INLINE lift #-}
+    unlift (T.CVar tv) = Just tv
+    unlift _ = Nothing
+    {-# INLINE unlift #-}
     member = compositeMember
+    {-# INLINE member #-}
     singleton = compositeSingleton
+    {-# INLINE singleton #-}
 
 data Renames = Renames
     { renamesTv :: Map T.TypeVar T.TypeVar

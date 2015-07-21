@@ -17,6 +17,8 @@ data Error
     | OccursCheckFail Doc Doc
     | TypesDoNotUnity Doc Doc
     | UnboundVariable V.Var
+    | SkolemsUnified Doc Doc
+    | SkolemNotPolymorphic Doc Doc
 
 instance Pretty Error where
     pPrint (DuplicateField t r) =
@@ -33,3 +35,7 @@ instance Pretty Error where
         "Unbound variable:" <+> pPrint v
     pPrint (TypesDoNotUnity x y) =
         "Types do not unify" <+> x <+> "vs." <+> y
+    pPrint (SkolemsUnified x y) =
+        "Two skolems unified" <+> x <+> "vs." <+> y
+    pPrint (SkolemNotPolymorphic x y) =
+        "Skolem" <+> x <+> "unified with non-polymorphic type" <+> y

@@ -27,8 +27,9 @@ unifyUnsafe :: Type -> Type -> Infer ()
 unifyUnsafe = unifyGeneric
 
 varBind :: (Eq t, Subst.HasVar t, Pretty t) => T.Var t -> t -> Infer ()
-varBind u t | (TypeVars.lift u) == t = return ()
-varBind u t = checkOccurs u t $ M.tellSubst u t
+varBind u t
+    | TypeVars.lift u == t = return ()
+    | otherwise = checkOccurs u t $ M.tellSubst u t
 
 class CanSubst t => Unify t where
     unifyGeneric :: t -> t -> Infer ()

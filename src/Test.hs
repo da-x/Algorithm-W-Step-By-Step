@@ -106,6 +106,20 @@ exps =
       P.recEmpty
 
     , nullTest
+
+    , P.toNom (fst polyIdTypePair) (P.lambda "x" id)
+    , P.toNom (fst unsafeCoerceTypePair) (P.lambda "x" id)
+
+    , P.toNom (fst ignoredParamTypePair) (P.lambda "x" id)
+
+    , P.toNom (fst unsafeCoerceTypePair) (P.fromNom (fst polyIdTypePair) P.hole)
+    , P.toNom (fst polyIdTypePair) (P.fromNom (fst unsafeCoerceTypePair) P.hole)
+
+    , P.toNom (fst polyIdTypePair) (P.global "plus1")
+    , P.lambda "a" $ \a -> P.toNom (fst polyIdTypePair) (P.lambda "_" $ \_ -> a)
+
+    , P.toNom (fst xGetterPair) (P.lambda "rec" $ \rec -> rec $. "x")
+    , P.toNom (fst xGetterPairConstrained) (P.lambda "rec" $ \rec -> rec $. "x")
     ]
 
 nullTest :: Val ()

@@ -7,13 +7,16 @@ module TestVals
     , factorsVal
     , lambda, lambdaRecord, whereItem, recordType
     , eLet
-    , listTypePair, boolTypePair
+    , listTypePair, boolTypePair, polyIdTypePair, unsafeCoerceTypePair
+    , ignoredParamTypePair
+    , xGetterPair, xGetterPairConstrained
     ) where
 
 import           Control.Lens.Operators
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..))
+import           Data.Monoid (Monoid(..), (<>))
 import qualified Data.Set as Set
+import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
 import           Lamdu.Expr.Nominal (Nominal(..))
 import           Lamdu.Expr.Pure (($$), ($$:))
 import qualified Lamdu.Expr.Pure as P
@@ -21,6 +24,7 @@ import           Lamdu.Expr.Scheme (Scheme(..))
 import qualified Lamdu.Expr.Scheme as Scheme
 import           Lamdu.Expr.Type (Type, (~>))
 import qualified Lamdu.Expr.Type as T
+import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
 import           Lamdu.Infer (TypeVars(..), Loaded(..))
@@ -43,6 +47,9 @@ lambdaRecord names mkBody =
 
 whereItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
 whereItem name val mkBody = lambda name mkBody $$ val
+
+openRecordType :: T.ProductVar -> [(T.Tag, Type)] -> Type
+openRecordType tv = T.TRecord . foldr (uncurry T.CExtend) (T.CVar tv)
 
 recordType :: [(T.Tag, Type)] -> Type
 recordType = T.TRecord . foldr (uncurry T.CExtend) T.CEmpty
@@ -86,6 +93,89 @@ boolTypePair =
             & T.TSum
             & Scheme.mono
         }
+    )
+
+polyIdTypePair :: (T.Id, Nominal)
+polyIdTypePair =
+    ( "PolyIdentity"
+    , Nominal
+        { nParams = Map.empty
+        , nScheme =
+            Scheme (TV.singleton tvA) mempty $
+            a ~> a
+        }
+    )
+    where
+        a = TV.lift tvA
+        tvA :: T.TypeVar
+        tvA = "a"
+
+unsafeCoerceTypePair :: (T.Id, Nominal)
+unsafeCoerceTypePair =
+    ( "UnsafeCoerce"
+    , Nominal
+        { nParams = Map.empty
+        , nScheme =
+            Scheme (TV.singleton tvA <> TV.singleton tvB) mempty $
+            a ~> b
+        }
+    )
+    where
+        a = TV.lift tvA
+        b = TV.lift tvB
+        tvA, tvB :: T.TypeVar
+        tvA = "a"
+        tvB = "b"
+
+ignoredParamTypePair :: (T.Id, Nominal)
+ignoredParamTypePair =
+    ( "IgnoredParam"
+    , Nominal
+        { nParams = Map.singleton "res" tvB
+        , nScheme =
+            Scheme (TV.singleton tvA) mempty $
+            a ~> b
+        }
+    )
+    where
+        a = TV.lift tvA
+        b = TV.lift tvB
+        tvA, tvB :: T.TypeVar
+        tvA = "a"
+        tvB = "b"
+
+xGetter :: (T.ProductVar -> Constraints) -> Nominal
+xGetter constraints =
+    Nominal
+    { nParams = Map.empty
+    , nScheme =
+        Scheme (TV.singleton tvA <> TV.singleton tvRest) (constraints tvRest) $
+        openRecordType tvRest [("x", a)] ~> a
+    }
+    where
+        tvRest :: T.ProductVar
+        tvRest = "rest"
+        a = TV.lift tvA
+        tvA :: T.TypeVar
+        tvA = "a"
+
+xGetterPair :: (T.Id, Nominal)
+xGetterPair =
+    ( "XGetter"
+    , xGetter mempty
+    )
+
+xGetterPairConstrained :: (T.Id, Nominal)
+xGetterPairConstrained =
+    ( "XGetterConstrained"
+    , xGetter $
+      \tvRest ->
+          mempty
+          { productVarConstraints =
+              CompositeVarConstraints $ Map.singleton tvRest $
+              Set.fromList ["x", "y"]
+          }
+
     )
 
 maybeOf :: Type -> Type
@@ -141,6 +231,11 @@ env =
         Map.fromList
         [ listTypePair
         , boolTypePair
+        , polyIdTypePair
+        , unsafeCoerceTypePair
+        , ignoredParamTypePair
+        , xGetterPair
+        , xGetterPairConstrained
         ]
     }
 

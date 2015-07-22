@@ -33,7 +33,7 @@ module Lamdu.Expr.Lens
     , valTags, bodyTags, biTraverseBodyTags
     , valGlobals
     , valNominals
-    , compositeTags
+    , compositeTags, compositeFields
     -- Subexpressions:
     , subExprPayloads
     , subExprs
@@ -250,12 +250,13 @@ _CVar = prism' T.CVar get
         get (T.CVar x) = Just x
         get _ = Nothing
 
+compositeFields :: Traversal' (T.Composite p) (T.Tag, Type)
+compositeFields f (T.CExtend tag typ rest) =
+    uncurry T.CExtend <$> f (tag, typ) <*> compositeFields f rest
+compositeFields _ r = pure r
+
 compositeTags :: Traversal' (T.Composite p) T.Tag
-compositeTags f (T.CExtend tag typ rest) =
-    mkCExtend <$> f tag <*> compositeTags f rest
-    where
-        mkCExtend tag' = T.CExtend tag' typ
-compositeTags _ r = pure r
+compositeTags = compositeFields . Lens._1
 
 subExprPayloads :: Lens.IndexedTraversal (Val ()) (Val a) (Val b) a b
 subExprPayloads f val@(Val pl body) =

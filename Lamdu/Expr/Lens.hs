@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, NoMonomorphismRestriction, FlexibleContexts #-}
+{-# LANGUAGE NoImplicitPrelude, RankNTypes, NoMonomorphismRestriction, FlexibleContexts #-}
 module Lamdu.Expr.Lens
     -- ValLeaf prisms:
     ( _LGlobal
@@ -51,7 +51,8 @@ module Lamdu.Expr.Lens
     , typeTIds
     ) where
 
-import           Control.Applicative (Applicative(..), (<$>))
+import           Prelude.Compat
+
 import           Control.Lens (Traversal', Prism', prism', Iso', iso)
 import qualified Control.Lens as Lens
 import           Control.Lens.Operators

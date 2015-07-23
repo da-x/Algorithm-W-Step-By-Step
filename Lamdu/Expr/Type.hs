@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric, EmptyDataDecls, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Lamdu.Expr.Type
     ( Type(..), Composite(..)
     , Product   , Sum
@@ -7,6 +7,8 @@ module Lamdu.Expr.Type
     , Var(..), Id(..), Tag(..), ParamId(..)
     , (~>)
     ) where
+
+import           Prelude.Compat
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
@@ -20,7 +22,7 @@ import           GHC.Generics (Generic)
 import           Lamdu.Expr.Identifier (Identifier)
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
-import           Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import           Text.PrettyPrint.HughesPJClass.Compat (Pretty(..), maybeParens)
 
 newtype Var t = Var { tvName :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
@@ -72,7 +74,7 @@ instance Pretty Type where
         case typ of
         TVar n -> pPrint n
         TFun t s ->
-            prettyParen (8 < prec) $
+            maybeParens (8 < prec) $
             pPrintPrec lvl 9 t <+> PP.text "->" <+> pPrintPrec lvl 8 s
         TInst n ps ->
             pPrint n <>

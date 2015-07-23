@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
-
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Lamdu.Expr.Identifier
     ( Identifier(..)
     ) where
+
+import           Prelude.Compat
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)

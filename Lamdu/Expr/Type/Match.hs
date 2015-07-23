@@ -1,12 +1,13 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Expr.Type.Match
     ( VarMatches, matchVars
     ) where
 
-import           Control.Applicative (Applicative(..), (<$>))
+import           Prelude.Compat
+
 import           Control.Lens.Operators
 import qualified Data.Map as Map
 import qualified Data.Map.Utils as MapUtils
-import           Data.Monoid (Monoid(..))
 import           Lamdu.Expr.FlatComposite (FlatComposite(..))
 import qualified Lamdu.Expr.FlatComposite as Flat
 import           Lamdu.Expr.Type

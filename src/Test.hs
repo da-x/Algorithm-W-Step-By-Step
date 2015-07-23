@@ -1,12 +1,12 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, FlexibleContexts, OverloadedStrings #-}
 
-import           Control.Applicative
+import           Prelude.Compat hiding (any)
+
 import           Control.Lens (zoom)
 import           Control.Lens.Operators
 import           Control.Lens.Tuple
 import           Control.Monad.State (StateT(..), runState, modify, get)
 import qualified Data.Map as M
-import           Data.Traversable (traverse)
 import           Lamdu.Expr.Pure (($$), ($$:), ($=), ($.))
 import qualified Lamdu.Expr.Pure as P
 import           Lamdu.Expr.Type ((~>), Type(..), Composite(..))

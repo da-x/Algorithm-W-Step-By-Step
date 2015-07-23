@@ -1,8 +1,10 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Infer.Internal.Constraints
     ( applySubst
     ) where
 
-import           Control.Applicative (Applicative(..), (<$>))
+import           Prelude.Compat hiding (any)
+
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set

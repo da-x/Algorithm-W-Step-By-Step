@@ -1,6 +1,9 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Data.Map.Utils
     ( lookupOrSelf, pop, popKeys, matchKeys, match, differenceSet
     ) where
+
+import           Prelude.Compat
 
 import qualified Control.Lens as Lens
 import           Control.Lens.Operators
@@ -10,7 +13,6 @@ import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Set (Set)
-import           Data.Traversable (Traversable(..))
 
 differenceSet :: Ord k => Map k a -> Set k -> Map k a
 differenceSet m = Map.difference m . Map.fromSet (const ())

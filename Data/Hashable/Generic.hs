@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, FlexibleContexts, BangPatterns #-}
+{-# LANGUAGE NoImplicitPrelude, TypeOperators, FlexibleContexts, BangPatterns #-}
 {-# OPTIONS_GHC -Wall #-}
 -- |
 -- Module:      Data.Hashable.Generic
@@ -11,8 +11,8 @@ module Data.Hashable.Generic ( gHashWithSalt
                              , Hashable(..)
                              ) where
 
+import Prelude.Compat
 import Data.Hashable
-import Data.Word
 import GHC.Generics
 
 -- | "GHC.Generics"-based 'hashWithSalt' implementation

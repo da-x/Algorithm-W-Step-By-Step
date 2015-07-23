@@ -1,7 +1,10 @@
 -- | Unify support for type ASTs
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Infer.Internal.Unify
     ( unifyUnsafe
     ) where
+
+import           Prelude.Compat
 
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.State (StateT, evalStateT)
@@ -9,7 +12,6 @@ import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..))
 import           Lamdu.Expr.FlatComposite (FlatComposite(..))
 import qualified Lamdu.Expr.FlatComposite as FlatComposite
 import           Lamdu.Expr.Type (Type)

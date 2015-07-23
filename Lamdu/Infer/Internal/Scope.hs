@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric #-}
 module Lamdu.Infer.Internal.Scope
     ( Scope, emptyScope
     , fromTypeMap, scopeToTypeMap
@@ -6,12 +6,13 @@ module Lamdu.Infer.Internal.Scope
     , lookupTypeOf
     ) where
 
+import           Prelude.Compat hiding (any)
+
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..))
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.TypeVars as TV

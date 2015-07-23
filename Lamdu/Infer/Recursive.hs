@@ -1,7 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedStrings #-}
 module Lamdu.Infer.Recursive
     ( inferEnv
     ) where
+
+import           Prelude.Compat
 
 import qualified Lamdu.Expr.Val as V
 import           Lamdu.Infer (InferCtx, freshInferredVar)

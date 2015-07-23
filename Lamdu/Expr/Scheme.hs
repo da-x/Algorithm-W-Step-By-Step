@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, PatternGuards, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric, OverloadedStrings, PatternGuards, RecordWildCards #-}
 module Lamdu.Expr.Scheme
     ( Scheme(..), schemeForAll, schemeConstraints, schemeType
     , make, mono, any
     , alphaEq
     ) where
 
-import           Prelude hiding (any)
+import           Prelude.Compat hiding (any)
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
@@ -16,9 +16,9 @@ import           Control.Monad (guard)
 import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..))
+
 import qualified Data.Set as Set
-import           Data.Traversable (sequenceA)
+
 import qualified Data.Tuple as Tuple
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Constraints (Constraints(..), getTypeVarConstraints, getSumVarConstraints, getProductVarConstraints)
@@ -30,7 +30,7 @@ import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TV
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
-import           Text.PrettyPrint.HughesPJClass (Pretty(..), prettyParen)
+import           Text.PrettyPrint.HughesPJClass.Compat (Pretty(..), maybeParens)
 
 data Scheme = Scheme
     { _schemeForAll :: TypeVars
@@ -113,7 +113,7 @@ instance NFData Scheme where
 
 instance Pretty Scheme where
     pPrintPrec lvl prec (Scheme vars@(TypeVars tv rv sv) constraints t)  =
-        prettyParen (0 < prec) $
+        maybeParens (0 < prec) $
         forallStr <+> constraintsStr <+> pPrintPrec lvl 0 t
         where
             forallStr

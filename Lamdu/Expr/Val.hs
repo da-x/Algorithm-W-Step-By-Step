@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving, RecordWildCards #-}
 module Lamdu.Expr.Val
     ( Leaf(..)
     , Body(..)
@@ -15,27 +15,25 @@ module Lamdu.Expr.Val
     , pPrintUnannotated
     ) where
 
-import           Control.Applicative ((<$), (<$>))
+import           Prelude.Compat hiding (any)
+
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Control.Lens (Lens, Lens')
 import           Control.Lens.Operators
 import           Data.Binary (Binary)
-import           Data.Foldable (Foldable)
 import qualified Data.Foldable as Foldable
 import           Data.Hashable (Hashable(..))
 import           Data.Hashable.Generic (gHashWithSalt)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Monoid (Monoid(..))
 import           Data.String (IsString(..))
-import           Data.Traversable (Traversable)
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Identifier (Identifier)
 import qualified Lamdu.Expr.Type as T
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as PP
-import           Text.PrettyPrint.HughesPJClass (Pretty(..), PrettyLevel, prettyParen)
+import           Text.PrettyPrint.HughesPJClass.Compat (Pretty(..), PrettyLevel, maybeParens)
 
 {-# ANN module "HLint: ignore Use const" #-}
 
@@ -228,17 +226,17 @@ pPrintPrecBody lvl prec b =
     BLeaf (LLiteralInteger i) -> pPrint i
     BLeaf LHole               -> PP.text "?"
     BLeaf LAbsurd             -> PP.text "absurd"
-    BApp (Apply e1 e2)        -> prettyParen (10 < prec) $
+    BApp (Apply e1 e2)        -> maybeParens (10 < prec) $
                                  pPrintPrec lvl 10 e1 <+> pPrintPrec lvl 11 e2
-    BAbs (Lam n e)            -> prettyParen (0 < prec) $
+    BAbs (Lam n e)            -> maybeParens (0 < prec) $
                                  PP.char '\\' <> pPrint n <+>
                                  PP.text "->" <+>
                                  pPrint e
-    BGetField (GetField e n)  -> prettyParen (12 < prec) $
+    BGetField (GetField e n)  -> maybeParens (12 < prec) $
                                  pPrintPrec lvl 12 e <> PP.char '.' <> pPrint n
-    BInject (Inject n e)      -> prettyParen (12 < prec) $
+    BInject (Inject n e)      -> maybeParens (12 < prec) $
                                  pPrint n <> PP.char '{' <> pPrintPrec lvl 12 e <> PP.char '}'
-    BCase (Case n m mm)       -> prettyParen (0 < prec) $
+    BCase (Case n m mm)       -> maybeParens (0 < prec) $
                                  PP.vcat
                                  [ PP.text "case of"
                                  , pPrint n <> PP.text " -> " <> pPrint m
@@ -260,7 +258,7 @@ instance Pretty a => Pretty (Val a) where
     pPrintPrec lvl prec (Val pl b)
         | PP.isEmpty plDoc = pPrintPrecBody lvl prec b
         | otherwise =
-            prettyParen (13 < prec) $ mconcat
+            maybeParens (13 < prec) $ mconcat
             [ pPrintPrecBody lvl 14 b, PP.text "{", plDoc, PP.text "}" ]
         where
             plDoc = pPrintPrec lvl 0 pl

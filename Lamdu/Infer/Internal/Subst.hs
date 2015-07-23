@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Infer.Internal.Subst
     ( HasVar(..), CompositeHasVar
     , Subst(..), intersect
@@ -5,14 +6,12 @@ module Lamdu.Infer.Internal.Subst
     , fromRenames
     ) where
 
-import           Prelude hiding (null, lookup)
+import           Prelude.Compat hiding (null, lookup)
 
-import           Control.Applicative ((<$>))
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Map.Utils as MapUtils
 import           Data.Maybe (fromMaybe)
-import           Data.Monoid (Monoid(..))
 import           Data.Set (Set)
 import           Lamdu.Expr.Scheme (Scheme(..))
 import           Lamdu.Expr.Type (Type)

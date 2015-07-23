@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedStrings #-}
 
 module TestVals
     ( env
@@ -12,9 +12,11 @@ module TestVals
     , xGetterPair, xGetterPairConstrained
     ) where
 
+import           Prelude.Compat
+
 import           Control.Lens.Operators
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..), (<>))
+import           Data.Monoid ((<>))
 import qualified Data.Set as Set
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
 import           Lamdu.Expr.Nominal (Nominal(..))

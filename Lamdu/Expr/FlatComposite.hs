@@ -1,10 +1,12 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Expr.FlatComposite
     ( FlatComposite(..)
     , fromComposite
     , toComposite
     ) where
 
-import           Control.Applicative ((<$>))
+import           Prelude.Compat
+
 import           Control.Lens (Lens')
 import           Control.Lens.Operators
 import           Data.Map (Map)

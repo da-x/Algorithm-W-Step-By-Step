@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveDataTypeable, DeriveGeneric, OverloadedStrings #-}
 module Lamdu.Infer
     ( makeScheme
     , TypeVars(..)
@@ -12,7 +12,8 @@ module Lamdu.Infer
     , M.freshInferredVar
     ) where
 
-import           Control.Applicative ((<$), (<$>))
+import           Prelude.Compat
+
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Control.Lens (Lens')
@@ -22,7 +23,6 @@ import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Monoid ((<>))
-import           Data.Traversable (sequenceA)
 import           Data.Typeable (Typeable)
 import           GHC.Generics (Generic)
 import           Lamdu.Expr.Nominal (Nominal(..))

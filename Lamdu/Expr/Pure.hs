@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Expr.Pure
     ( abs, var, global, litInt, recEmpty, app, recExtend, getField
     , inject, absurd, _case
@@ -8,9 +9,8 @@ module Lamdu.Expr.Pure
     , ($$), ($$:), ($.), ($=)
     ) where
 
-import           Prelude hiding (abs)
+import           Prelude.Compat hiding (abs)
 
-import           Data.Monoid (Monoid(..))
 import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V

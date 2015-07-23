@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
 module Lamdu.Infer.Internal.Monad
     ( Results(..), subst, constraints, emptyResults
     , Context(..), ctxResults, ctxState, initialContext
@@ -16,7 +16,8 @@ module Lamdu.Infer.Internal.Monad
     , listenSubst
     ) where
 
-import           Control.Applicative (Applicative(..))
+import           Prelude.Compat
+
 import           Control.Lens (Lens')
 import qualified Control.Lens as Lens
 import           Control.Lens.Operators
@@ -25,7 +26,6 @@ import           Control.Monad (liftM)
 import           Control.Monad.Trans.State (StateT(..))
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Map as Map
-import           Data.Monoid (Monoid(..))
 import qualified Data.Set as Set
 import           Data.String (IsString(..))
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))

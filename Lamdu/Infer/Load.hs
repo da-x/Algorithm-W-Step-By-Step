@@ -1,9 +1,11 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Infer.Load
     ( Loader(..)
     , loadInfer
     ) where
 
-import           Control.Applicative (Applicative(..), (<$>))
+import           Prelude.Compat
+
 import           Control.Lens.Operators
 import qualified Data.Map as Map
 import qualified Data.Set as Set

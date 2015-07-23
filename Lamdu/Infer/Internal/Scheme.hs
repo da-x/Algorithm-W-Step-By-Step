@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Infer.Internal.Scheme
     ( makeScheme
     , instantiateWithRenames
@@ -5,6 +6,8 @@ module Lamdu.Infer.Internal.Scheme
     , generalize
     , applyRenames
     ) where
+
+import           Prelude.Compat
 
 import           Control.Lens.Operators
 import           Control.Monad (liftM)

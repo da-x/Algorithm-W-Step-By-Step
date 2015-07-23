@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveGeneric #-}
 module Lamdu.Expr.TypeVars
     ( TypeVars(..)
     , null
@@ -9,7 +9,7 @@ module Lamdu.Expr.TypeVars
     , nullRenames
     ) where
 
-import           Prelude hiding (null)
+import           Prelude.Compat hiding (null)
 
 import           Control.DeepSeq (NFData(..))
 import           Control.DeepSeq.Generics (genericRnf)
@@ -17,7 +17,7 @@ import           Data.Binary (Binary)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Monoid (Monoid(..), (<>))
+import           Data.Monoid ((<>))
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           GHC.Generics (Generic)

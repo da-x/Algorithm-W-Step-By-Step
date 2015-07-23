@@ -1,4 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude, OverloadedStrings #-}
+import Prelude.Compat
+
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Lens (folded)

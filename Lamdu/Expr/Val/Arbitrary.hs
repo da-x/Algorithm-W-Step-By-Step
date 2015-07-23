@@ -1,10 +1,11 @@
+{-# LANGUAGE NoImplicitPrelude, FlexibleInstances #-}
 {-# OPTIONS -fno-warn-orphans #-} -- Arbitrary E.Val
-{-# LANGUAGE FlexibleInstances #-}
 module Lamdu.Expr.Val.Arbitrary
     ( Name(..)
     ) where
 
-import           Control.Applicative (Applicative(..), (<$>), (<*))
+import           Prelude.Compat hiding (any)
+
 import           Control.Lens (Lens')
 import qualified Control.Lens as Lens
 import           Control.Lens.Operators

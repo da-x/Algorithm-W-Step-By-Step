@@ -38,10 +38,12 @@ import           Data.Monoid ((<>))
 import qualified Data.Set as Set
 import           Data.String (IsString(..))
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
+import qualified Lamdu.Expr.Constraints as Constraints
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Error (Error)
+import qualified Lamdu.Infer.Error as Err
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
 import           Lamdu.Infer.Internal.Scope (SkolemScope)
 import qualified Lamdu.Infer.Internal.Scope as Scope
@@ -130,11 +132,29 @@ emptyResults :: Results
 emptyResults = Results mempty mempty
 {-# INLINE emptyResults #-}
 
-appendResults :: Results -> Results -> Either Error Results
-appendResults (Results s0 c0) (Results s1 c1) =
+verifySkolemConstraints :: InferState -> Constraints -> Either Error ()
+verifySkolemConstraints state newConstraints
+    | Constraints.null unexpectedConstraints = Right ()
+    | otherwise = Left $ Err.UnexpectedSkolemConstraint unexpectedConstraints
+    where
+        unexpectedConstraints =
+            Constraints.intersect (_inferSkolems state) newConstraints
+            `Constraints.difference` _inferSkolemConstraints state
+{-# INLINE verifySkolemConstraints #-}
+
+appendResults :: Context -> Results -> Either Error Results
+appendResults (Context (Results s0 c0) state) (Results s1 c1) =
     do
         c0' <- Constraints.applySubst s1 c0
-        return $ Results (s0 <> s1) (c0' <> c1)
+        let c = c0' <> c1
+        -- TODO: c1 is usually empty, but c0' will contain ALL of c0,
+        -- even though we're only interested in the NEW constraints
+        -- that come from applySubst. Change applySubst to return a
+        -- set of NEW constraints separately from the SUBST
+        -- constraints and only verify skolem constraints against the
+        -- new ones.
+        verifySkolemConstraints state c
+        return $ Results (s0 <> s1) c
 {-# INLINE appendResults #-}
 
 data Context = Context
@@ -200,7 +220,7 @@ tell :: Results -> Infer ()
 tell w =
     Infer $ StateT $ \c ->
     do
-        !newRes <- appendResults (_ctxResults c) w
+        !newRes <- appendResults c w
         Right ((), c { _ctxResults = newRes} )
 {-# INLINE tell #-}
 
@@ -233,7 +253,7 @@ listen (Infer (StateT act)) =
     Infer $ StateT $ \c0 ->
     do
         (y, c1) <- act c0 { _ctxResults = emptyResults }
-        !w <- appendResults (_ctxResults c0) (_ctxResults c1)
+        !w <- appendResults c0 (_ctxResults c1)
         Right ((y, _ctxResults c1), c1 { _ctxResults = w} )
 {-# INLINE listen #-}
 

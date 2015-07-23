@@ -4,6 +4,7 @@ module Lamdu.Infer.Error
     ( Error(..)
     ) where
 
+import           Lamdu.Expr.Constraints (Constraints)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
 import           Text.PrettyPrint ((<+>), Doc)
@@ -19,6 +20,7 @@ data Error
     | UnboundVariable V.Var
     | SkolemsUnified Doc Doc
     | SkolemNotPolymorphic Doc Doc
+    | UnexpectedSkolemConstraint Constraints
 
 instance Pretty Error where
     pPrint (DuplicateField t r) =
@@ -39,3 +41,5 @@ instance Pretty Error where
         "Two skolems unified" <+> x <+> "vs." <+> y
     pPrint (SkolemNotPolymorphic x y) =
         "Skolem" <+> x <+> "unified with non-polymorphic type" <+> y
+    pPrint (UnexpectedSkolemConstraint constraints) =
+        "Unexpected constraint on skolem[s] " <+> pPrint constraints

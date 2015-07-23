@@ -15,7 +15,7 @@ import qualified Lamdu.Infer.Internal.Scope as Scope
 inferEnv :: Monad m => V.Var -> Scope -> InferCtx m Infer.Payload
 inferEnv recurseVar scope =
     do
-        recursiveType <- freshInferredVar "r"
+        recursiveType <- freshInferredVar (Scope.skolems scope) "r"
         return $
                 Infer.Payload recursiveType $
                 Scope.insertTypeOf recurseVar recursiveType scope

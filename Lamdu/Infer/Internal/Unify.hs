@@ -21,6 +21,7 @@ import qualified Lamdu.Expr.TypeVars as TypeVars
 import qualified Lamdu.Infer.Error as Err
 import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
+import qualified Lamdu.Infer.Internal.Scope as Scope
 import           Lamdu.Infer.Internal.Subst (Subst, CanSubst)
 import qualified Lamdu.Infer.Internal.Subst as Subst
 import           Text.PrettyPrint.HughesPJClass (Pretty(..))
@@ -80,14 +81,16 @@ unifyFlatToPartial s (tfields, tname) ufields
         uniqueUFields = ufields `Map.difference` tfields
 
 unifyFlatPartials ::
-    Subst.CompositeHasVar p =>
+    M.CompositeHasVar p =>
     Subst ->
     (Map T.Tag Type, T.Var (T.Composite p)) ->
     (Map T.Tag Type, T.Var (T.Composite p)) ->
     Infer ()
 unifyFlatPartials s0 (tfields, tname) (ufields, uname) =
     do
-        restTv <- M.freshInferredVar "r"
+        tScope <- M.getSkolemsInScope tname
+        uScope <- M.getSkolemsInScope uname
+        restTv <- M.freshInferredVar (tScope `Scope.skolemScopeIntersection` uScope) "r"
         ((), s1) <-
             M.listenSubst $ varBind tname $
             Subst.apply s0 $
@@ -120,8 +123,7 @@ unifyIntersection tfields ufields =
     (`evalStateT` mempty) . Foldable.sequence_ $
     Map.intersectionWith unifyChild tfields ufields
 
-unifyFlattened ::
-    Subst.CompositeHasVar p => FlatComposite p -> FlatComposite p -> Infer ()
+unifyFlattened :: M.CompositeHasVar p => FlatComposite p -> FlatComposite p -> Infer ()
 unifyFlattened
     (FlatComposite tfields tvar)
     (FlatComposite ufields uvar) =
@@ -153,7 +155,7 @@ instance Unify Type where
     unifyGeneric T.TInt        T.TInt        =  return ()
     unifyGeneric t1 t2                       =  dontUnify t1 t2
 
-instance Subst.CompositeHasVar p => Unify (T.Composite p) where
+instance M.CompositeHasVar p => Unify (T.Composite p) where
     unifyGeneric T.CEmpty T.CEmpty       =  return ()
     unifyGeneric (T.CVar u) t            =  varBind u t
     unifyGeneric t (T.CVar u)            =  varBind u t

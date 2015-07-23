@@ -39,7 +39,7 @@ import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
 import           Lamdu.Infer.Internal.Scheme (makeScheme)
 import qualified Lamdu.Infer.Internal.Scheme as Scheme
-import           Lamdu.Infer.Internal.Scope (Scope, emptyScope)
+import           Lamdu.Infer.Internal.Scope (Scope, emptyScope, SkolemScope)
 import qualified Lamdu.Infer.Internal.Scope as Scope
 import           Lamdu.Infer.Internal.Subst (CanSubst(..))
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -108,11 +108,19 @@ type InferHandler a b =
     (Scope -> a -> Infer (Type, b)) -> Scope ->
     M.Infer (V.Body b, Type)
 
+{-# INLINE freshInferredVar #-}
+freshInferredVar :: (M.VarKind t, Monad m) => Scope -> String -> M.InferCtx m t
+freshInferredVar = M.freshInferredVar . Scope.skolems
+
+{-# INLINE freshInferredVarName #-}
+freshInferredVarName :: (M.VarKind t, Monad m) => Scope -> String -> M.InferCtx m (T.Var t)
+freshInferredVarName = M.freshInferredVarName . Scope.skolems
+
 {-# INLINE inferLeaf #-}
 inferLeaf :: Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
 inferLeaf globals leaf = \_go locals ->
     case leaf of
-    V.LHole -> M.freshInferredVar "h"
+    V.LHole -> freshInferredVar locals "h"
     V.LVar n ->
         case Scope.lookupTypeOf n locals of
         Nothing      -> M.throwError $ Err.UnboundVariable n
@@ -120,12 +128,12 @@ inferLeaf globals leaf = \_go locals ->
     V.LGlobal n ->
         case Map.lookup n globals of
         Nothing      -> M.throwError $ Err.MissingGlobal n
-        Just sigma   -> Scheme.instantiate sigma
+        Just sigma   -> Scheme.instantiate (Scope.skolems locals) sigma
     V.LLiteralInteger _ -> return T.TInt
     V.LRecEmpty -> return $ T.TRecord T.CEmpty
     V.LAbsurd ->
         do
-            tv <- M.freshInferredVar "a"
+            tv <- freshInferredVar locals "a"
             return $ T.TFun (T.TSum T.CEmpty) tv
     <&> (,) (V.BLeaf leaf)
 
@@ -133,7 +141,7 @@ inferLeaf globals leaf = \_go locals ->
 inferAbs :: V.Lam a -> InferHandler a b
 inferAbs (V.Lam n e) = \go locals ->
     do
-        tv <- M.freshInferredVar "a"
+        tv <- freshInferredVar locals "a"
         let locals' = Scope.insertTypeOf n tv locals
         ((t1, e'), s1) <- M.listenSubst $ go locals' e
         return (V.BAbs (V.Lam n e'), T.TFun (Subst.apply s1 tv) t1)
@@ -147,7 +155,7 @@ inferApply (V.Apply e1 e2) = \go locals ->
 
         ((p2_t2, e2'), p2_s) <- M.listenSubst $ go (p1 locals) e2
         let p2_t1 = Subst.apply p2_s p1_t1
-        p2_tv <- M.freshInferredVar "a"
+        p2_tv <- freshInferredVar locals "a"
 
         ((), p3_s) <- M.listenSubst $ unifyUnsafe p2_t1 (T.TFun p2_t2 p2_tv)
         let p3_tv = Subst.apply p3_s p2_tv
@@ -158,8 +166,8 @@ inferGetField :: V.GetField a -> InferHandler a b
 inferGetField (V.GetField e name) = \go locals ->
     do
         (p1_t, e') <- go locals e
-        p1_tv <- M.freshInferredVar "a"
-        p1_tvRecName <- M.freshInferredVarName "r"
+        p1_tv <- freshInferredVar locals "a"
+        p1_tvRecName <- freshInferredVarName locals "r"
         M.tellProductConstraint p1_tvRecName name
 
         ((), p2_s) <-
@@ -173,7 +181,7 @@ inferInject :: V.Inject a -> InferHandler a b
 inferInject (V.Inject name e) = \go locals ->
     do
         (t, e') <- go locals e
-        tvSumName <- M.freshInferredVarName "s"
+        tvSumName <- freshInferredVarName locals "s"
         M.tellSumConstraint tvSumName name
         return
             ( V.BInject (V.Inject name e')
@@ -191,8 +199,8 @@ inferCase (V.Case name m mm) = \go locals ->
         let p2 = Subst.apply p2_s
             p2_tm = p2 p1_tm
         -- p2
-        p2_tv <- M.freshInferredVar "a"
-        p2_tvRes <- M.freshInferredVar "res"
+        p2_tv <- freshInferredVar locals "a"
+        p2_tvRes <- freshInferredVar locals "res"
         -- type(match) `unify` a->res
         ((), p3_s) <-
             M.listenSubst $ unifyUnsafe p2_tm $ T.TFun p2_tv p2_tvRes
@@ -202,7 +210,7 @@ inferCase (V.Case name m mm) = \go locals ->
             p3_tmm   = p3 p2_tmm
         -- p3
         -- new sum type var "s":
-        tvSumName <- M.freshInferredVarName "s"
+        tvSumName <- freshInferredVarName locals "s"
         M.tellSumConstraint tvSumName name
         let p3_tvSum = TV.lift tvSumName
         -- type(mismatch) `unify` [ s ]->res
@@ -237,7 +245,7 @@ inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
                 DoesNotHaveTag -> return x
                 MayHaveTag var -> x <$ M.tellProductConstraint var name
             _ -> do
-                tv <- M.freshInferredVarName "r"
+                tv <- freshInferredVarName locals "r"
                 M.tellProductConstraint tv name
                 let tve = TV.lift tv
                 ((), s) <- M.listenSubst $ unifyUnsafe t2 $ T.TRecord tve
@@ -254,16 +262,16 @@ getNominal nominals name =
     Nothing -> M.throwError $ Err.MissingNominal name
     Just nominal -> return nominal
 
-nomTypes :: Map T.Id Nominal -> T.Id -> M.Infer (Type, Type)
-nomTypes nominals name =
+nomTypes :: SkolemScope -> Map T.Id Nominal -> T.Id -> M.Infer (Type, Type)
+nomTypes skolemsScope nominals name =
     do
         nominal <- getNominal nominals name
         p1_paramVals <-
             nParams nominal
-            & Map.keysSet & Map.fromSet (const (M.freshInferredVar "n"))
+            & Map.keysSet & Map.fromSet (const (M.freshInferredVar skolemsScope "n"))
             & sequenceA
         p1_freshInnerType <-
-            Nominal.apply p1_paramVals nominal & Scheme.instantiate
+            Nominal.apply p1_paramVals nominal & Scheme.instantiate skolemsScope
         return (T.TInst name p1_paramVals, p1_freshInnerType)
 
 {-# INLINE inferFromNom #-}
@@ -271,7 +279,7 @@ inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
 inferFromNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes nominals name
+        (p1_outerType, p1_innerType) <- nomTypes (Scope.skolems locals) nominals name
         ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_outerType
         let p2_innerType = Subst.apply p2_s p1_innerType
         return
@@ -284,7 +292,7 @@ inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
 inferToNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes nominals name
+        (p1_outerType, p1_innerType) <- nomTypes (Scope.skolems locals) nominals name
         ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_innerType
         let p2_outerType = Subst.apply p2_s p1_outerType
         return

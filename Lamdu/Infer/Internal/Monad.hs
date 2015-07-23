@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude, DeriveFunctor, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, BangPatterns, RecordWildCards, TypeFamilies #-}
 module Lamdu.Infer.Internal.Monad
     ( Results(..), subst, constraints, emptyResults
     , Context(..), ctxResults, ctxState, initialContext
@@ -6,16 +6,21 @@ module Lamdu.Infer.Internal.Monad
     , InferCtx(..), inferCtx
     , Infer
     , throwError
-    , isSkolem
-    , addSkolems
+
     , tell, tellSubst
     , tellProductConstraint
     , tellSumConstraint
     , tellConstraints
     , listen, listenNoTell
     , getConstraints, getSubst
-    , freshInferredVar, freshInferredVarName
     , listenSubst
+
+    , isSkolem, addSkolems
+
+    , narrowTVScope, getSkolemsInScope
+
+    , CompositeHasVar, VarKind
+    , freshInferredVar, freshInferredVarName
     ) where
 
 import           Prelude.Compat
@@ -27,21 +32,69 @@ import           Control.Lens.Tuple
 import           Control.Monad (liftM)
 import           Control.Monad.Trans.State (StateT(..))
 import qualified Control.Monad.Trans.State as State
+import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Monoid ((<>))
 import qualified Data.Set as Set
 import           Data.String (IsString(..))
 import           Lamdu.Expr.Constraints (Constraints(..), CompositeVarConstraints(..))
+import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Error (Error)
 import qualified Lamdu.Infer.Internal.Constraints as Constraints
+import           Lamdu.Infer.Internal.Scope (SkolemScope)
+import qualified Lamdu.Infer.Internal.Scope as Scope
 import           Lamdu.Infer.Internal.Subst (Subst)
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
+data SkolemsInScope = SkolemsInScope
+    { _sisTVs  :: Map T.TypeVar    SkolemScope
+    , _sisRTVs :: Map T.ProductVar SkolemScope
+    , _sisSTVs :: Map T.SumVar     SkolemScope
+    }
+instance Monoid SkolemsInScope where
+    mempty = SkolemsInScope mempty mempty mempty
+    mappend (SkolemsInScope tvs0 rtvs0 stvs0) (SkolemsInScope tvs1 rtvs1 stvs1) =
+        SkolemsInScope (tvs0 <> tvs1) (rtvs0 <> rtvs1) (stvs0 <> stvs1)
+
+sisTVs :: Lens' SkolemsInScope (Map T.TypeVar SkolemScope)
+sisTVs f SkolemsInScope {..} = f _sisTVs <&> \_sisTVs -> SkolemsInScope {..}
+{-# INLINE sisTVs #-}
+
+sisRTVs :: Lens' SkolemsInScope (Map T.ProductVar SkolemScope)
+sisRTVs f SkolemsInScope {..} = f _sisRTVs <&> \_sisRTVs -> SkolemsInScope {..}
+{-# INLINE sisRTVs #-}
+
+sisSTVs :: Lens' SkolemsInScope (Map T.SumVar SkolemScope)
+sisSTVs f SkolemsInScope {..} = f _sisSTVs <&> \_sisSTVs -> SkolemsInScope {..}
+{-# INLINE sisSTVs #-}
+
+class Subst.CompositeHasVar p => CompositeHasVar p where
+    compositeSkolemsInScopeMap :: Lens' SkolemsInScope (Map (T.Var (T.Composite p)) SkolemScope)
+instance CompositeHasVar T.ProductTag where
+    compositeSkolemsInScopeMap = sisRTVs
+    {-# INLINE compositeSkolemsInScopeMap #-}
+instance CompositeHasVar T.SumTag where
+    compositeSkolemsInScopeMap = sisSTVs
+    {-# INLINE compositeSkolemsInScopeMap #-}
+
+class TV.VarKind t => VarKind t where
+    skolemsInScopeMap :: Lens' SkolemsInScope (Map (T.Var t) SkolemScope)
+
+instance VarKind Type where
+    skolemsInScopeMap = sisTVs
+    {-# INLINE skolemsInScopeMap #-}
+
+instance CompositeHasVar p => VarKind (T.Composite p) where
+    skolemsInScopeMap = compositeSkolemsInScopeMap
+    {-# INLINE skolemsInScopeMap #-}
+
 data InferState = InferState
-    { _inferSupply :: Int
-    , _inferSkolems :: TV.TypeVars
-    , _inferSkolemConstraints :: Constraints
+    { _inferSupply :: {-# UNPACK #-}!Int
+    , _inferSkolems :: {-# UNPACK #-}!TV.TypeVars
+    , _inferSkolemConstraints :: {-# UNPACK #-}!Constraints
+    , _inferSkolemsInScope :: {-# UNPACK #-}!SkolemsInScope
     }
 
 inferSupply :: Lens' InferState Int
@@ -52,10 +105,13 @@ inferSkolems :: Lens' InferState TV.TypeVars
 inferSkolems f InferState {..} = f _inferSkolems <&> \_inferSkolems -> InferState {..}
 {-# INLINE inferSkolems #-}
 
-
 inferSkolemConstraints :: Lens' InferState Constraints
 inferSkolemConstraints f InferState {..} = f _inferSkolemConstraints <&> \_inferSkolemConstraints -> InferState {..}
 {-# INLINE inferSkolemConstraints #-}
+
+inferSkolemsInScope :: Lens' InferState SkolemsInScope
+inferSkolemsInScope f InferState {..} = f _inferSkolemsInScope <&> \_inferSkolemsInScope -> InferState {..}
+{-# INLINE inferSkolemsInScope #-}
 
 data Results = Results
     { _subst :: {-# UNPACK #-} !Subst
@@ -78,7 +134,7 @@ appendResults :: Results -> Results -> Either Error Results
 appendResults (Results s0 c0) (Results s1 c1) =
     do
         c0' <- Constraints.applySubst s1 c0
-        return $ Results (mappend s0 s1) (mappend c0' c1)
+        return $ Results (s0 <> s1) (c0' <> c1)
 {-# INLINE appendResults #-}
 
 data Context = Context
@@ -103,6 +159,7 @@ initialContext =
         { _inferSupply = 0
         , _inferSkolems = mempty
         , _inferSkolemConstraints = mempty
+        , _inferSkolemsInScope = mempty
         }
     }
 
@@ -190,21 +247,43 @@ listenNoTell (Infer (StateT act)) =
         return ((y, _ctxResults c1), c1 { _ctxResults = _ctxResults c0} )
 {-# INLINE listenNoTell #-}
 
-freshInferredVarName :: Monad m => String -> InferCtx m (T.Var t)
-freshInferredVarName prefix =
-    Infer $
+nextInt :: Monad m => StateT Int m Int
+nextInt =
     do
-        oldSupply <-
-            Lens.zoom (ctxState . inferSupply) $
-            do
-                old <- State.get
-                id += 1
-                return old
-        return $ fromString $ prefix ++ show oldSupply
+        old <- State.get
+        id += 1
+        return old
+{-# INLINE nextInt #-}
+
+freshInferredVarName ::
+    (VarKind t, Monad m) => SkolemScope -> String -> InferCtx m (T.Var t)
+freshInferredVarName skolemScope prefix =
+    do
+        oldSupply <- Lens.zoom inferSupply nextInt
+        let varName = fromString $ prefix ++ show oldSupply
+        inferSkolemsInScope . skolemsInScopeMap . Lens.at varName ?= skolemScope
+        return varName
+    & Lens.zoom ctxState
+    & Infer
 {-# INLINE freshInferredVarName #-}
 
-freshInferredVar :: Monad m => TV.VarKind t => String -> InferCtx m t
-freshInferredVar = liftM TV.lift . freshInferredVarName
+getSkolemsInScope :: (Monad m, VarKind t) => T.Var t -> InferCtx m SkolemScope
+getSkolemsInScope varName =
+    Lens.use
+    (ctxState . inferSkolemsInScope . skolemsInScopeMap . Lens.at varName .
+     Lens._Just)
+    & Infer
+{-# INLINE getSkolemsInScope #-}
+
+narrowTVScope :: (Monad m, VarKind t) => SkolemScope -> T.Var t -> InferCtx m ()
+narrowTVScope skolems varName =
+    ctxState . inferSkolemsInScope . skolemsInScopeMap . Lens.at varName .
+    Lens._Just . Scope.skolemScopeVars %= TV.intersection (skolems ^. Scope.skolemScopeVars)
+    & Infer
+{-# INLINE narrowTVScope #-}
+
+freshInferredVar :: Monad m => VarKind t => SkolemScope -> String -> InferCtx m t
+freshInferredVar skolemScope = liftM TV.lift . freshInferredVarName skolemScope
 {-# INLINE freshInferredVar #-}
 
 listenSubst :: Infer a -> Infer (a, Subst)

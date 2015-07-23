@@ -25,7 +25,7 @@ import           Lamdu.Expr.TypeVars (TypeVars(..))
 import qualified Lamdu.Expr.TypeVars as TV
 import           Lamdu.Infer.Internal.Monad (InferCtx)
 import qualified Lamdu.Infer.Internal.Monad as M
-
+import           Lamdu.Infer.Internal.Scope (SkolemScope)
 import qualified Lamdu.Infer.Internal.Subst as Subst
 
 {-# INLINE makeScheme #-}
@@ -34,13 +34,13 @@ makeScheme = Scheme.make . M._constraints . M._ctxResults
 
 {-# INLINE mkInstantiateSubstPart #-}
 mkInstantiateSubstPart ::
-    Monad m => String -> Set (T.Var t) -> InferCtx m (Map (T.Var t) (T.Var t))
-mkInstantiateSubstPart prefix =
+    (M.VarKind t, Monad m) => SkolemScope -> String -> Set (T.Var t) -> InferCtx m (Map (T.Var t) (T.Var t))
+mkInstantiateSubstPart skolemScope prefix =
     liftM Map.fromList . mapM f . Set.toList
     where
         f oldVar =
             do
-                freshVarExpr <- M.freshInferredVarName prefix
+                freshVarExpr <- M.freshInferredVarName skolemScope prefix
                 return (oldVar, freshVarExpr)
 
 generalize :: TypeVars -> Constraints -> Type -> Scheme
@@ -50,12 +50,12 @@ generalize outerTVs innerConstraints innerType =
         tvs = TV.free innerType `TV.difference` outerTVs
 
 {-# INLINE instantiateWithRenames #-}
-instantiateWithRenames :: Monad m => Scheme -> InferCtx m (TV.Renames, Type)
-instantiateWithRenames (Scheme (TypeVars tv rv sv) constraints t) =
+instantiateWithRenames :: Monad m => SkolemScope -> Scheme -> InferCtx m (TV.Renames, Type)
+instantiateWithRenames skolemScope (Scheme (TypeVars tv rv sv) constraints t) =
     do
-        typeVarSubsts <- mkInstantiateSubstPart "i" tv
-        recordSubsts <- mkInstantiateSubstPart "k" rv
-        sumSubsts <- mkInstantiateSubstPart "s" sv
+        typeVarSubsts <- mkInstantiateSubstPart skolemScope "i" tv
+        recordSubsts <- mkInstantiateSubstPart skolemScope "k" rv
+        sumSubsts <- mkInstantiateSubstPart skolemScope "s" sv
         let renames = TV.Renames typeVarSubsts recordSubsts sumSubsts
         let subst = Subst.fromRenames renames
             constraints' = Constraints.applyRenames renames constraints
@@ -66,8 +66,8 @@ instantiateWithRenames (Scheme (TypeVars tv rv sv) constraints t) =
         return (renames, Subst.apply subst t)
 
 {-# INLINE instantiate #-}
-instantiate :: Monad m => Scheme -> InferCtx m Type
-instantiate scheme = liftM snd (instantiateWithRenames scheme)
+instantiate :: Monad m => SkolemScope -> Scheme -> InferCtx m Type
+instantiate skolemScope scheme = liftM snd (instantiateWithRenames skolemScope scheme)
 
 {-# INLINE applyRenames #-}
 applyRenames :: TV.Renames -> Scheme -> Scheme

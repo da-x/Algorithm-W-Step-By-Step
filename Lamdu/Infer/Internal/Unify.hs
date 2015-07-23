@@ -17,7 +17,7 @@ import           Lamdu.Expr.FlatComposite (FlatComposite(..))
 import qualified Lamdu.Expr.FlatComposite as FlatComposite
 import           Lamdu.Expr.Type (Type)
 import qualified Lamdu.Expr.Type as T
-import qualified Lamdu.Expr.TypeVars as TypeVars
+import qualified Lamdu.Expr.TypeVars as TV
 import qualified Lamdu.Infer.Error as Err
 import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
@@ -46,13 +46,13 @@ varBind u t
                     do
                         tIsSkolem <- M.isSkolem tv
                         when tIsSkolem $ M.throwError $ Err.SkolemsUnified (pPrint u) (pPrint t)
-                        M.tellSubst tv (TypeVars.lift u)
+                        M.tellSubst tv (TV.lift u)
     where
-        mtv = TypeVars.unlift t
+        mtv = TV.unlift t
 
 checkOccurs :: (Pretty t, Subst.HasVar t) => T.Var t -> t -> Infer ()
 checkOccurs var typ
-    | var `TypeVars.member` TypeVars.free typ =
+    | var `TV.member` TV.free typ =
         M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
     | otherwise = return ()
 

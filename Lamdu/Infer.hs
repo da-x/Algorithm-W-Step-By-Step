@@ -262,24 +262,24 @@ getNominal nominals name =
     Nothing -> M.throwError $ Err.MissingNominal name
     Just nominal -> return nominal
 
-nomTypes :: SkolemScope -> Map T.Id Nominal -> T.Id -> M.Infer (Type, Type)
-nomTypes skolemsScope nominals name =
+nomTypes :: SkolemScope -> Map T.Id Nominal -> T.Id -> M.Infer (Type, Scheme)
+nomTypes outerSkolemsScope nominals name =
     do
         nominal <- getNominal nominals name
         p1_paramVals <-
             nParams nominal
-            & Map.keysSet & Map.fromSet (const (M.freshInferredVar skolemsScope "n"))
+            & Map.keysSet & Map.fromSet (const (M.freshInferredVar outerSkolemsScope "n"))
             & sequenceA
-        p1_freshInnerType <-
-            Nominal.apply p1_paramVals nominal & Scheme.instantiate skolemsScope
-        return (T.TInst name p1_paramVals, p1_freshInnerType)
+        return (T.TInst name p1_paramVals, Nominal.apply p1_paramVals nominal)
 
 {-# INLINE inferFromNom #-}
 inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
 inferFromNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes (Scope.skolems locals) nominals name
+        (p1_outerType, p1_innerScheme) <-
+            nomTypes (Scope.skolems locals) nominals name
+        p1_innerType <- Scheme.instantiate (Scope.skolems locals) p1_innerScheme
         ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_outerType
         let p2_innerType = Subst.apply p2_s p1_innerType
         return
@@ -291,8 +291,12 @@ inferFromNom nominals (V.Nom name val) = \go locals ->
 inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
 inferToNom nominals (V.Nom name val) = \go locals ->
     do
-        (p1_t, val') <- go locals val
-        (p1_outerType, p1_innerType) <- nomTypes (Scope.skolems locals) nominals name
+        (p1_outerType, p1_innerScheme) <- nomTypes (Scope.skolems locals) nominals name
+        ((skolemRenames, p1_innerType), instantiateResults) <-
+            M.listen $ Scheme.instantiateWithRenames (Scope.skolems locals) p1_innerScheme
+        let skolems = TV.renameDest skolemRenames
+        M.addSkolems skolems $ M._constraints instantiateResults
+        (p1_t, val') <- go (Scope.insertSkolems skolems locals) val
         ((), p2_s) <- M.listenSubst $ unifyUnsafe p1_t p1_innerType
         let p2_outerType = Subst.apply p2_s p1_outerType
         return

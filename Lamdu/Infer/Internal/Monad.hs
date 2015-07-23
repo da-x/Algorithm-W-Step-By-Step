@@ -15,7 +15,7 @@ module Lamdu.Infer.Internal.Monad
     , getConstraints, getSubst
     , listenSubst
 
-    , isSkolem, addSkolems
+    , getSkolems, addSkolems
 
     , narrowTVScope, getSkolemsInScope
 
@@ -81,7 +81,7 @@ instance CompositeHasVar T.SumTag where
     compositeSkolemsInScopeMap = sisSTVs
     {-# INLINE compositeSkolemsInScopeMap #-}
 
-class TV.VarKind t => VarKind t where
+class Subst.HasVar t => VarKind t where
     skolemsInScopeMap :: Lens' SkolemsInScope (Map (T.Var t) SkolemScope)
 
 instance VarKind Type where
@@ -203,9 +203,9 @@ throwError :: Error -> Infer a
 throwError = Infer . StateT . const . Left
 {-# INLINE throwError #-}
 
-isSkolem :: (Monad m, TV.VarKind t) => T.Var t -> InferCtx m Bool
-isSkolem v = Infer $ Lens.uses (ctxState . inferSkolems) (v `TV.member`)
-{-# INLINE isSkolem #-}
+getSkolems :: Monad m => InferCtx m TV.TypeVars
+getSkolems = Infer $ Lens.use (ctxState . inferSkolems)
+{-# INLINE getSkolems #-}
 
 addSkolems :: Monad m => TV.TypeVars -> Constraints -> InferCtx m ()
 addSkolems skolems skolemConstraints =

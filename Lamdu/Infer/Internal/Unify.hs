@@ -6,13 +6,15 @@ module Lamdu.Infer.Internal.Unify
 
 import           Prelude.Compat
 
-import           Control.Monad (when)
+import           Control.Lens.Operators
+import           Control.Monad (unless)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Control.Monad.Trans.State as State
 import qualified Data.Foldable as Foldable
 import           Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import           Lamdu.Expr.FlatComposite (FlatComposite(..))
 import qualified Lamdu.Expr.FlatComposite as FlatComposite
 import           Lamdu.Expr.Type (Type)
@@ -21,6 +23,7 @@ import qualified Lamdu.Expr.TypeVars as TV
 import qualified Lamdu.Infer.Error as Err
 import           Lamdu.Infer.Internal.Monad (Infer)
 import qualified Lamdu.Infer.Internal.Monad as M
+import           Lamdu.Infer.Internal.Scope (SkolemScope(..))
 import qualified Lamdu.Infer.Internal.Scope as Scope
 import           Lamdu.Infer.Internal.Subst (Subst, CanSubst)
 import qualified Lamdu.Infer.Internal.Subst as Subst
@@ -30,24 +33,41 @@ import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 unifyUnsafe :: Type -> Type -> Infer ()
 unifyUnsafe = unifyGeneric
 
-varBind :: (Eq t, Subst.HasVar t, Pretty t) => T.Var t -> t -> Infer ()
+varBind :: (Eq t, M.VarKind t, Pretty t) => T.Var t -> t -> Infer ()
 varBind u t
     | mtv == Just u = return ()
     | otherwise =
         do
-            uIsSkolem <- M.isSkolem u
-            case (uIsSkolem, mtv) of
+            allSkolems <- M.getSkolems
+            let tSkolems = TV.intersection allSkolems tFree
+            let TV.TypeVars tvs rtvs stvs = tFree `TV.difference` tSkolems
+            case (TV.member u allSkolems, mtv) of
                 (False, _) ->
                     do
+                        uAllowedSkolems <- M.getSkolemsInScope u
+                        let narrow nonSkolems =
+                                mapM_ (M.narrowTVScope uAllowedSkolems)
+                                (Set.toList nonSkolems)
+                        narrow tvs >> narrow rtvs >> narrow stvs
+                        let unallowedSkolems =
+                                tSkolems `TV.difference`
+                                (uAllowedSkolems ^. Scope.skolemScopeVars)
+                        unless (TV.null unallowedSkolems) $
+                            M.throwError $ Err.SkolemEscapesScope
+                        -- in my scope: tSkolems
                         checkOccurs u t
                         M.tellSubst u t
                 (True, Nothing) -> M.throwError $ Err.SkolemNotPolymorphic (pPrint u) (pPrint t)
-                (True, Just tv) ->
-                    do
-                        tIsSkolem <- M.isSkolem tv
-                        when tIsSkolem $ M.throwError $ Err.SkolemsUnified (pPrint u) (pPrint t)
-                        M.tellSubst tv (TV.lift u)
+                (True, Just tv)
+                    | TV.member tv allSkolems -> M.throwError $ Err.SkolemsUnified (pPrint u) (pPrint t)
+                    | otherwise ->
+                          do
+                              SkolemScope tvAllowedSkolems <- M.getSkolemsInScope tv
+                              unless (u `TV.member` tvAllowedSkolems) $
+                                  M.throwError Err.SkolemEscapesScope
+                              M.tellSubst tv (TV.lift u)
     where
+        tFree = TV.free t
         mtv = TV.unlift t
 
 checkOccurs :: (Pretty t, Subst.HasVar t) => T.Var t -> t -> Infer ()
@@ -63,7 +83,7 @@ closedRecord :: Map T.Tag Type -> T.Composite p
 closedRecord fields = FlatComposite.toComposite (FlatComposite fields Nothing)
 
 unifyFlatToPartial ::
-    Subst.CompositeHasVar p =>
+    M.CompositeHasVar p =>
     Subst -> (Map T.Tag Type, T.Var (T.Composite p)) -> Map T.Tag Type ->
     Infer ()
 unifyFlatToPartial s (tfields, tname) ufields

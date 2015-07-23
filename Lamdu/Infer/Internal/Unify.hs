@@ -7,7 +7,7 @@ module Lamdu.Infer.Internal.Unify
 import           Prelude.Compat
 
 import           Control.Lens.Operators
-import           Control.Monad (unless)
+import           Control.Monad (when, unless)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.State (StateT, evalStateT)
 import qualified Control.Monad.Trans.State as State
@@ -55,7 +55,8 @@ varBind u t
                         unless (TV.null unallowedSkolems) $
                             M.throwError $ Err.SkolemEscapesScope
                         -- in my scope: tSkolems
-                        checkOccurs u t
+                        when (u `TV.member` tFree) $
+                            M.throwError $ Err.OccursCheckFail (pPrint u) (pPrint t)
                         M.tellSubst u t
                 (True, Nothing) -> M.throwError $ Err.SkolemNotPolymorphic (pPrint u) (pPrint t)
                 (True, Just tv)
@@ -69,12 +70,6 @@ varBind u t
     where
         tFree = TV.free t
         mtv = TV.unlift t
-
-checkOccurs :: (Pretty t, Subst.HasVar t) => T.Var t -> t -> Infer ()
-checkOccurs var typ
-    | var `TV.member` TV.free typ =
-        M.throwError $ Err.OccursCheckFail (pPrint var) (pPrint typ)
-    | otherwise = return ()
 
 class CanSubst t => Unify t where
     unifyGeneric :: t -> t -> Infer ()

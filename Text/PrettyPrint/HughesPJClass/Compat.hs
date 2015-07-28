@@ -1,8 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE NoImplicitPrelude, CPP #-}
 module Text.PrettyPrint.HughesPJClass.Compat
     ( module Text.PrettyPrint.HughesPJClass.Compat
     , module Text.PrettyPrint.HughesPJClass
     ) where
+
+import Prelude.Compat
 
 #if MIN_VERSION_pretty(1,1,2)
 import Text.PrettyPrint.HughesPJClass hiding (maybeParens)

@@ -65,7 +65,7 @@ data Type
 instance NFData Type where rnf = genericRnf
 instance Binary Type
 
-infixr 1 ~>
+infixr 2 ~>
 (~>) :: Type -> Type -> Type
 (~>) = TFun
 

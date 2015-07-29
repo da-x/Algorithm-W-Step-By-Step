@@ -242,13 +242,10 @@ env =
     }
 
 list :: [Val ()] -> Val ()
-list [] = P.toNom "List" $ P.inject "[]" P.recEmpty
-list items@(_x:_) =
-    foldr cons (list []) items
+list = foldr cons (P.toNom "List" $ P.inject "[]" P.recEmpty)
 
 cons :: Val () -> Val () -> Val ()
-cons h t =
-    P.toNom "List" $ P.inject ":" $ P.record [("head", h), ("tail", t)]
+cons h t = P.toNom "List" $ P.inject ":" $ P.record [("head", h), ("tail", t)]
 
 factorialVal :: Val ()
 factorialVal =

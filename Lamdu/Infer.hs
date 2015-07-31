@@ -8,8 +8,8 @@ module Lamdu.Infer
     , Payload(..), plScope, plType
     , M.Context, M.initialContext
     , M.InferCtx(..), M.inferCtx, Infer
-    , M.freshInferredVarName
-    , M.freshInferredVar
+    , freshInferredVarName
+    , freshInferredVar
     ) where
 
 import           Prelude.Compat

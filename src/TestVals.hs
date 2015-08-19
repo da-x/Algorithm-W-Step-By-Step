@@ -31,6 +31,8 @@ import           Lamdu.Expr.Val (Val)
 import qualified Lamdu.Expr.Val as V
 import           Lamdu.Infer (TypeVars(..), Loaded(..))
 
+{-# ANN module ("HLint: ignore Redundant $" :: String) #-}
+
 -- TODO: $$ to be type-classed for TApp vs BApp
 -- TODO: TCon "->" instead of TFun
 
@@ -97,6 +99,18 @@ boolTypePair =
         }
     )
 
+tvA :: T.TypeVar
+tvA = "a"
+
+tvB :: T.TypeVar
+tvB = "b"
+
+ta :: Type
+ta = TV.lift tvA
+
+tb :: Type
+tb = TV.lift tvB
+
 polyIdTypePair :: (T.Id, Nominal)
 polyIdTypePair =
     ( "PolyIdentity"
@@ -104,13 +118,9 @@ polyIdTypePair =
         { nParams = Map.empty
         , nScheme =
             Scheme (TV.singleton tvA) mempty $
-            a ~> a
+            ta ~> ta
         }
     )
-    where
-        a = TV.lift tvA
-        tvA :: T.TypeVar
-        tvA = "a"
 
 unsafeCoerceTypePair :: (T.Id, Nominal)
 unsafeCoerceTypePair =
@@ -119,15 +129,9 @@ unsafeCoerceTypePair =
         { nParams = Map.empty
         , nScheme =
             Scheme (TV.singleton tvA <> TV.singleton tvB) mempty $
-            a ~> b
+            ta ~> tb
         }
     )
-    where
-        a = TV.lift tvA
-        b = TV.lift tvB
-        tvA, tvB :: T.TypeVar
-        tvA = "a"
-        tvB = "b"
 
 ignoredParamTypePair :: (T.Id, Nominal)
 ignoredParamTypePair =
@@ -136,15 +140,9 @@ ignoredParamTypePair =
         { nParams = Map.singleton "res" tvB
         , nScheme =
             Scheme (TV.singleton tvA) mempty $
-            a ~> b
+            ta ~> tb
         }
     )
-    where
-        a = TV.lift tvA
-        b = TV.lift tvB
-        tvA, tvB :: T.TypeVar
-        tvA = "a"
-        tvB = "b"
 
 xGetter :: (T.ProductVar -> Constraints) -> Nominal
 xGetter constraints =
@@ -152,14 +150,11 @@ xGetter constraints =
     { nParams = Map.empty
     , nScheme =
         Scheme (TV.singleton tvA <> TV.singleton tvRest) (constraints tvRest) $
-        openRecordType tvRest [("x", a)] ~> a
+        openRecordType tvRest [("x", ta)] ~> ta
     }
     where
         tvRest :: T.ProductVar
         tvRest = "rest"
-        a = TV.lift tvA
-        tvA :: T.TypeVar
-        tvA = "a"
 
 xGetterPair :: (T.Id, Nominal)
 xGetterPair =
@@ -184,8 +179,7 @@ maybeOf :: Type -> Type
 maybeOf t =
     T.TSum $
     T.CExtend "Nothing" (recordType []) $
-    T.CExtend "Just" t $
-    T.CEmpty
+    T.CExtend "Just" t T.CEmpty
 
 infixType :: Type -> Type -> Type -> Type
 infixType a b c = recordType [("l", a), ("r", b)] ~> c

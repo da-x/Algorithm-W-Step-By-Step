@@ -116,6 +116,10 @@ freshInferredVar = M.freshInferredVar . Scope.skolems
 freshInferredVarName :: (M.VarKind t, Monad m) => Scope -> String -> M.InferCtx m (T.Var t)
 freshInferredVarName = M.freshInferredVarName . Scope.skolems
 
+-- The "redundant" lambda tells GHC the argument saturation needed for
+-- inlining
+{-# ANN module ("HLint: ignore Redundant lambda" :: String) #-}
+
 {-# INLINE inferLeaf #-}
 inferLeaf :: Map V.GlobalId Scheme -> V.Leaf -> InferHandler a b
 inferLeaf globals leaf = \_go locals ->
@@ -204,7 +208,7 @@ inferCase (V.Case name m mm) = \go locals ->
         -- type(match) `unify` a->res
         ((), p3_s) <-
             M.listenSubst $ unifyUnsafe p2_tm $ T.TFun p2_tv p2_tvRes
-        let p3 x = Subst.apply p3_s x
+        let p3 = Subst.apply p3_s
             p3_tv    = p3 p2_tv
             p3_tvRes = p3 p2_tvRes
             p3_tmm   = p3 p2_tmm
@@ -217,7 +221,8 @@ inferCase (V.Case name m mm) = \go locals ->
         ((), p4_s) <-
             M.listenSubst $ unifyUnsafe p3_tmm $
             T.TFun (T.TSum p3_tvSum) p3_tvRes
-        let p4 x = Subst.apply p4_s x
+        let p4 :: CanSubst a => a -> a
+            p4 = Subst.apply p4_s
             p4_tvSum = p4 p3_tvSum
             p4_tvRes = p4 p3_tvRes
             p4_tv    = p4 p3_tv

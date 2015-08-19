@@ -333,7 +333,7 @@ payloadsIndexedByPath f =
 
 {-# INLINE payloadsOf #-}
 payloadsOf ::
-    (Lens.Fold (V.Body (Val ())) a) -> Lens.IndexedTraversal' (Val ()) (Val b) b
+    Lens.Fold (V.Body (Val ())) a -> Lens.IndexedTraversal' (Val ()) (Val b) b
 payloadsOf body =
     subExprPayloads . Lens.ifiltered predicate
     where

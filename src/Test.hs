@@ -27,6 +27,10 @@ import           Text.PrettyPrint.HughesPJClass (Pretty(..))
 
 {-# ANN module ("HLint: ignore Use const" :: String) #-}
 
+-- I like case .. $ case .. $ absurd, so redundant $ is nice there
+-- like trailing commas
+{-# ANN module ("HLint: ignore Redundant $" :: String) #-}
+
 exps :: [Val ()]
 exps =
     [ eLet "id" (lambda "x" id) id
@@ -99,7 +103,7 @@ exps =
       P.absurd
 
     , "a" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Just" $$ P.litInt 1)) $
-      "b" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ (P.global "Nothing")) $
+      "b" $= (P.global "maybe" $$ P.litInt 0 $$ P.global "plus1" $$ P.global "Nothing") $
       P.recEmpty
 
     , nullTest
@@ -115,8 +119,8 @@ exps =
     , P.toNom (fst polyIdTypePair) (P.global "plus1")
     , P.lambda "a" $ \a -> P.toNom (fst polyIdTypePair) (P.lambda "_" $ \_ -> a)
 
-    , P.toNom (fst xGetterPair) (P.lambda "rec" $ \rec -> rec $. "x")
-    , P.toNom (fst xGetterPairConstrained) (P.lambda "rec" $ \rec -> rec $. "x")
+    , P.toNom (fst xGetterPair) (P.lambda "record" $ \record -> record $. "x")
+    , P.toNom (fst xGetterPairConstrained) (P.lambda "record" $ \record -> record $. "x")
     ]
 
 nullTest :: Val ()

@@ -53,7 +53,7 @@ varBind u t
                                 tSkolems `TV.difference`
                                 (uAllowedSkolems ^. Scope.skolemScopeVars)
                         unless (TV.null unallowedSkolems) $
-                            M.throwError $ Err.SkolemEscapesScope
+                            M.throwError Err.SkolemEscapesScope
                         -- in my scope: tSkolems
                         when (u `TV.member` tFree) $
                             M.throwError $ Err.OccursCheckFail (pPrint u) (pPrint t)

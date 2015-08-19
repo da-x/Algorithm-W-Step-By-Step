@@ -38,6 +38,7 @@ module Lamdu.Expr.Lens
     , subExprPayloads
     , subExprs
     , payloadsIndexedByPath
+    , payloadsOf
     -- Type prisms:
     , _TVar
     , _TRecord
@@ -329,6 +330,14 @@ payloadsIndexedByPath f =
             <*> Lens.traversed (go newPath) body
             where
                 newPath = void val : path
+
+{-# INLINE payloadsOf #-}
+payloadsOf ::
+    (Lens.Fold (V.Body (Val ())) a) -> Lens.IndexedTraversal' (Val ()) (Val b) b
+payloadsOf body =
+    subExprPayloads . Lens.ifiltered predicate
+    where
+        predicate idx _ = Lens.has (V.body . body) idx
 
 {-# INLINE biTraverseBodyTags #-}
 biTraverseBodyTags ::

@@ -74,6 +74,7 @@ benchmark bench-builder-all
                   , lens
                   , containers
                   , mtl
+                  , bytestring
   if flag(noprettyclass)
     build-depends:     pretty
   else

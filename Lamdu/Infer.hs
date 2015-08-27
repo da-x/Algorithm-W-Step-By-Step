@@ -133,7 +133,7 @@ inferLeaf globals leaf = \_go locals ->
         case Map.lookup n globals of
         Nothing      -> M.throwError $ Err.MissingGlobal n
         Just sigma   -> Scheme.instantiate (Scope.skolems locals) sigma
-    V.LLiteralInteger _ -> return T.TInt
+    V.LLiteral (V.Literal p _) -> return $ T.TPrim p
     V.LRecEmpty -> return $ T.TRecord T.CEmpty
     V.LAbsurd ->
         do

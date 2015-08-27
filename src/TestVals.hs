@@ -15,6 +15,7 @@ module TestVals
 import           Prelude.Compat
 
 import           Control.Lens.Operators
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as Map
 import           Data.Monoid ((<>))
 import qualified Data.Set as Set
@@ -84,6 +85,9 @@ listOf = T.TInst (fst listTypePair) . Map.singleton "elem"
 
 boolType :: Type
 boolType = T.TInst (fst boolTypePair) Map.empty
+
+intType :: Type
+intType = T.TPrim "Int"
 
 boolTypePair :: (T.NominalId, Nominal)
 boolTypePair =
@@ -201,14 +205,14 @@ env =
         , ("-",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("+",      forAll ["a"] $ \ [a] -> infixType a a a)
         , ("/",      forAll ["a"] $ \ [a] -> infixType a a a)
-        , ("//",     forAll []    $ \ []  -> infixType T.TInt T.TInt T.TInt)
+        , ("//",     forAll []    $ \ []  -> infixType intType intType intType)
         , ("sum",    forAll ["a"] $ \ [a] -> listOf a ~> a)
         , ("filter", forAll ["a"] $ \ [a] -> recordType [("from", listOf a), ("predicate", a ~> boolType)] ~> listOf a)
         , (":",      forAll ["a"] $ \ [a] -> recordType [("head", a), ("tail", listOf a)] ~> listOf a)
         , ("[]",     forAll ["a"] $ \ [a] -> listOf a)
         , ("concat", forAll ["a"] $ \ [a] -> listOf (listOf a) ~> listOf a)
         , ("map",    forAll ["a", "b"] $ \ [a, b] -> recordType [("list", listOf a), ("mapping", a ~> b)] ~> listOf b)
-        , ("..",     forAll [] $ \ [] -> infixType T.TInt T.TInt (listOf T.TInt))
+        , ("..",     forAll [] $ \ [] -> infixType intType intType (listOf intType))
         , ("||",     forAll [] $ \ [] -> infixType boolType boolType boolType)
         , ("head",   forAll ["a"] $ \ [a] -> listOf a ~> a)
         , ("negate", forAll ["a"] $ \ [a] -> a ~> a)
@@ -219,7 +223,7 @@ env =
         , ("Just",   forAll ["a"] $ \ [a] -> a ~> maybeOf a)
         , ("Nothing",forAll ["a"] $ \ [a] -> maybeOf a)
         , ("maybe",  forAll ["a", "b"] $ \ [a, b] -> b ~> (a ~> b) ~> maybeOf a ~> b)
-        , ("plus1",  forAll [] $ \ [] -> T.TInt ~> T.TInt)
+        , ("plus1",  forAll [] $ \ [] -> intType ~> intType)
         , ("True",   forAll [] $ \ [] -> boolType)
         , ("False",  forAll [] $ \ [] -> boolType)
         ]
@@ -241,6 +245,9 @@ list = foldr cons (P.toNom "List" $ P.inject "[]" P.recEmpty)
 cons :: Val () -> Val () -> Val ()
 cons h t = P.toNom "List" $ P.inject ":" $ P.record [("head", h), ("tail", t)]
 
+litInt :: Integer -> Val ()
+litInt = P.lit "Int" . BS8.pack . show
+
 factorialVal :: Val ()
 factorialVal =
     P.global "fix" $$
@@ -249,10 +256,10 @@ factorialVal =
         lambda "x" $ \x ->
         P.global "if" $$:
         [ ( "condition", P.global "==" $$
-                infixArgs x (P.litInt 0) )
-        , ( "then", P.litInt 1 )
+                infixArgs x (litInt 0) )
+        , ( "then", litInt 1 )
         , ( "else", P.global "*" $$
-                infixArgs x (loop $$ (P.global "-" $$ infixArgs x (P.litInt 1)))
+                infixArgs x (loop $$ (P.global "-" $$ infixArgs x (litInt 1)))
             )
         ]
     )
@@ -261,14 +268,14 @@ euler1Val :: Val ()
 euler1Val =
     P.global "sum" $$
     ( P.global "filter" $$:
-        [ ("from", P.global ".." $$ infixArgs (P.litInt 1) (P.litInt 1000))
+        [ ("from", P.global ".." $$ infixArgs (litInt 1) (litInt 1000))
         , ( "predicate",
                 lambda "x" $ \x ->
                 P.global "||" $$ infixArgs
                 ( P.global "==" $$ infixArgs
-                    (P.litInt 0) (P.global "%" $$ infixArgs x (P.litInt 3)) )
+                    (litInt 0) (P.global "%" $$ infixArgs x (litInt 3)) )
                 ( P.global "==" $$ infixArgs
-                    (P.litInt 0) (P.global "%" $$ infixArgs x (P.litInt 5)) )
+                    (litInt 0) (P.global "%" $$ infixArgs x (litInt 5)) )
             )
         ]
     )
@@ -287,11 +294,11 @@ solveDepressedQuarticVal =
     )
     $ \sqrts ->
     P.global "if" $$:
-    [ ("condition", P.global "==" $$ infixArgs d (P.litInt 0))
+    [ ("condition", P.global "==" $$ infixArgs d (litInt 0))
     , ( "then",
             P.global "concat" $$
             ( P.global "map" $$:
-                [ ("list", solvePoly $$ list [e, c, P.litInt 1])
+                [ ("list", solvePoly $$ list [e, c, litInt 1])
                 , ("mapping", sqrts)
                 ]
             )
@@ -301,17 +308,17 @@ solveDepressedQuarticVal =
             ( P.global "map" $$:
                 [ ( "list", sqrts $$ (P.global "head" $$ (solvePoly $$ list
                         [ P.global "negate" $$ (d %* d)
-                        , (c %* c) %- (P.litInt 4 %* e)
-                        , P.litInt 2 %* c
-                        , P.litInt 1
+                        , (c %* c) %- (litInt 4 %* e)
+                        , litInt 2 %* c
+                        , litInt 1
                         ]))
                     )
                 , ( "mapping",
                         lambda "x" $ \x ->
                         solvePoly $$ list
                         [ (c %+ (x %* x)) %- (d %/ x)
-                        , P.litInt 2 %* x
-                        , P.litInt 2
+                        , litInt 2 %* x
+                        , litInt 2
                         ]
                     )
                 ]
@@ -332,9 +339,9 @@ factorsVal =
     fix_ $ \loop ->
     lambdaRecord ["n", "min"] $ \ [n, m] ->
     if_ ((m %* m) %> n) (list [n]) $
-    if_ ((n %% m) %== P.litInt 0)
+    if_ ((n %% m) %== litInt 0)
     (cons m $ loop $$: [("n", n %// m), ("min", m)]) $
-    loop $$: [ ("n", n), ("min", m %+ P.litInt 1) ]
+    loop $$: [ ("n", n), ("min", m %+ litInt 1) ]
     where
         fix_ f = P.global "fix" $$ lambda "loop" f
         if_ b t f =

@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Lamdu.Expr.Pure
-    ( abs, var, global, litInt, recEmpty, app, recExtend, getField
+    ( abs, var, global, lit, recEmpty, app, recExtend, getField
     , inject, absurd, _case
     , fromNom, toNom
     , leaf, hole
@@ -11,6 +11,7 @@ module Lamdu.Expr.Pure
 
 import           Prelude.Compat hiding (abs)
 
+import           Data.ByteString (ByteString)
 import           Lamdu.Expr.Val (Val(..))
 import qualified Lamdu.Expr.Type as T
 import qualified Lamdu.Expr.Val as V
@@ -28,8 +29,8 @@ var = leaf . V.LVar
 global :: Monoid a => V.GlobalId -> Val a
 global = leaf . V.LGlobal
 
-litInt :: Monoid a => Integer -> Val a
-litInt = leaf . V.LLiteralInteger
+lit :: Monoid a => T.PrimId -> ByteString -> Val a
+lit p d = leaf $ V.LLiteral $ V.Literal p d
 
 recEmpty :: Monoid a => Val a
 recEmpty = Val mempty $ V.BLeaf V.LRecEmpty

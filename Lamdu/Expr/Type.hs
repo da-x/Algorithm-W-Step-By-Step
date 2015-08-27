@@ -4,7 +4,7 @@ module Lamdu.Expr.Type
     , Product   , Sum
     , ProductTag, SumTag
     , ProductVar, SumVar, TypeVar
-    , Var(..), NominalId(..), Tag(..), ParamId(..)
+    , Var(..), NominalId(..), PrimId(..), Tag(..), ParamId(..)
     , (~>)
     ) where
 
@@ -28,6 +28,9 @@ newtype Var t = Var { tvName :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype NominalId = NominalId { nomId :: Identifier }
+    deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
+
+newtype PrimId = PrimId { primId :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Tag = Tag { tagName :: Identifier }
@@ -58,7 +61,7 @@ data Type
     = TVar TypeVar
     | TFun Type Type
     | TInst NominalId (Map ParamId Type)
-    | TInt
+    | TPrim PrimId
     | TRecord Product
     | TSum Sum
     deriving (Generic, Show, Eq, Ord)
@@ -85,7 +88,7 @@ instance Pretty Type where
                 PP.text ">"
             where
                 showParam (p, v) = pPrint p <+> PP.text "=" <+> pPrint v
-        TInt -> PP.text "Int"
+        TPrim p -> pPrint p
         TRecord r -> PP.text "*" <> pPrint r
         TSum s -> PP.text "+" <> pPrint s
 

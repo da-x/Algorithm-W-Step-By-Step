@@ -6,7 +6,7 @@ module Lamdu.Expr.Lens
     , _LRecEmpty
     , _LAbsurd
     , _LVar
-    , _LLiteralInteger
+    , _LLiteral
     -- ValBody prisms:
     , _BLeaf
     , _BApp
@@ -17,11 +17,11 @@ module Lamdu.Expr.Lens
     , _BInject
     , _BFromNom, _BToNom
     -- Leafs
-    , valGlobal        , valBodyGlobal
-    , valHole          , valBodyHole
-    , valVar           , valBodyVar
-    , valRecEmpty      , valBodyRecEmpty
-    , valLiteralInteger, valBodyLiteralInteger
+    , valGlobal  , valBodyGlobal
+    , valHole    , valBodyHole
+    , valVar     , valBodyVar
+    , valRecEmpty, valBodyRecEmpty
+    , valLiteral , valBodyLiteral
     , valLeafs
     -- Non-leafs
     , valGetField
@@ -77,7 +77,7 @@ nextLayer f (T.TFun a r) = T.TFun <$> f a <*> f r
 nextLayer f (T.TInst tid m) = T.TInst tid <$> Lens.traverse f m
 nextLayer f (T.TRecord p) = T.TRecord <$> compositeTypes f p
 nextLayer f (T.TSum s) = T.TSum <$> compositeTypes f s
-nextLayer _ T.TInt = pure T.TInt
+nextLayer _ (T.TPrim p) = pure (T.TPrim p)
 
 {-# INLINE typeTIds #-}
 typeTIds :: Lens.Traversal' Type T.NominalId
@@ -113,9 +113,9 @@ valVar = V.body . valBodyVar
 valRecEmpty :: Traversal' (Val a) ()
 valRecEmpty = V.body . valBodyRecEmpty
 
-{-# INLINE valLiteralInteger #-}
-valLiteralInteger :: Traversal' (Val a) Integer
-valLiteralInteger = V.body . valBodyLiteralInteger
+{-# INLINE valLiteral #-}
+valLiteral :: Traversal' (Val a) V.Literal
+valLiteral = V.body . valBodyLiteral
 
 {-# INLINE valGetField #-}
 valGetField  :: Traversal' (Val a) (V.GetField (Val a))
@@ -156,11 +156,11 @@ _LVar = prism' V.LVar get
         get (V.LVar gid) = Just gid
         get _ = Nothing
 
-{-# INLINE _LLiteralInteger #-}
-_LLiteralInteger :: Prism' V.Leaf Integer
-_LLiteralInteger = prism' V.LLiteralInteger get
+{-# INLINE _LLiteral #-}
+_LLiteral :: Prism' V.Leaf V.Literal
+_LLiteral = prism' V.LLiteral get
     where
-        get (V.LLiteralInteger i) = Just i
+        get (V.LLiteral i) = Just i
         get _ = Nothing
 
 {-# INLINE _BLeaf #-}
@@ -243,9 +243,9 @@ valBodyVar = _BLeaf . _LVar
 valBodyRecEmpty :: Prism' (V.Body expr) ()
 valBodyRecEmpty = _BLeaf . _LRecEmpty
 
-{-# INLINE valBodyLiteralInteger #-}
-valBodyLiteralInteger :: Prism' (V.Body expr) Integer
-valBodyLiteralInteger = _BLeaf . _LLiteralInteger
+{-# INLINE valBodyLiteral #-}
+valBodyLiteral :: Prism' (V.Body expr) V.Literal
+valBodyLiteral = _BLeaf . _LLiteral
 
 {-# INLINE valLeafs #-}
 valLeafs :: Traversal' (Val a) V.Leaf

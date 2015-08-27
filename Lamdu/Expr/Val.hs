@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude, DeriveGeneric, DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving, RecordWildCards #-}
 module Lamdu.Expr.Val
     ( Leaf(..)
+    , Literal(..), litType, litData
     , Body(..)
     , Apply(..), applyFunc, applyArg
     , GetField(..), getFieldRecord, getFieldTag
@@ -22,6 +23,8 @@ import           Control.DeepSeq.Generics (genericRnf)
 import           Control.Lens (Lens, Lens')
 import           Control.Lens.Operators
 import           Data.Binary (Binary)
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Foldable as Foldable
 import           Data.Hashable (Hashable(..))
 import           Data.Hashable.Generic (gHashWithSalt)
@@ -43,11 +46,25 @@ newtype Var = Var { vvName :: Identifier }
 newtype GlobalId = GlobalId { globalId :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
+data Literal = Literal
+    { _litType :: {-# UNPACK #-} !T.PrimId
+    , _litData :: {-# UNPACK #-} !ByteString
+    } deriving (Generic, Show, Eq, Ord)
+instance NFData Literal where rnf = genericRnf
+instance Binary Literal
+instance Hashable Literal where hashWithSalt = gHashWithSalt
+
+litType :: Lens' Literal T.PrimId
+litType f Literal{..} = f _litType <&> \_litType -> Literal{..}
+
+litData :: Lens' Literal ByteString
+litData f Literal{..} = f _litData <&> \_litData -> Literal{..}
+
 data Leaf
     =  LVar {-# UNPACK #-}!Var
     |  LGlobal {-# UNPACK #-}!GlobalId
     |  LHole
-    |  LLiteralInteger !Integer
+    |  LLiteral {-# UNPACK #-} !Literal
     |  LRecEmpty
     |  LAbsurd
     deriving (Generic, Show, Eq)
@@ -223,7 +240,7 @@ pPrintPrecBody lvl prec b =
     case b of
     BLeaf (LVar var)          -> pPrint var
     BLeaf (LGlobal tag)       -> pPrint tag
-    BLeaf (LLiteralInteger i) -> pPrint i
+    BLeaf (LLiteral (Literal _p d)) -> PP.text (BS8.unpack d)
     BLeaf LHole               -> PP.text "?"
     BLeaf LAbsurd             -> PP.text "absurd"
     BApp (Apply e1 e2)        -> maybeParens (10 < prec) $

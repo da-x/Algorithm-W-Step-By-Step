@@ -70,7 +70,7 @@ instance CanSubst Payload where
 
 data Loaded = Loaded
     { loadedGlobalTypes :: Map V.GlobalId Scheme
-    , loadedNominals :: Map T.Id Nominal
+    , loadedNominals :: Map T.NominalId Nominal
     }
 
 inferSubst :: Loaded -> Scope -> Val a -> Infer (Scope, Val (Payload, a))
@@ -261,13 +261,13 @@ inferRecExtend (V.RecExtend name e1 e2) = \go locals ->
             , T.TRecord $ T.CExtend name t1' rest
             )
 
-getNominal :: Map T.Id Nominal -> T.Id -> M.Infer Nominal
+getNominal :: Map T.NominalId Nominal -> T.NominalId -> M.Infer Nominal
 getNominal nominals name =
     case Map.lookup name nominals of
     Nothing -> M.throwError $ Err.MissingNominal name
     Just nominal -> return nominal
 
-nomTypes :: SkolemScope -> Map T.Id Nominal -> T.Id -> M.Infer (Type, Scheme)
+nomTypes :: SkolemScope -> Map T.NominalId Nominal -> T.NominalId -> M.Infer (Type, Scheme)
 nomTypes outerSkolemsScope nominals name =
     do
         nominal <- getNominal nominals name
@@ -278,7 +278,7 @@ nomTypes outerSkolemsScope nominals name =
         return (T.TInst name p1_paramVals, Nominal.apply p1_paramVals nominal)
 
 {-# INLINE inferFromNom #-}
-inferFromNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
+inferFromNom :: Map T.NominalId Nominal -> V.Nom a -> InferHandler a b
 inferFromNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_t, val') <- go locals val
@@ -293,7 +293,7 @@ inferFromNom nominals (V.Nom name val) = \go locals ->
             )
 
 {-# INLINE inferToNom #-}
-inferToNom :: Map T.Id Nominal -> V.Nom a -> InferHandler a b
+inferToNom :: Map T.NominalId Nominal -> V.Nom a -> InferHandler a b
 inferToNom nominals (V.Nom name val) = \go locals ->
     do
         (p1_outerType, p1_innerScheme) <- nomTypes (Scope.skolems locals) nominals name

@@ -4,7 +4,7 @@ module Lamdu.Expr.Type
     , Product   , Sum
     , ProductTag, SumTag
     , ProductVar, SumVar, TypeVar
-    , Var(..), Id(..), Tag(..), ParamId(..)
+    , Var(..), NominalId(..), Tag(..), ParamId(..)
     , (~>)
     ) where
 
@@ -27,7 +27,7 @@ import           Text.PrettyPrint.HughesPJClass.Compat (Pretty(..), maybeParens)
 newtype Var t = Var { tvName :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
-newtype Id = Id { typeId :: Identifier }
+newtype NominalId = NominalId { nomId :: Identifier }
     deriving (Eq, Ord, Show, NFData, IsString, Pretty, Binary, Hashable)
 
 newtype Tag = Tag { tagName :: Identifier }
@@ -57,7 +57,7 @@ instance Binary (Composite p)
 data Type
     = TVar TypeVar
     | TFun Type Type
-    | TInst Id (Map ParamId Type)
+    | TInst NominalId (Map ParamId Type)
     | TInt
     | TRecord Product
     | TSum Sum

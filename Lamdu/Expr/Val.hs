@@ -169,7 +169,7 @@ recRest :: Lens' (RecExtend exp) exp
 recRest f RecExtend {..} = f _recRest <&> \_recRest -> RecExtend {..}
 
 data Nom exp = Nom
-    { _nomId :: T.Id
+    { _nomId :: T.NominalId
     , _nomVal :: exp
     } deriving (Functor, Foldable, Traversable, Generic, Show, Eq)
 instance NFData exp => NFData (Nom exp) where rnf = genericRnf
@@ -180,7 +180,7 @@ instance Match Nom where
         | i0 == i1 = Just $ Nom i0 (f v0 v1)
         | otherwise = Nothing
 
-nomId :: Lens' (Nom exp) T.Id
+nomId :: Lens' (Nom exp) T.NominalId
 nomId f Nom {..} = f _nomId <&> \_nomId -> Nom {..}
 
 nomVal :: Lens (Nom a) (Nom b) a b

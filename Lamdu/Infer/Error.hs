@@ -14,7 +14,7 @@ data Error
     = DuplicateField T.Tag T.Product
     | DuplicateAlt T.Tag T.Sum
     | MissingGlobal V.GlobalId
-    | MissingNominal T.Id
+    | MissingNominal T.NominalId
     | OccursCheckFail Doc Doc
     | TypesDoNotUnity Doc Doc
     | UnboundVariable V.Var

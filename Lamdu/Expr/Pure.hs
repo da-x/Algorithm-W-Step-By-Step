@@ -52,10 +52,10 @@ absurd = leaf V.LAbsurd
 _case :: Monoid a => T.Tag -> Val a -> Val a -> Val a
 _case tag match mismatch = Val mempty $ V.BCase $ V.Case tag match mismatch
 
-fromNom :: Monoid a => T.Id -> Val a -> Val a
+fromNom :: Monoid a => T.NominalId -> Val a -> Val a
 fromNom tid v = Val mempty $ V.BFromNom $ V.Nom tid v
 
-toNom :: Monoid a => T.Id -> Val a -> Val a
+toNom :: Monoid a => T.NominalId -> Val a -> Val a
 toNom tid v = Val mempty $ V.BToNom $ V.Nom tid v
 
 hole :: Monoid a => Val a

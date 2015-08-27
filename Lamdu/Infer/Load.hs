@@ -20,7 +20,7 @@ import           Lamdu.Infer (Scope, Infer, infer, Payload, Loaded(..))
 
 data Loader m = Loader
     { loadTypeOf :: V.GlobalId -> m Scheme
-    , loadNominal :: T.Id -> m Nominal
+    , loadNominal :: T.NominalId -> m Nominal
     }
 
 loadVal :: Applicative m => Loader m -> Val a -> m Loaded

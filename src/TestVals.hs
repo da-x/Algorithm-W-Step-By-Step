@@ -62,7 +62,7 @@ forAll :: [T.TypeVar] -> ([Type] -> Type) -> Scheme
 forAll tvs mkType =
     Scheme mempty { typeVars = Set.fromList tvs } mempty $ mkType $ map T.TVar tvs
 
-listTypePair :: (T.Id, Nominal)
+listTypePair :: (T.NominalId, Nominal)
 listTypePair =
     ( "List"
     , Nominal
@@ -85,7 +85,7 @@ listOf = T.TInst (fst listTypePair) . Map.singleton "elem"
 boolType :: Type
 boolType = T.TInst (fst boolTypePair) Map.empty
 
-boolTypePair :: (T.Id, Nominal)
+boolTypePair :: (T.NominalId, Nominal)
 boolTypePair =
     ( "Bool"
     , Nominal
@@ -111,7 +111,7 @@ ta = TV.lift tvA
 tb :: Type
 tb = TV.lift tvB
 
-polyIdTypePair :: (T.Id, Nominal)
+polyIdTypePair :: (T.NominalId, Nominal)
 polyIdTypePair =
     ( "PolyIdentity"
     , Nominal
@@ -122,7 +122,7 @@ polyIdTypePair =
         }
     )
 
-unsafeCoerceTypePair :: (T.Id, Nominal)
+unsafeCoerceTypePair :: (T.NominalId, Nominal)
 unsafeCoerceTypePair =
     ( "UnsafeCoerce"
     , Nominal
@@ -133,7 +133,7 @@ unsafeCoerceTypePair =
         }
     )
 
-ignoredParamTypePair :: (T.Id, Nominal)
+ignoredParamTypePair :: (T.NominalId, Nominal)
 ignoredParamTypePair =
     ( "IgnoredParam"
     , Nominal
@@ -156,13 +156,13 @@ xGetter constraints =
         tvRest :: T.ProductVar
         tvRest = "rest"
 
-xGetterPair :: (T.Id, Nominal)
+xGetterPair :: (T.NominalId, Nominal)
 xGetterPair =
     ( "XGetter"
     , xGetter mempty
     )
 
-xGetterPairConstrained :: (T.Id, Nominal)
+xGetterPairConstrained :: (T.NominalId, Nominal)
 xGetterPairConstrained =
     ( "XGetterConstrained"
     , xGetter $

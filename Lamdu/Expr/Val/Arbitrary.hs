@@ -121,8 +121,8 @@ instance Arbitrary Identifier where
 instance Arbitrary T.Tag where
     arbitrary = T.Tag <$> arbitrary
 
-instance Arbitrary T.Id where
-    arbitrary = T.Id <$> arbitrary
+instance Arbitrary T.NominalId where
+    arbitrary = T.NominalId <$> arbitrary
 
 -- TODO: This instance doesn't know which Definitions exist in the
 -- world so avoids DefinitionRef and only has valid ParameterRefs to

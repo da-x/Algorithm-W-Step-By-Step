@@ -80,7 +80,7 @@ nextLayer f (T.TSum s) = T.TSum <$> compositeTypes f s
 nextLayer _ T.TInt = pure T.TInt
 
 {-# INLINE typeTIds #-}
-typeTIds :: Lens.Traversal' Type T.Id
+typeTIds :: Lens.Traversal' Type T.NominalId
 typeTIds f (T.TInst tId args) =
     T.TInst <$> f tId <*> Lens.traverse (typeTIds f) args
 typeTIds f x = nextLayer (typeTIds f) x
@@ -369,7 +369,7 @@ valGlobals :: Lens.Traversal' (Val a) V.GlobalId
 valGlobals = valLeafs . _LGlobal
 
 {-# INLINE valNominals #-}
-valNominals :: Lens.Traversal' (Val a) T.Id
+valNominals :: Lens.Traversal' (Val a) T.NominalId
 valNominals f (Val pl body) =
     case body of
     V.BFromNom nom -> onNom nom <&> V.BFromNom

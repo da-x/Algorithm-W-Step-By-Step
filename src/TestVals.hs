@@ -5,7 +5,7 @@ module TestVals
     , list
     , factorialVal, euler1Val, solveDepressedQuarticVal
     , factorsVal
-    , lambda, lambdaRecord, whereItem, recordType
+    , lambda, lambdaRecord, letItem, recordType
     , eLet
     , listTypePair, boolTypePair, polyIdTypePair, unsafeCoerceTypePair
     , ignoredParamTypePair
@@ -50,8 +50,8 @@ lambdaRecord names mkBody =
     lambda "paramsRecord" $ \paramsRec ->
     mkBody $ map (P.getField paramsRec) names
 
-whereItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
-whereItem name val mkBody = lambda name mkBody $$ val
+letItem :: V.Var -> Val () -> (Val () -> Val ()) -> Val ()
+letItem name val mkBody = lambda name mkBody $$ val
 
 openRecordType :: T.ProductVar -> [(T.Tag, Type)] -> Type
 openRecordType tv = T.TRecord . foldr (uncurry T.CExtend) (T.CVar tv)
@@ -283,11 +283,11 @@ euler1Val =
 solveDepressedQuarticVal :: Val ()
 solveDepressedQuarticVal =
     lambdaRecord ["e", "d", "c"] $ \[e, d, c] ->
-    whereItem "solvePoly" (P.global "id")
+    letItem "solvePoly" (P.global "id")
     $ \solvePoly ->
-    whereItem "sqrts"
+    letItem "sqrts"
     ( lambda "x" $ \x ->
-        whereItem "r"
+        letItem "r"
         ( P.global "sqrt" $$ x
         ) $ \r ->
         list [r, P.global "negate" $$ r]
